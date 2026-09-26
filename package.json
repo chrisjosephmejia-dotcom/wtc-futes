@@ -1,0 +1,10 @@
+{
+  "name": "wtc-futes",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@netlify/blobs": "latest",
+    "@netlify/functions": "latest",
+    "web-push": "latest"
+  }
+}
