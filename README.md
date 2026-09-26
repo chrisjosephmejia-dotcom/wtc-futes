@@ -23,3 +23,5 @@ Required environment variables:
 - `ALERT_EMAIL_TO`
 
 The existing Netlify site ID is `8e525588-b977-4c0b-8f61-f4374eaa8e71`.
+
+Deployment refresh marker: 2026-09-26.
