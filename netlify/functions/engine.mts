@@ -43,31 +43,33 @@ export default async (_req:Request) => {
   // whenever CME equity-index futures are actually closed in Chicago time.
   if (!clock.session) {
     const previous:any=await s.get("state",{type:"json"}) || {};
-    if (actionable(previous.signal)) {
-      const lastStatus:any=await s.get("status",{type:"json"}) || {};
-      if(Number.isFinite(Number(lastStatus?.price))){
-        const current={
-          ...lastStatus,
-          strategyVersion:STRATEGY_VERSION,
-          rawSignal:"WAIT",
-          rawReason:clock.reason || "CME SESSION CLOSED",
-          previousPosition:previous.signal,
-          signal:"WAIT",
-          positionEvent:"EXIT",
-          reason:clock.reason || "CME SESSION CLOSED",
-          checkedAt:new Date().toISOString(),
-        };
-        try { await updateSignalLog(current); } catch(error:any) { console.error("signal log close failed",error); }
-        const alerts=await sendTransitionAlerts(current,previous.signal);
-        const listed=await store("mnq-push-subscriptions").list({prefix:"sub-"});
-        const lastPush=alerts.pushResult?{at:current.checkedAt,signal:"WAIT",title:alerts.title,result:alerts.pushResult}:previous.lastPush||null;
-        const lastEmail=alerts.emailResult?{at:current.checkedAt,signal:"WAIT",title:alerts.title,id:alerts.emailResult?.id||null}:previous.lastEmail||null;
-        await s.setJSON("status",{...current,lastPush,lastEmail,pushSubscribers:listed.blobs.length});
-        await s.setJSON("state",{signal:"WAIT",rawSignal:"WAIT",strategyVersion:STRATEGY_VERSION,lastPush,lastEmail,pushSubscribers:listed.blobs.length,checkedAt:current.checkedAt});
-        return;
-      }
+    const lastStatus:any=await s.get("status",{type:"json"}) || {};
+
+    // Initialize/archive the ledger even while CME is closed so the V2 forward
+    // dataset is clean before the Sunday evening reopen.
+    const flatCurrent:any={
+      ...lastStatus,
+      strategyVersion:STRATEGY_VERSION,
+      rawSignal:"WAIT",
+      rawReason:clock.reason || "CME SESSION CLOSED",
+      previousPosition:previous.signal || "WAIT",
+      signal:"WAIT",
+      positionEvent:actionable(previous.signal)?"EXIT":"FLAT",
+      reason:clock.reason || "CME SESSION CLOSED",
+      checkedAt:new Date().toISOString(),
+    };
+    try { await updateSignalLog(flatCurrent); } catch(error:any) { console.error("signal log init/close failed",error); }
+
+    if (actionable(previous.signal) && Number.isFinite(Number(lastStatus?.price))) {
+      const alerts=await sendTransitionAlerts(flatCurrent,previous.signal);
+      const listed=await store("mnq-push-subscriptions").list({prefix:"sub-"});
+      const lastPush=alerts.pushResult?{at:flatCurrent.checkedAt,signal:"WAIT",title:alerts.title,result:alerts.pushResult}:previous.lastPush||null;
+      const lastEmail=alerts.emailResult?{at:flatCurrent.checkedAt,signal:"WAIT",title:alerts.title,id:alerts.emailResult?.id||null}:previous.lastEmail||null;
+      await s.setJSON("status",{...flatCurrent,lastPush,lastEmail,pushSubscribers:listed.blobs.length});
+      await s.setJSON("state",{signal:"WAIT",rawSignal:"WAIT",strategyVersion:STRATEGY_VERSION,lastPush,lastEmail,pushSubscribers:listed.blobs.length,checkedAt:flatCurrent.checkedAt});
+      return;
     }
-    await s.setJSON("state",{...previous,signal:"WAIT",rawSignal:"WAIT",strategyVersion:STRATEGY_VERSION,checkedAt:new Date().toISOString()});
+    await s.setJSON("state",{...previous,signal:"WAIT",rawSignal:"WAIT",strategyVersion:STRATEGY_VERSION,checkedAt:flatCurrent.checkedAt});
     return;
   }
 
