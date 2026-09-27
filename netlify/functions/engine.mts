@@ -3,6 +3,7 @@ import { store } from "./lib/storage.mjs";
 import { computeSignal, getCmeClockState } from "./lib/signal-nq.mjs";
 import { sendAll } from "./lib/push.mjs";
 import { sendSignalEmail } from "./lib/email.mjs";
+import { updateSignalLog } from "./lib/signal-log.mjs";
 
 export default async (_req:Request) => {
   const s=store("mnq-engine");
@@ -13,6 +14,19 @@ export default async (_req:Request) => {
   if (!clock.session) {
     const previous:any=await s.get("state",{type:"json"}) || {};
     if (previous.signal && previous.signal!=="WAIT") {
+      const lastStatus:any=await s.get("status",{type:"json"}) || {};
+      if(Number.isFinite(Number(lastStatus?.price))){
+        try {
+          await updateSignalLog({
+            ...lastStatus,
+            signal:"WAIT",
+            reason:clock.reason || "CME SESSION CLOSED",
+            checkedAt:new Date().toISOString(),
+          });
+        } catch(error:any) {
+          console.error("signal log close failed",error);
+        }
+      }
       await s.setJSON("state",{...previous,signal:"WAIT",checkedAt:new Date().toISOString()});
     }
     return;
@@ -26,6 +40,12 @@ export default async (_req:Request) => {
     let emailResult:any=null;
     let lastPush=previous.lastPush||null;
     let lastEmail=previous.lastEmail||null;
+
+    try {
+      await updateSignalLog(current);
+    } catch(error:any) {
+      console.error("signal log update failed",error);
+    }
 
     if (actionable && previous.signal!==current.signal) {
       try {
