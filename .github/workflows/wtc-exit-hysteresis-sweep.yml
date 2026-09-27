@@ -1,0 +1,209 @@
+name: WTC Exit Hysteresis Sweep
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/wtc-exit-hysteresis-sweep.yml"
+
+jobs:
+  variant:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        variant:
+          - score4
+          - score3
+          - score2
+          - score1
+          - score0
+          - score4_5m
+          - score3_5m
+          - score2_5m
+          - score1_5m
+          - score0_5m
+          - opposite
+    steps:
+      - name: Checkout WTC
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip pandas
+
+      - name: Download public NQ 1-minute history
+        run: |
+          curl -L --fail --retry 3 --retry-delay 2 \
+            'https://raw.githubusercontent.com/s-k-28/nq-es-trader-5k-payout/main/data/Dataset_NQ_1min_2022_2025.csv' \
+            -o /tmp/Dataset_NQ_1min_2022_2025.csv
+
+      - name: Build stateful exit variant from frozen V1
+        env:
+          VARIANT: ${{ matrix.variant }}
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          variant = os.environ['VARIANT']
+          src = Path('research/wtc_v1_backtest.py').read_text()
+
+          start_marker = '        signal_counts[signal] += 1\n'
+          end_marker = '\n\n    if open_trade is not None and last_session_price is not None:'
+          start = src.index(start_marker)
+          end = src.index(end_marker, start)
+
+          if variant == 'opposite':
+              threshold = None
+              require_5m = False
+          else:
+              threshold = int(variant.replace('score','').replace('_5m',''))
+              require_5m = variant.endswith('_5m')
+
+          lines = [
+              '        signal_counts[signal] += 1',
+              '        actionable = signal in ("BUY MNQ", "SELL MNQ")',
+              '        if open_trade is not None:',
+              '            opposite = ((open_trade["direction"] == "BUY MNQ" and signal == "SELL MNQ") or',
+              '                        (open_trade["direction"] == "SELL MNQ" and signal == "BUY MNQ"))',
+              '            should_exit = False',
+              '            exit_reason = reason',
+              '            if opposite:',
+              '                should_exit = True',
+              '                exit_reason = "OPPOSITE FULL SIGNAL · " + reason',
+          ]
+          if threshold is not None:
+              long_cond = f'score <= {threshold}'
+              short_cond = f'score >= -{threshold}'
+              if require_5m:
+                  long_cond += ' and t5.state == "SELL"'
+                  short_cond += ' and t5.state == "BUY"'
+              lines += [
+                  '            elif open_trade["direction"] == "BUY MNQ" and (' + long_cond + '):',
+                  '                should_exit = True',
+                  f'                exit_reason = "LONG EXIT HYSTERESIS · SCORE {{score}} <= +{threshold}' + (' + 5M SELL"' if require_5m else '"'),
+                  '            elif open_trade["direction"] == "SELL MNQ" and (' + short_cond + '):',
+                  '                should_exit = True',
+                  f'                exit_reason = "SHORT EXIT HYSTERESIS · SCORE {{score}} >= -{threshold}' + (' + 5M BUY"' if require_5m else '"'),
+              ]
+          lines += [
+              '            if should_exit:',
+              '                close_trade(open_trade, c, ts, signal, exit_reason, trades)',
+              '                open_trade = None',
+              '        if actionable and open_trade is None:',
+              '            open_trade = {',
+              '                "direction": signal, "opened_at": ts, "entry_price": c,',
+              '                "entry_score": score, "entry_reason": reason,',
+              '                "alignment": f"{t30.state}/{t15.state}/{t5.state}/{t1.state}",',
+              '                "daily_state": dstate["state"],',
+              '            }',
+          ]
+          new_block = "\n".join(lines) + "\n"
+          src = src[:start] + new_block + src[end:]
+
+          label = variant
+          lifecycle = ('same V1 entries; ignore WAIT; exit on opposite full signal/session close only' if variant == 'opposite'
+                       else f'same V1 entries; stateful exit at mirrored score threshold {threshold}' + (' plus adverse 5m state' if require_5m else '') + '; immediate opposite full signal; session-close flatten')
+          src = src.replace('"strategy": "WTC MNQ Signal Engine V1"', f'"strategy": "WTC Exit Hysteresis Shadow — {label}"', 1)
+          src = src.replace('"trade_lifecycle": "signal-to-signal; no fixed stop/target; 1 MNQ; WAIT/reversal/session close exits"', f'"trade_lifecycle": "{lifecycle}"', 1)
+
+          Path('/tmp/wtc_exit_variant.py').write_text(src)
+          PY
+
+      - name: Run variant backtest
+        env:
+          VARIANT: ${{ matrix.variant }}
+        run: |
+          python /tmp/wtc_exit_variant.py \
+            --csv /tmp/Dataset_NQ_1min_2022_2025.csv \
+            --out "exit_${VARIANT}.json" \
+            --trades "exit_${VARIANT}_trades.csv"
+
+      - name: Add Robinhood Gold fee economics
+        env:
+          VARIANT: ${{ matrix.variant }}
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          v = os.environ['VARIANT']
+          p = Path(f'exit_{v}.json')
+          d = json.loads(p.read_text())
+          n = d['all_time']['trades']
+          gross = d['all_time']['theoretical_pnl_1_mnq']
+          rt = 1.72
+          d['variant'] = v
+          d['robinhood_gold_fee_model'] = {
+              'fee_per_side_per_contract': 0.86,
+              'round_trip_per_trade': rt,
+              'total_round_trip_fees': round(n * rt, 2),
+              'net_after_fees_before_slippage': round(gross - n * rt, 2),
+              'avg_net_per_trade_before_slippage': round((gross - n * rt) / n, 4) if n else None,
+          }
+          p.write_text(json.dumps(d, indent=2))
+          print('WTC_EXIT_RESULT_START')
+          print(json.dumps(d, indent=2))
+          print('WTC_EXIT_RESULT_END')
+          PY
+
+      - name: Upload variant result
+        uses: actions/upload-artifact@v4
+        with:
+          name: exit-${{ matrix.variant }}
+          path: exit_${{ matrix.variant }}.json
+          retention-days: 90
+
+  combine:
+    needs: variant
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: exit-*
+          path: results
+          merge-multiple: true
+      - name: Combine results
+        run: |
+          python - <<'PY'
+          import glob, json, csv
+          rows=[]
+          all_data={}
+          for fn in glob.glob('results/exit_*.json'):
+              d=json.load(open(fn)); v=d['variant']; a=d['all_time']; f=d['robinhood_gold_fee_model']
+              all_data[v]=d
+              rows.append({
+                  'variant':v,
+                  'trades':a['trades'],
+                  'gross_pnl':a['theoretical_pnl_1_mnq'],
+                  'win_rate_pct':a['win_rate_pct'],
+                  'avg_gross_trade':a['avg_trade_pnl'],
+                  'profit_factor':a['profit_factor'],
+                  'max_drawdown':a['max_closed_trade_drawdown'],
+                  'median_duration_min':a['median_duration_minutes'],
+                  'fees':f['total_round_trip_fees'],
+                  'net_after_fees_before_slippage':f['net_after_fees_before_slippage'],
+                  '2023_pnl':d['by_year'].get('2023',{}).get('pnl'),
+                  '2024_pnl':d['by_year'].get('2024',{}).get('pnl'),
+                  '2025_pnl':d['by_year'].get('2025',{}).get('pnl'),
+              })
+          order=['score4','score3','score2','score1','score0','score4_5m','score3_5m','score2_5m','score1_5m','score0_5m','opposite']
+          rows.sort(key=lambda r: order.index(r['variant']))
+          with open('wtc_exit_hysteresis_sweep.csv','w',newline='') as f:
+              w=csv.DictWriter(f,fieldnames=rows[0].keys()); w.writeheader(); w.writerows(rows)
+          json.dump({'rows':rows},open('wtc_exit_hysteresis_sweep.json','w'),indent=2)
+          print('WTC_EXIT_SWEEP_START')
+          print(json.dumps(rows,indent=2))
+          print('WTC_EXIT_SWEEP_END')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wtc-exit-hysteresis-sweep
+          path: |
+            wtc_exit_hysteresis_sweep.csv
+            wtc_exit_hysteresis_sweep.json
+          retention-days: 90
