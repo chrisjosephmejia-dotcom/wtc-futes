@@ -21,7 +21,9 @@ Required environment variables:
 - `VAPID_PRIVATE_KEY`
 - `RESEND_API_KEY`
 - `ALERT_EMAIL_TO`
+- `TASTY_CLIENT_SECRET`
+- `TASTY_REFRESH_TOKEN`
 
 The existing Netlify site ID is `8e525588-b977-4c0b-8f61-f4374eaa8e71`.
 
-Deployment refresh marker: 2026-09-26 21:32 UTC.
+Deployment refresh marker: 2026-09-27 02:24 UTC.
