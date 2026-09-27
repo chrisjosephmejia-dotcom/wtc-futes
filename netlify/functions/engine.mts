@@ -1,6 +1,6 @@
 import type { Config } from "@netlify/functions";
 import { store } from "./lib/storage.mjs";
-import { computeSignal } from "./lib/signal.mjs";
+import { computeSignal } from "./lib/signal-nq.mjs";
 import { sendAll } from "./lib/push.mjs";
 import { sendSignalEmail } from "./lib/email.mjs";
 
@@ -19,7 +19,7 @@ export default async (_req:Request) => {
       try {
         pushResult=await sendAll({
           title:current.signal==="BUY MNQ"?"MNQ BUY":"MNQ SELL",
-          body:`QQQ $${current.price} · score ${current.score>0?"+":""}${current.score} · ${current.frames["30m"].state}/${current.frames["15m"].state}/${current.frames["5m"].state}/${current.frames["1m"].state}`,
+          body:`NQ ${current.instrument?.symbol||""} $${current.price} · score ${current.score>0?"+":""}${current.score} · ${current.frames["30m"].state}/${current.frames["15m"].state}/${current.frames["5m"].state}/${current.frames["1m"].state}`,
           tag:"mnq-live-signal",url:"/",kind:"signal",signal:current.signal,price:current.price,score:current.score,ts:Date.now()
         });
         lastPush={at:new Date().toISOString(),signal:current.signal,result:pushResult};
