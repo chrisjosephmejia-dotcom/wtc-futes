@@ -4,19 +4,30 @@ const BASE = "https://api.tastyworks.com";
 const USER_AGENT = "wtc-futes/1.0";
 
 function safeErrorBody(body: any) {
+  const nested = body?.error && typeof body.error === "object" ? body.error : {};
+  const topLevelError = typeof body?.error === "string" ? body.error : null;
+  const first = Array.isArray(body?.errors) ? body.errors[0] : null;
   return {
-    code: body?.error?.code || body?.code || null,
-    message: body?.error?.message || body?.message || null,
+    code: nested?.code || body?.code || topLevelError || first?.code || null,
+    message:
+      nested?.message ||
+      body?.message ||
+      body?.error_description ||
+      first?.message ||
+      null,
   };
 }
 
-async function readJson(res: Response) {
-  return res.json().catch(() => ({}));
+async function readBody(res: Response) {
+  const text = await res.text();
+  let json: any = {};
+  try { json = text ? JSON.parse(text) : {}; } catch { json = {}; }
+  return { json, text };
 }
 
 export default async (_req: Request, _context: Context) => {
-  const clientSecret = Netlify.env.get("TASTY_CLIENT_SECRET");
-  const refreshToken = Netlify.env.get("TASTY_REFRESH_TOKEN");
+  const clientSecret = (Netlify.env.get("TASTY_CLIENT_SECRET") || "").trim();
+  const refreshToken = (Netlify.env.get("TASTY_REFRESH_TOKEN") || "").trim();
 
   if (!clientSecret || !refreshToken) {
     return Response.json({
@@ -40,12 +51,25 @@ export default async (_req: Request, _context: Context) => {
       client_secret: clientSecret,
     }),
   });
-  const tokenBody: any = await readJson(tokenRes);
+  const tokenRead = await readBody(tokenRes);
+  const tokenBody: any = tokenRead.json;
 
   if (!tokenRes.ok || !tokenBody?.access_token) {
+    const safe = safeErrorBody(tokenBody);
+    const rawHint = !safe.code && !safe.message && tokenRead.text
+      ? tokenRead.text.slice(0, 300).replace(clientSecret, "[redacted]").replace(refreshToken, "[redacted]")
+      : null;
     return Response.json({
       ok: false,
-      auth: { ok: false, httpStatus: tokenRes.status, ...safeErrorBody(tokenBody) },
+      auth: {
+        ok: false,
+        httpStatus: tokenRes.status,
+        ...safe,
+        rawHint,
+        likelyCause: tokenRes.status === 400
+          ? "Refresh token and client secret may not belong to the same OAuth application, or a credential was copied incorrectly."
+          : null,
+      },
       instrument: { ok: false },
       marketData: { ok: false },
     }, { status: tokenRes.status || 500, headers: { "Cache-Control": "no-store" } });
@@ -64,7 +88,8 @@ export default async (_req: Request, _context: Context) => {
   futuresUrl.searchParams.append("product-code[]", "NQ");
 
   const futuresRes = await fetch(futuresUrl, { headers: apiHeaders });
-  const futuresBody: any = await readJson(futuresRes);
+  const futuresRead = await readBody(futuresRes);
+  const futuresBody: any = futuresRead.json;
   const items: any[] = futuresBody?.data?.items || [];
 
   if (!futuresRes.ok || !items.length) {
@@ -103,7 +128,8 @@ export default async (_req: Request, _context: Context) => {
   const quoteUrl = new URL(`${BASE}/market-data/by-type`);
   quoteUrl.searchParams.append("future[]", symbol);
   const quoteRes = await fetch(quoteUrl, { headers: apiHeaders });
-  const quoteBody: any = await readJson(quoteRes);
+  const quoteRead = await readBody(quoteRes);
+  const quoteBody: any = quoteRead.json;
   const quote = quoteBody?.data?.items?.[0] || null;
 
   const response = {
