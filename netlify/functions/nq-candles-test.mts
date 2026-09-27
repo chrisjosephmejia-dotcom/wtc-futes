@@ -220,6 +220,39 @@ async function fetchCandles(dxlinkUrl: string, quoteToken: string, streamerSymbo
       }
     };
 
+    const processCompactFeedData = (data: any[]) => {
+      // DXLink COMPACT format is [eventType, flatValuesArray]. The values array
+      // may contain many events concatenated back-to-back, one field-set per event.
+      if (data.length < 2 || typeof data[0] !== "string" || !Array.isArray(data[1])) return;
+      const eventType = data[0];
+      const values = data[1];
+      if (eventType !== "Candle" || !eventFields.length) return;
+
+      for (let cursor = 0; cursor + eventFields.length <= values.length; cursor += eventFields.length) {
+        const row: Record<string, any> = { eventType };
+        for (let i = 0; i < eventFields.length; i++) {
+          row[eventFields[i]] = values[cursor + i];
+        }
+
+        const index = Number(row.index);
+        const time = Number(row.time);
+        if (!Number.isFinite(index) || !Number.isFinite(time) || time <= 0) continue;
+
+        processCandle({
+          index,
+          time,
+          flags: Number(row.eventFlags) || 0,
+          open: asNumber(row.open),
+          high: asNumber(row.high),
+          low: asNumber(row.low),
+          close: asNumber(row.close),
+          volume: asNumber(row.volume),
+          vwap: asNumber(row.vwap),
+          count: asNumber(row.count),
+        });
+      }
+    };
+
     ws.on("open", () => {
       send({
         type: "SETUP",
@@ -278,34 +311,7 @@ async function fetchCandles(dxlinkUrl: string, quoteToken: string, streamerSymbo
       }
 
       if (msg?.type === "FEED_DATA" && msg?.channel === 3 && Array.isArray(msg?.data)) {
-        let currentType = "";
-        for (const item of msg.data) {
-          if (typeof item === "string") {
-            currentType = item;
-            continue;
-          }
-          if (currentType !== "Candle" || !Array.isArray(item)) continue;
-
-          const row: Record<string, any> = {};
-          for (let i = 0; i < eventFields.length; i++) row[eventFields[i]] = item[i];
-
-          const index = Number(row.index);
-          const time = Number(row.time);
-          if (!Number.isFinite(index) || !Number.isFinite(time) || time <= 0) continue;
-
-          processCandle({
-            index,
-            time,
-            flags: Number(row.eventFlags) || 0,
-            open: asNumber(row.open),
-            high: asNumber(row.high),
-            low: asNumber(row.low),
-            close: asNumber(row.close),
-            volume: asNumber(row.volume),
-            vwap: asNumber(row.vwap),
-            count: asNumber(row.count),
-          });
-        }
+        processCompactFeedData(msg.data);
       }
     });
   });
