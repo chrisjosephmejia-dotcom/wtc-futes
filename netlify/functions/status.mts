@@ -1,6 +1,6 @@
 import type { Context, Config } from "@netlify/functions";
 import { store } from "./lib/storage.mjs";
-import { computeSignal } from "./lib/signal.mjs";
+import { computeSignal } from "./lib/signal-nq.mjs";
 
 export default async (_req: Request, _context: Context) => {
   const s = store("mnq-engine");
