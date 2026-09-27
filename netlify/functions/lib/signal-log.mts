@@ -1,7 +1,6 @@
 import { store } from "./storage.mjs";
 
 const MNQ_DOLLARS_PER_POINT = 2;
-const MAX_TRADES = 100;
 
 function round(n:number, digits=2){
   const p=10**digits;
@@ -48,11 +47,16 @@ export async function updateSignalLog(current:any){
   let trades:any[]=Array.isArray(saved.trades)?saved.trades:[];
   let openIndex=trades.findIndex(t=>t?.status === "OPEN");
   const isActionable=actionable(current?.signal);
+  let changed=false;
 
   if(openIndex >= 0){
     const open=trades[openIndex];
     if(!isActionable || current.signal !== open.direction){
-      trades[openIndex]=closeTrade(open,current);
+      const closed=closeTrade(open,current);
+      if(closed?.status === "CLOSED"){
+        trades[openIndex]=closed;
+        changed=true;
+      }
       openIndex=-1;
     }
   }
@@ -72,13 +76,18 @@ export async function updateSignalLog(current:any){
       entryReason:current.reason || "—",
       alignment:alignment(current),
     });
+    changed=true;
   }
 
-  trades=trades.slice(0,MAX_TRADES);
+  if(!changed && saved?.version >= 2) return saved;
+
+  const now=new Date().toISOString();
   const result={
-    version:1,
+    version:2,
     multiplier:MNQ_DOLLARS_PER_POINT,
-    updatedAt:new Date().toISOString(),
+    createdAt:saved.createdAt || saved.updatedAt || now,
+    updatedAt:now,
+    retention:"permanent",
     trades,
   };
   await s.setJSON("signal-log",result);
