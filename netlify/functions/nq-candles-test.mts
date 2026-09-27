@@ -117,7 +117,7 @@ type Candle = {
 
 async function fetchCandles(dxlinkUrl: string, quoteToken: string, streamerSymbol: string) {
   const candleSymbol = `${streamerSymbol}{=1m}`;
-  const fromTime = Date.now() - 96 * 60 * 60 * 1000;
+  const fromTime = Date.now() - 7 * 24 * 60 * 60 * 1000;
   const requestedFields = [
     "eventType", "eventSymbol", "eventFlags", "time", "sequence", "count",
     "open", "high", "low", "close", "volume", "vwap"
@@ -132,7 +132,7 @@ async function fetchCandles(dxlinkUrl: string, quoteToken: string, streamerSymbo
     let quietTimer: ReturnType<typeof setTimeout> | null = null;
     let settled = false;
 
-    const hardTimer = setTimeout(() => finish(), 8000);
+    const hardTimer = setTimeout(() => finish(), 10000);
 
     const cleanup = () => {
       clearTimeout(hardTimer);
@@ -157,10 +157,9 @@ async function fetchCandles(dxlinkUrl: string, quoteToken: string, streamerSymbo
     };
 
     const scheduleFinish = () => {
+      if (candles.size < 1200) return;
       if (quietTimer) clearTimeout(quietTimer);
-      quietTimer = setTimeout(() => {
-        if (candles.size >= 5) finish();
-      }, 900);
+      quietTimer = setTimeout(() => finish(), 1200);
     };
 
     const send = (obj: any) => {
@@ -254,6 +253,22 @@ async function fetchCandles(dxlinkUrl: string, quoteToken: string, streamerSymbo
   });
 }
 
+function spacingStats(candles: Candle[]) {
+  const gaps: number[] = [];
+  for (let i = 1; i < candles.length; i++) {
+    const minutes = (candles[i].time - candles[i - 1].time) / 60000;
+    if (minutes > 0) gaps.push(minutes);
+  }
+  const sorted = [...gaps].sort((a, b) => a - b);
+  const median = sorted.length ? sorted[Math.floor(sorted.length / 2)] : null;
+  const oneMinuteSteps = gaps.filter((g) => g >= 0.99 && g <= 1.01).length;
+  return {
+    medianGapMinutes: median,
+    oneMinuteSteps,
+    oneMinuteStepPct: gaps.length ? Math.round((oneMinuteSteps / gaps.length) * 1000) / 10 : 0,
+  };
+}
+
 export default async (_req: Request, _context: Context) => {
   try {
     const accessToken = await getAccessToken();
@@ -265,6 +280,7 @@ export default async (_req: Request, _context: Context) => {
     const streamerSymbol = future["streamer-symbol"] as string;
     const result = await fetchCandles(quoteAuth["dxlink-url"], quoteAuth.token, streamerSymbol);
     const usable = result.candles.filter((c) => c.open !== null && c.high !== null && c.low !== null && c.close !== null);
+    const spacing = spacingStats(usable);
     const last = usable.slice(-10).map((c) => ({
       time: new Date(c.time).toISOString(),
       timeCT: ctLabel(c.time),
@@ -278,7 +294,7 @@ export default async (_req: Request, _context: Context) => {
     }));
 
     return Response.json({
-      ok: usable.length > 0,
+      ok: usable.length >= 1200 && spacing.oneMinuteStepPct >= 90,
       auth: { ok: true },
       instrument: {
         ok: true,
@@ -289,6 +305,7 @@ export default async (_req: Request, _context: Context) => {
       },
       dxlink: {
         ok: usable.length > 0,
+        historyReady: usable.length >= 1200 && spacing.oneMinuteStepPct >= 90,
         entitlementLevel: quoteAuth.level || null,
         quoteTokenExpiresAt: quoteAuth["expires-at"] || null,
         candleSymbol: result.candleSymbol,
@@ -296,6 +313,7 @@ export default async (_req: Request, _context: Context) => {
         websocketMessages: result.messages,
         candlesReceived: result.candles.length,
         usableCandles: usable.length,
+        ...spacing,
       },
       candles: last,
     }, { headers: { "Cache-Control": "no-store" } });
