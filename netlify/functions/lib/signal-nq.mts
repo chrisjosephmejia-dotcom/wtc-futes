@@ -23,23 +23,47 @@ function parts(ts:number|Date){
   };
 }
 function mins(p:ReturnType<typeof parts>){ return p.hour*60+p.minute; }
-function weekday(p:ReturnType<typeof parts>){ return !["Sat","Sun"].includes(p.weekday); }
-function entryWindow(p:ReturnType<typeof parts>){
+function addDays(date:string,days:number){
+  const [y,m,d]=date.split("-").map(Number);
+  const x=new Date(Date.UTC(y,m-1,d+days));
+  return `${x.getUTCFullYear()}-${String(x.getUTCMonth()+1).padStart(2,"0")}-${String(x.getUTCDate()).padStart(2,"0")}`;
+}
+function cmeSessionOpen(p:ReturnType<typeof parts>){
   const m=mins(p);
-  return weekday(p) && ((m>=8*60+35&&m<=10*60+30)||(m>=13*60+30&&m<=14*60+45));
+  if(p.weekday==="Sat") return false;
+  if(p.weekday==="Sun") return m>=17*60;
+  if(p.weekday==="Fri") return m<16*60;
+  return m<16*60 || m>=17*60;
 }
-function regularSession(p:ReturnType<typeof parts>){
-  const m=mins(p); return weekday(p)&&m>=8*60+30&&m<=15*60+5;
+function cmeSessionKey(p:ReturnType<typeof parts>){
+  if(!cmeSessionOpen(p)) return null;
+  return mins(p)>=17*60 ? addDays(p.date,1) : p.date;
 }
+function firstFiveBlock(p:ReturnType<typeof parts>){
+  const m=mins(p);
+  return cmeSessionOpen(p) && m>=17*60 && m<17*60+5;
+}
+function entryWindow(p:ReturnType<typeof parts>){ return cmeSessionOpen(p) && !firstFiveBlock(p); }
 function timeReason(p:ReturnType<typeof parts>){
-  if(!weekday(p)) return "WEEKEND";
   const m=mins(p);
-  if(m<8*60+30) return "PREMARKET";
-  if(m<8*60+35) return "FIRST 5M BLOCK";
-  if(m>10*60+30&&m<13*60+30) return "MIDDAY BLOCK";
-  if(m>14*60+45&&m<=15*60+5) return "CLOSE BLOCK";
-  if(m>15*60+5) return "CASH SESSION CLOSED";
-  return "OUTSIDE ENTRY WINDOW";
+  if(cmeSessionOpen(p) && firstFiveBlock(p)) return "FIRST 5M BLOCK";
+  if(p.weekday==="Sat") return "CME CLOSED · REOPENS SUN 17:00 CT";
+  if(p.weekday==="Sun" && m<17*60) return "CME CLOSED · OPENS 17:00 CT";
+  if(["Mon","Tue","Wed","Thu"].includes(p.weekday) && m>=16*60 && m<17*60) return "CME MAINTENANCE · REOPENS 17:00 CT";
+  if(p.weekday==="Fri" && m>=16*60) return "CME CLOSED · REOPENS SUN 17:00 CT";
+  return "CME SESSION CLOSED";
+}
+
+export function getCmeClockState(now=new Date()){
+  const p=parts(now);
+  return {
+    session:cmeSessionOpen(p),
+    inEntry:entryWindow(p),
+    firstFive:firstFiveBlock(p),
+    sessionKey:cmeSessionKey(p),
+    reason:timeReason(p),
+    label:p.label,
+  };
 }
 
 function ema(values:number[],n:number){
@@ -108,13 +132,15 @@ function dailyState(bars:Bar[]){
   if(last<e50&&e20<e50&&rr<=50) state="BEARISH";
   return {state,rsi:round(rr,0),ema20:round(e20,2),ema50:round(e50,2)};
 }
-function sessionBars(all:Bar[]){
+function sessionBars(all:Bar[],clock:ReturnType<typeof getCmeClockState>){
   if(!all.length) return [] as Bar[];
-  const lastDate=parts(all.at(-1)!.t).date;
-  return all.filter(b=>{
-    const p=parts(b.t),m=mins(p);
-    return p.date===lastDate&&m>=8*60+30&&m<=15*60;
-  });
+  const lastKey=cmeSessionKey(parts(all.at(-1)!.t));
+  const targetKey=clock.sessionKey || lastKey;
+  if(!targetKey) return [] as Bar[];
+  const rows=all.filter(b=>cmeSessionKey(parts(b.t))===targetKey);
+  if(rows.length) return rows;
+  if(!lastKey) return [] as Bar[];
+  return all.filter(b=>cmeSessionKey(parts(b.t))===lastKey);
 }
 function vwap(bars:Bar[]){
   let pv=0,vol=0;
@@ -122,23 +148,26 @@ function vwap(bars:Bar[]){
   return vol?pv/vol:(bars.at(-1)?.c||0);
 }
 function openingRange(bars:Bar[]){
-  const first=bars.filter(b=>{const m=mins(parts(b.t));return m>=8*60+30&&m<8*60+45;});
+  if(!bars.length) return {low:0,high:0,mid:0};
+  const start=bars[0].t;
+  const first=bars.filter(b=>b.t<start+15*60);
   if(!first.length) return {low:0,high:0,mid:0};
   const low=Math.min(...first.map(b=>b.l)),high=Math.max(...first.map(b=>b.h));
   return {low,high,mid:(low+high)/2};
 }
 
 export async function computeSignal(){
-  const now=new Date(),np=parts(now),inEntry=entryWindow(np),session=regularSession(np);
+  const now=new Date(),np=parts(now),clock=getCmeClockState(now),inEntry=clock.inEntry,session=clock.session;
   const nq=await getNqBars();
   const minuteBars=nq.minuteBars,dailyBars=nq.dailyBars;
   if(!minuteBars.length) throw new Error("No NQ intraday bars returned");
-  const sess=sessionBars(minuteBars);
-  if(!sess.length) throw new Error("No NQ regular-session bars returned");
+  const sess=sessionBars(minuteBars,clock);
+  if(!sess.length) throw new Error("No NQ CME-session bars returned");
 
   const last=sess.at(-1)!,lp=parts(last.t),ageSec=Math.max(0,(Date.now()/1000)-last.t);
-  const sameDay=np.date===lp.date;
-  const feedActive=session&&sameDay&&ageSec<=300;
+  const lastSessionKey=cmeSessionKey(lp);
+  const sameSession=Boolean(clock.sessionKey && lastSessionKey===clock.sessionKey);
+  const feedActive=session&&sameSession&&ageSec<=300;
   const price=last.c,open=sess[0].o,vw=vwap(sess),or=openingRange(sess);
   const b5=resample(minuteBars,5),b15=resample(minuteBars,15),b30=resample(minuteBars,30);
   const t30=tfState(b30),t15=tfState(b15),t5=tfState(b5),t1=tfState(minuteBars,true),daily=dailyState(dailyBars);
@@ -170,9 +199,9 @@ export async function computeSignal(){
   const sellAlignment=t30.state==="SELL"&&t15.state==="SELL"&&t5.state==="SELL"&&t1.state==="SELL"&&price<vw&&price<=or.mid;
 
   let signal:"BUY MNQ"|"SELL MNQ"|"WAIT"="WAIT",reason="ALIGNMENT CONFLICT";
-  if(!session)reason=timeReason(np);
+  if(!session)reason=clock.reason;
+  else if(!inEntry)reason=clock.reason;
   else if(!feedActive)reason=`FEED PAUSED · LAST NQ BAR ${lp.label}`;
-  else if(!inEntry)reason=timeReason(np);
   else if(extended)reason=`EXTENSION BLOCK · ${round(extensionPct,2)}% FROM VWAP`;
   else if(buyAlignment&&score>=buyThreshold){signal="BUY MNQ";reason=`ALL BULLISH · SCORE +${score}/${buyThreshold}`;}
   else if(sellAlignment&&score<=-sellThreshold){signal="SELL MNQ";reason=`ALL BEARISH · SCORE ${score}/-${sellThreshold}`;}
@@ -183,13 +212,13 @@ export async function computeSignal(){
   return {
     checkedAt:now.toISOString(),checkedAtLabel:np.label,
     signal,reason,
-    market:{feedActive,session,inEntry,lastBar:new Date(last.t*1000).toISOString(),lastBarLabel:lp.label,ageSec:Math.round(ageSec)},
+    market:{feedActive,session,inEntry,firstFive:clock.firstFive,sessionKey:clock.sessionKey,lastBar:new Date(last.t*1000).toISOString(),lastBarLabel:lp.label,ageSec:Math.round(ageSec)},
     instrument:{symbol:nq.symbol,streamerSymbol:nq.streamerSymbol,exchange:nq.exchange,expirationDate:nq.expirationDate,minuteBars:minuteBars.length,dailyBars:dailyBars.length},
     price:round(price,2),fromOpen:round(fromOpen,2),open:round(open,2),vwap:round(vw,2),openingRange:{low:round(or.low,2),high:round(or.high,2)},
     score,scoreRange:"-9 to +9",threshold:{buy:buyThreshold,sell:sellThreshold},extension:{blocked:extended,pct:round(extensionPct,2),limitPct:round(extensionLimit,2)},
     volumeRatio:round(volRatio,1),daily,
     frames:{"30m":t30,"15m":t15,"5m":t5,"1m":t1},
     source:`${nq.source} ${nq.symbol}`,
-    sourceNote:"Direct NQ futures candles from tastytrade/DXLink. Stale regular-session data is blocked."
+    sourceNote:"Direct NQ futures candles from tastytrade/DXLink. Normal CME Globex hours are Sun-Fri 17:00-16:00 CT with a daily 16:00-17:00 maintenance break; stale data is blocked."
   };
 }
