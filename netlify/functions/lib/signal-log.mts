@@ -1,14 +1,13 @@
 import { store } from "./storage.mjs";
+import { STRATEGY_VERSION, actionable } from "./position-state.mjs";
 
 const MNQ_DOLLARS_PER_POINT = 2;
+const ROBINHOOD_FEE_PER_SIDE = 0.86;
+const ROBINHOOD_ROUND_TRIP_FEE = ROBINHOOD_FEE_PER_SIDE * 2;
 
 function round(n:number, digits=2){
   const p=10**digits;
   return Math.round(n*p)/p;
-}
-
-function actionable(signal:any){
-  return signal === "BUY MNQ" || signal === "SELL MNQ";
 }
 
 function alignment(current:any){
@@ -26,6 +25,7 @@ function closeTrade(trade:any,current:any){
   const exitPrice=Number(current.price);
   const side=trade.direction === "BUY MNQ" ? 1 : -1;
   const points=round((exitPrice-Number(trade.entryPrice))*side,2);
+  const theoreticalPnl=round(points*MNQ_DOLLARS_PER_POINT,2);
   const opened=Date.parse(trade.openedAt);
   const closed=Date.parse(current.checkedAt || new Date().toISOString());
   return {
@@ -34,16 +34,37 @@ function closeTrade(trade:any,current:any){
     closedAt:current.checkedAt || new Date().toISOString(),
     exitPrice:round(exitPrice,2),
     exitSignal:current.signal || "WAIT",
-    exitReason:current.reason || "SIGNAL ENDED",
+    exitRawSignal:current.rawSignal || current.signal || "WAIT",
+    exitScore:Number.isFinite(Number(current.score))?Number(current.score):null,
+    exitReason:current.reason || "POSITION EXIT",
+    exitRawReason:current.rawReason || current.reason || "—",
     points,
-    theoreticalPnl:round(points*MNQ_DOLLARS_PER_POINT,2),
+    theoreticalPnl,
+    roundTripFees:ROBINHOOD_ROUND_TRIP_FEE,
+    netPnlBeforeSlippage:round(theoreticalPnl-ROBINHOOD_ROUND_TRIP_FEE,2),
     durationMinutes:Number.isFinite(opened)&&Number.isFinite(closed)?round(Math.max(0,(closed-opened)/60000),1):null,
   };
 }
 
+async function loadCurrentLedger(){
+  const s=store("mnq-engine");
+  const existing:any=await s.get("signal-log",{type:"json"}) || {};
+  if(existing?.strategyVersion === STRATEGY_VERSION) return existing;
+
+  const oldTrades=Array.isArray(existing?.trades)?existing.trades:[];
+  if(oldTrades.length){
+    await s.setJSON("signal-log-archive-pre-v2",{
+      ...existing,
+      archivedAt:new Date().toISOString(),
+      archiveReason:`Production lifecycle changed to ${STRATEGY_VERSION}`,
+    });
+  }
+  return {trades:[],createdAt:new Date().toISOString(),strategyVersion:STRATEGY_VERSION};
+}
+
 export async function updateSignalLog(current:any){
   const s=store("mnq-engine");
-  const saved:any=await s.get("signal-log",{type:"json"}) || {};
+  const saved:any=await loadCurrentLedger();
   let trades:any[]=Array.isArray(saved.trades)?saved.trades:[];
   let openIndex=trades.findIndex(t=>t?.status === "OPEN");
   const isActionable=actionable(current?.signal);
@@ -66,6 +87,7 @@ export async function updateSignalLog(current:any){
     const now=current.checkedAt || new Date().toISOString();
     trades.unshift({
       id:`${now}-${current.signal}`,
+      strategyVersion:STRATEGY_VERSION,
       status:"OPEN",
       direction:current.signal,
       contract:mnqContract(current?.instrument?.symbol),
@@ -73,19 +95,25 @@ export async function updateSignalLog(current:any){
       openedAt:now,
       entryPrice:round(Number(current.price),2),
       entryScore:Number.isFinite(Number(current.score))?Number(current.score):null,
+      entrySignal:current.signal,
+      entryRawSignal:current.rawSignal || current.signal,
       entryReason:current.reason || "—",
+      entryRawReason:current.rawReason || current.reason || "—",
       alignment:alignment(current),
+      dailyState:current?.daily?.state || null,
     });
     changed=true;
   }
 
-  if(!changed && saved?.version >= 2) return saved;
+  if(!changed && saved?.version >= 3) return saved;
 
   const now=new Date().toISOString();
   const result={
-    version:2,
+    version:3,
+    strategyVersion:STRATEGY_VERSION,
     multiplier:MNQ_DOLLARS_PER_POINT,
-    createdAt:saved.createdAt || saved.updatedAt || now,
+    feeModel:{provider:"Robinhood Gold",perSide:ROBINHOOD_FEE_PER_SIDE,roundTrip:ROBINHOOD_ROUND_TRIP_FEE},
+    createdAt:saved.createdAt || now,
     updatedAt:now,
     retention:"permanent",
     trades,
@@ -94,11 +122,49 @@ export async function updateSignalLog(current:any){
   return result;
 }
 
+export async function appendDecisionSnapshot(current:any){
+  const s=store("mnq-engine");
+  const checkedAt=current?.checkedAt || new Date().toISOString();
+  const day=checkedAt.slice(0,10);
+  const key=`decision-log/${day}`;
+  const saved:any=await s.get(key,{type:"json"}) || {version:1,strategyVersion:STRATEGY_VERSION,date:day,entries:[]};
+  const entries:any[]=Array.isArray(saved.entries)?saved.entries:[];
+  const minute=checkedAt.slice(0,16);
+  if(entries.length && String(entries[entries.length-1]?.checkedAt||"").slice(0,16) === minute) return saved;
+  const f=current?.frames || {};
+  entries.push({
+    checkedAt,
+    strategyVersion:STRATEGY_VERSION,
+    sourceContract:current?.instrument?.symbol || "NQ",
+    price:Number.isFinite(Number(current?.price))?Number(current.price):null,
+    score:Number.isFinite(Number(current?.score))?Number(current.score):null,
+    rawSignal:current?.rawSignal || current?.signal || "WAIT",
+    rawReason:current?.rawReason || current?.reason || "—",
+    positionSignal:current?.signal || "WAIT",
+    positionEvent:current?.positionEvent || null,
+    positionReason:current?.reason || "—",
+    dailyState:current?.daily?.state || null,
+    frame30:f?.["30m"]?.state || null,
+    frame15:f?.["15m"]?.state || null,
+    frame5:f?.["5m"]?.state || null,
+    frame1:f?.["1m"]?.state || null,
+    vwap:Number.isFinite(Number(current?.vwap))?Number(current.vwap):null,
+    feedActive:current?.market?.feedActive ?? null,
+    session:current?.market?.session ?? null,
+    inEntry:current?.market?.inEntry ?? null,
+    extensionBlocked:current?.extension?.blocked ?? null,
+  });
+  const result={...saved,version:1,strategyVersion:STRATEGY_VERSION,date:day,updatedAt:new Date().toISOString(),entries};
+  await s.setJSON(key,result);
+  return result;
+}
+
 export function theoreticalMark(trade:any,price:any){
   if(!trade || !Number.isFinite(Number(price))) return null;
   const side=trade.direction === "BUY MNQ" ? 1 : -1;
   const points=round((Number(price)-Number(trade.entryPrice))*side,2);
-  return {points,theoreticalPnl:round(points*MNQ_DOLLARS_PER_POINT,2)};
+  const theoreticalPnl=round(points*MNQ_DOLLARS_PER_POINT,2);
+  return {points,theoreticalPnl,netPnlBeforeSlippage:round(theoreticalPnl-ROBINHOOD_ROUND_TRIP_FEE,2)};
 }
 
-export { MNQ_DOLLARS_PER_POINT };
+export { MNQ_DOLLARS_PER_POINT, ROBINHOOD_FEE_PER_SIDE, ROBINHOOD_ROUND_TRIP_FEE };
