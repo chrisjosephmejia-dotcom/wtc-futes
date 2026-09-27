@@ -1,11 +1,23 @@
 import type { Config } from "@netlify/functions";
 import { store } from "./lib/storage.mjs";
-import { computeSignal } from "./lib/signal-nq.mjs";
+import { computeSignal, getCmeClockState } from "./lib/signal-nq.mjs";
 import { sendAll } from "./lib/push.mjs";
 import { sendSignalEmail } from "./lib/email.mjs";
 
 export default async (_req:Request) => {
   const s=store("mnq-engine");
+  const clock=getCmeClockState();
+
+  // The cron runs Sunday-Friday in UTC. Skip network-heavy market-data work
+  // whenever CME equity-index futures are actually closed in Chicago time.
+  if (!clock.session) {
+    const previous:any=await s.get("state",{type:"json"}) || {};
+    if (previous.signal && previous.signal!=="WAIT") {
+      await s.setJSON("state",{...previous,signal:"WAIT",checkedAt:new Date().toISOString()});
+    }
+    return;
+  }
+
   try {
     const current:any=await computeSignal();
     const previous:any=await s.get("state",{type:"json"}) || {};
@@ -53,4 +65,7 @@ export default async (_req:Request) => {
     });
   }
 };
-export const config:Config={schedule:"* 13-21 * * 1-5"};
+
+// Run every minute Sunday-Friday. getCmeClockState() cheaply skips the normal
+// 16:00-17:00 CT maintenance break and all other closed periods.
+export const config:Config={schedule:"* * * * 0-5"};
