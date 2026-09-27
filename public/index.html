@@ -16,11 +16,11 @@
 <div class="wrap">
   <div class="top"><div><div class="brand">WHEELHOUSE TRADING CO.</div><h1>MNQ FUTURES ALIGNMENT</h1></div><div class="clock" id="clock">—</div></div>
   <div class="card hero">
-    <div class="kicker">SERVER-SIDE SIGNAL · QQQ PROXY · 1-MIN ENGINE</div>
+    <div class="kicker">SERVER-SIDE SIGNAL · LIVE CME NQ · 1-MIN ENGINE</div>
     <div id="signal" class="signal wait">WAIT</div>
     <div id="reason" class="reason">Loading engine status…</div>
     <div class="grid">
-      <div class="metric"><div class="label">QQQ proxy</div><div class="value" id="price">—</div></div>
+      <div class="metric"><div class="label" id="priceLabel">NQ futures</div><div class="value" id="price">—</div></div>
       <div class="metric"><div class="label">From open</div><div class="value" id="fromOpen">—</div></div>
       <div class="metric"><div class="label">Master score</div><div class="value" id="score">—</div></div>
       <div class="metric"><div class="label">VWAP</div><div class="value" id="vwap">—</div></div>
@@ -57,9 +57,9 @@
 
   <div class="card">
     <div class="sectionTitle">LOCKED OPERATING RULES</div>
-    <ul class="rules"><li>Entry windows: 8:35–10:30 a.m. and 1:30–2:45 p.m. CT. First five minutes, midday and close are blocked.</li><li>Trend-aligned setup needs at least ±5/9; mixed daily regime uses ±6/9; countertrend needs ±7/9.</li><li>30m, 15m, 5m and 1m must all agree. Time, conflict, stale data or extension = WAIT.</li><li>QQQ is the proxy. Confirm MNQ price/action in the broker. Exit on a 1m reversal or 5m signal loss. Never average down.</li></ul>
+    <ul class="rules"><li>Entry windows: 8:35–10:30 a.m. and 1:30–2:45 p.m. CT. First five minutes, midday and close are blocked.</li><li>Trend-aligned setup needs at least ±5/9; mixed daily regime uses ±6/9; countertrend needs ±7/9.</li><li>30m, 15m, 5m and 1m must all agree. Time, conflict, stale data or extension = WAIT.</li><li>Signals now use direct NQ futures candles from tastytrade/DXLink. Exit on a 1m reversal or 5m signal loss. Never average down.</li></ul>
   </div>
-  <div class="foot">Market data source: unofficial Yahoo Finance QQQ chart endpoint. A stale feed is blocked instead of generating a trade signal. This dashboard is an execution aid, not a guarantee of profitability or investment advice.</div>
+  <div class="foot">Market data source: tastytrade DXLink using the active CME NQ futures contract. A stale regular-session feed is blocked instead of generating a trade signal. This dashboard is an execution aid, not a guarantee of profitability or investment advice.</div>
 </div>
 <script>
 const $=id=>document.getElementById(id); let currentSub=null;
@@ -68,8 +68,8 @@ function fmtTime(iso){if(!iso)return 'None yet';try{return new Intl.DateTimeForm
 function stateClass(el,state){el.className='state '+state;el.textContent=state;}
 function update(s){
   const sig=s.signal||'WAIT'; $('signal').textContent=sig; $('signal').className='signal '+(sig.startsWith('BUY')?'buy':sig.startsWith('SELL')?'sell':'wait'); $('reason').textContent=s.reason||'—';
-  $('price').textContent=s.price?`$${s.price.toFixed(2)}`:'—'; $('fromOpen').textContent=Number.isFinite(s.fromOpen)?`${s.fromOpen>0?'+':''}${s.fromOpen.toFixed(2)}%`:'—'; $('score').textContent=Number.isFinite(s.score)?`${s.score>0?'+':''}${s.score}/9`:'—'; $('vwap').textContent=s.vwap?`$${s.vwap.toFixed(2)}`:'—';
-  $('feed').textContent=s.market?.feedActive?'FEED ACTIVE':'FEED PAUSED'; $('feed').className='pill '+(s.market?.feedActive?'good':'warn'); $('window').textContent=s.market?.inEntry?'ENTRY WINDOW OPEN':'ENTRY WINDOW CLOSED'; $('window').className='pill '+(s.market?.inEntry?'good':'warn'); $('daily').textContent='DAILY '+(s.daily?.state||'—'); $('subs').textContent=`PUSH SUBSCRIBERS ${s.pushSubscribers??'—'}`;
+  $('priceLabel').textContent=s.instrument?.symbol?`${s.instrument.symbol} futures`:'NQ futures'; $('price').textContent=s.price?`$${s.price.toFixed(2)}`:'—'; $('fromOpen').textContent=Number.isFinite(s.fromOpen)?`${s.fromOpen>0?'+':''}${s.fromOpen.toFixed(2)}%`:'—'; $('score').textContent=Number.isFinite(s.score)?`${s.score>0?'+':''}${s.score}/9`:'—'; $('vwap').textContent=s.vwap?`$${s.vwap.toFixed(2)}`:'—';
+  $('feed').textContent=s.market?.feedActive?'NQ FEED ACTIVE':'NQ FEED PAUSED'; $('feed').className='pill '+(s.market?.feedActive?'good':'warn'); $('window').textContent=s.market?.inEntry?'ENTRY WINDOW OPEN':'ENTRY WINDOW CLOSED'; $('window').className='pill '+(s.market?.inEntry?'good':'warn'); $('daily').textContent='DAILY '+(s.daily?.state||'—'); $('subs').textContent=`PUSH SUBSCRIBERS ${s.pushSubscribers??'—'}`;
   for(const [key,id] of [['30m','f30'],['15m','f15'],['5m','f5'],['1m','f1']]){const f=s.frames?.[key];if(!f)continue;stateClass($(id),f.state);$(id+'d').textContent=`${f.ema} EMA · RSI ${f.rsi} · MACD ${f.macd} · ${f.score>0?'+':''}${f.score}/5`;}
   $('or').textContent=s.openingRange?`$${s.openingRange.low.toFixed(2)} – $${s.openingRange.high.toFixed(2)}`:'—'; $('ext').textContent=s.extension?`${s.extension.pct.toFixed(2)}% / limit ${s.extension.limitPct.toFixed(2)}%${s.extension.blocked?' · BLOCKED':''}`:'—'; $('vol').textContent=Number.isFinite(s.volumeRatio)?`${s.volumeRatio.toFixed(1)}× recent`:'—'; $('bar').textContent=s.market?.lastBarLabel||'—'; $('engine').textContent=fmtTime(s.checkedAt); $('lastPush').textContent=s.lastPush?`${s.lastPush.signal} · ${fmtTime(s.lastPush.at)}`:'None yet';
 }
