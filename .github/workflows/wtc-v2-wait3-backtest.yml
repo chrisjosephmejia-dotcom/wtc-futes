@@ -32,75 +32,19 @@ jobs:
           python - <<'PY'
           from pathlib import Path
 
-          p = Path('research/wtc_v1_backtest.py')
-          src = p.read_text()
-
+          src = Path('research/wtc_v1_backtest.py').read_text()
           src = src.replace(
               '    trades, open_trade = [], None\n',
               '    trades, open_trade = [], None\n    wait_streak = 0\n',
               1,
           )
 
-          old_closed = '''        if not cme_session_open_et(ts):
-              rows_closed += 1
-              if open_trade is not None and last_session_price is not None:
-                  close_trade(open_trade, last_session_price, last_session_ts, "WAIT", "CME SESSION CLOSED", trades)
-                  open_trade = None
-              continue
-          '''
-          new_closed = '''        if not cme_session_open_et(ts):
-              rows_closed += 1
-              if open_trade is not None and last_session_price is not None:
-                  close_trade(open_trade, last_session_price, last_session_ts, "WAIT", "CME SESSION CLOSED", trades)
-                  open_trade = None
-                  wait_streak = 0
-              continue
-          '''
-          if old_closed not in src:
-              raise SystemExit('Could not patch closed-session lifecycle')
-          src = src.replace(old_closed, new_closed, 1)
+          start_marker = '        signal_counts[signal] += 1\n'
+          end_marker = '\n\n    if open_trade is not None and last_session_price is not None:'
+          start = src.index(start_marker)
+          end = src.index(end_marker, start)
 
-          old_roll = '''        if last_session_key is not None and key != last_session_key and open_trade is not None:
-              close_trade(open_trade, last_session_price, last_session_ts, "WAIT", "CME SESSION CLOSED", trades)
-              open_trade = None
-          '''
-          new_roll = '''        if last_session_key is not None and key != last_session_key and open_trade is not None:
-              close_trade(open_trade, last_session_price, last_session_ts, "WAIT", "CME SESSION CLOSED", trades)
-              open_trade = None
-              wait_streak = 0
-          '''
-          if old_roll not in src:
-              raise SystemExit('Could not patch session-roll lifecycle')
-          src = src.replace(old_roll, new_roll, 1)
-
-          old_lifecycle = '''        signal_counts[signal] += 1
-              actionable = signal in ("BUY MNQ", "SELL MNQ")
-              if open_trade is not None and (not actionable or signal != open_trade["direction"]):
-                  close_trade(open_trade, c, ts, signal, reason, trades)
-                  open_trade = None
-              if actionable and open_trade is None:
-                  open_trade = {
-                      "direction": signal, "opened_at": ts, "entry_price": c,
-                      "entry_score": score, "entry_reason": reason,
-                      "alignment": f"{t30.state}/{t15.state}/{t5.state}/{t1.state}",
-                      "daily_state": dstate["state"],
-                  }
-          '''
-          # Dedent-sensitive literal above is awkward inside YAML; use exact smaller block.
-          old_lifecycle = '''        signal_counts[signal] += 1
-          actionable = signal in ("BUY MNQ", "SELL MNQ")
-          if open_trade is not None and (not actionable or signal != open_trade["direction"]):
-              close_trade(open_trade, c, ts, signal, reason, trades)
-              open_trade = None
-          if actionable and open_trade is None:
-              open_trade = {
-                  "direction": signal, "opened_at": ts, "entry_price": c,
-                  "entry_score": score, "entry_reason": reason,
-                  "alignment": f"{t30.state}/{t15.state}/{t5.state}/{t1.state}",
-                  "daily_state": dstate["state"],
-              }
-          '''
-          new_lifecycle = '''        signal_counts[signal] += 1
+          new_block = '''        signal_counts[signal] += 1
           actionable = signal in ("BUY MNQ", "SELL MNQ")
           if open_trade is not None:
               if actionable and signal != open_trade["direction"]:
@@ -124,9 +68,7 @@ jobs:
               }
               wait_streak = 0
           '''
-          if old_lifecycle not in src:
-              raise SystemExit('Could not patch trade lifecycle')
-          src = src.replace(old_lifecycle, new_lifecycle, 1)
+          src = src[:start] + new_block + src[end:]
 
           src = src.replace('"strategy": "WTC MNQ Signal Engine V1"', '"strategy": "WTC MNQ Signal Engine V2 Shadow — 3-WAIT Hysteresis"', 1)
           src = src.replace(
