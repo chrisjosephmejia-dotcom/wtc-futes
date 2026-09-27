@@ -21,7 +21,7 @@ export default async (_req:Request,_context:Context) => {
   const flats=closed.length-wins-losses;
   const totalPoints=round(closed.reduce((sum,t)=>sum+Number(t.points||0),0),2);
 
-  const rows=trades.slice(0,100).map(t=>{
+  const rows=trades.slice(0,25).map(t=>{
     if(t?.status !== "OPEN") return t;
     return {
       ...t,
@@ -32,9 +32,14 @@ export default async (_req:Request,_context:Context) => {
   });
 
   return Response.json({
+    createdAt:saved.createdAt || null,
     updatedAt:saved.updatedAt || null,
+    retention:"permanent",
+    displayLimit:25,
+    totalStoredTrades:trades.length,
     multiplier:MNQ_DOLLARS_PER_POINT,
     basis:"1 MNQ contract",
+    downloadUrl:"/api/signal-log.csv",
     stats:{
       closedTrades:closed.length,
       wins,
@@ -47,7 +52,7 @@ export default async (_req:Request,_context:Context) => {
       openPoints:openMark?.points ?? null,
     },
     trades:rows,
-    note:"Theoretical signal-to-signal P&L for 1 MNQ at $2 per Nasdaq-100 point. Excludes commissions, fees, slippage and actual execution differences."
+    note:"All-time theoretical signal-to-signal P&L for 1 MNQ at $2 per Nasdaq-100 point. Full trade history is retained; this table shows the latest 25. Excludes commissions, fees, slippage and actual execution differences."
   },{headers:{"Cache-Control":"no-store"}});
 };
 
