@@ -5,6 +5,12 @@ const BASE = "https://api.tastyworks.com";
 const USER_AGENT = "wtc-futes/1.0";
 const TZ = "America/Chicago";
 
+const FLAG_TX_PENDING = 0x01;
+const FLAG_REMOVE = 0x02;
+const FLAG_SNAPSHOT_BEGIN = 0x04;
+const FLAG_SNAPSHOT_END = 0x08;
+const FLAG_SNAPSHOT_SNIP = 0x10;
+
 function asNumber(value: unknown): number | null {
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
@@ -105,6 +111,7 @@ async function getQuoteToken(accessToken: string) {
 }
 
 type Candle = {
+  index: number;
   time: number;
   open: number | null;
   high: number | null;
@@ -115,28 +122,37 @@ type Candle = {
   count: number | null;
 };
 
+type CandleRow = Candle & { flags: number };
+
 async function fetchCandles(dxlinkUrl: string, quoteToken: string, streamerSymbol: string) {
   const candleSymbol = `${streamerSymbol}{=1m}`;
   const fromTime = Date.now() - 7 * 24 * 60 * 60 * 1000;
   const requestedFields = [
-    "eventType", "eventSymbol", "eventFlags", "time", "sequence", "count",
+    "eventType", "eventSymbol", "eventFlags", "index", "time", "count",
     "open", "high", "low", "close", "volume", "vwap"
   ];
 
-  return await new Promise<{ candles: Candle[]; messages: number; candleSymbol: string; fromTime: number }>((resolve, reject) => {
+  return await new Promise<{
+    candles: Candle[];
+    messages: number;
+    candleSymbol: string;
+    fromTime: number;
+    snapshotComplete: boolean;
+  }>((resolve, reject) => {
     const ws = new WebSocket(dxlinkUrl);
-    const candles = new Map<number, Candle>();
+    const candlesByIndex = new Map<number, Candle>();
+    let pending: CandleRow[] = [];
+    let inSnapshot = false;
+    let snapshotComplete = false;
     let messages = 0;
     let subscribed = false;
     let eventFields: string[] = requestedFields;
-    let quietTimer: ReturnType<typeof setTimeout> | null = null;
     let settled = false;
 
-    const hardTimer = setTimeout(() => finish(), 10000);
+    const hardTimer = setTimeout(() => finish(), 12000);
 
     const cleanup = () => {
       clearTimeout(hardTimer);
-      if (quietTimer) clearTimeout(quietTimer);
       try { ws.close(); } catch {}
     };
 
@@ -149,21 +165,59 @@ async function fetchCandles(dxlinkUrl: string, quoteToken: string, streamerSymbo
 
     const finish = () => {
       if (settled) return;
-      if (!candles.size) return fail(new Error("DXLink connected but no NQ candle data arrived before timeout"));
+      if (!candlesByIndex.size) return fail(new Error("DXLink connected but no NQ candle history arrived before timeout"));
       settled = true;
       cleanup();
-      const rows = [...candles.values()].sort((a, b) => a.time - b.time);
-      resolve({ candles: rows, messages, candleSymbol, fromTime });
-    };
-
-    const scheduleFinish = () => {
-      if (candles.size < 1200) return;
-      if (quietTimer) clearTimeout(quietTimer);
-      quietTimer = setTimeout(() => finish(), 1200);
+      const rows = [...candlesByIndex.values()].sort((a, b) => a.time - b.time);
+      resolve({ candles: rows, messages, candleSymbol, fromTime, snapshotComplete });
     };
 
     const send = (obj: any) => {
       if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
+    };
+
+    const applyPending = () => {
+      for (const row of pending) {
+        if (row.flags & FLAG_REMOVE) candlesByIndex.delete(row.index);
+        else candlesByIndex.set(row.index, {
+          index: row.index,
+          time: row.time,
+          open: row.open,
+          high: row.high,
+          low: row.low,
+          close: row.close,
+          volume: row.volume,
+          vwap: row.vwap,
+          count: row.count,
+        });
+      }
+      pending = [];
+    };
+
+    const processCandle = (row: CandleRow) => {
+      if (row.flags & FLAG_SNAPSHOT_BEGIN) {
+        pending = [];
+        inSnapshot = true;
+        snapshotComplete = false;
+      }
+
+      const endsSnapshot = inSnapshot && Boolean(row.flags & (FLAG_SNAPSHOT_END | FLAG_SNAPSHOT_SNIP));
+      if (endsSnapshot) inSnapshot = false;
+
+      pending.push(row);
+
+      if ((row.flags & FLAG_TX_PENDING) || inSnapshot) return;
+
+      if (endsSnapshot) {
+        candlesByIndex.clear();
+        snapshotComplete = true;
+      }
+
+      applyPending();
+
+      if (snapshotComplete && candlesByIndex.size >= 1000) {
+        setTimeout(finish, 150);
+      }
     };
 
     ws.on("open", () => {
@@ -189,7 +243,7 @@ async function fetchCandles(dxlinkUrl: string, quoteToken: string, streamerSymbo
       }
 
       if (msg?.type === "AUTH_STATE" && msg?.state === "AUTHORIZED") {
-        send({ type: "CHANNEL_REQUEST", channel: 3, service: "FEED", parameters: { contract: "AUTO" } });
+        send({ type: "CHANNEL_REQUEST", channel: 3, service: "FEED", parameters: { contract: "HISTORY" } });
         return;
       }
 
@@ -202,7 +256,6 @@ async function fetchCandles(dxlinkUrl: string, quoteToken: string, streamerSymbo
         send({
           type: "FEED_SETUP",
           channel: 3,
-          acceptAggregationPeriod: 0.1,
           acceptDataFormat: "COMPACT",
           acceptEventFields: { Candle: requestedFields },
         });
@@ -232,12 +285,18 @@ async function fetchCandles(dxlinkUrl: string, quoteToken: string, streamerSymbo
             continue;
           }
           if (currentType !== "Candle" || !Array.isArray(item)) continue;
+
           const row: Record<string, any> = {};
           for (let i = 0; i < eventFields.length; i++) row[eventFields[i]] = item[i];
-          const t = Number(row.time);
-          if (!Number.isFinite(t) || t <= 0) continue;
-          candles.set(t, {
-            time: t,
+
+          const index = Number(row.index);
+          const time = Number(row.time);
+          if (!Number.isFinite(index) || !Number.isFinite(time) || time <= 0) continue;
+
+          processCandle({
+            index,
+            time,
+            flags: Number(row.eventFlags) || 0,
             open: asNumber(row.open),
             high: asNumber(row.high),
             low: asNumber(row.low),
@@ -247,7 +306,6 @@ async function fetchCandles(dxlinkUrl: string, quoteToken: string, streamerSymbo
             count: asNumber(row.count),
           });
         }
-        if (candles.size) scheduleFinish();
       }
     });
   });
@@ -281,6 +339,7 @@ export default async (_req: Request, _context: Context) => {
     const result = await fetchCandles(quoteAuth["dxlink-url"], quoteAuth.token, streamerSymbol);
     const usable = result.candles.filter((c) => c.open !== null && c.high !== null && c.low !== null && c.close !== null);
     const spacing = spacingStats(usable);
+    const historyReady = result.snapshotComplete && usable.length >= 1200 && spacing.oneMinuteStepPct >= 90;
     const last = usable.slice(-10).map((c) => ({
       time: new Date(c.time).toISOString(),
       timeCT: ctLabel(c.time),
@@ -294,7 +353,7 @@ export default async (_req: Request, _context: Context) => {
     }));
 
     return Response.json({
-      ok: usable.length >= 1200 && spacing.oneMinuteStepPct >= 90,
+      ok: historyReady,
       auth: { ok: true },
       instrument: {
         ok: true,
@@ -305,7 +364,9 @@ export default async (_req: Request, _context: Context) => {
       },
       dxlink: {
         ok: usable.length > 0,
-        historyReady: usable.length >= 1200 && spacing.oneMinuteStepPct >= 90,
+        historyReady,
+        snapshotComplete: result.snapshotComplete,
+        feedContract: "HISTORY",
         entitlementLevel: quoteAuth.level || null,
         quoteTokenExpiresAt: quoteAuth["expires-at"] || null,
         candleSymbol: result.candleSymbol,
