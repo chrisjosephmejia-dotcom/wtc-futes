@@ -44,30 +44,31 @@ jobs:
           start = src.index(start_marker)
           end = src.index(end_marker, start)
 
-          new_block = '''        signal_counts[signal] += 1
-          actionable = signal in ("BUY MNQ", "SELL MNQ")
-          if open_trade is not None:
-              if actionable and signal != open_trade["direction"]:
-                  close_trade(open_trade, c, ts, signal, reason, trades)
-                  open_trade = None
-                  wait_streak = 0
-              elif not actionable:
-                  wait_streak += 1
-                  if wait_streak >= 3:
-                      close_trade(open_trade, c, ts, signal, "3 CONSECUTIVE WAIT MINUTES · " + reason, trades)
-                      open_trade = None
-                      wait_streak = 0
-              else:
-                  wait_streak = 0
-          if actionable and open_trade is None:
-              open_trade = {
-                  "direction": signal, "opened_at": ts, "entry_price": c,
-                  "entry_score": score, "entry_reason": reason,
-                  "alignment": f"{t30.state}/{t15.state}/{t5.state}/{t1.state}",
-                  "daily_state": dstate["state"],
-              }
-              wait_streak = 0
-          '''
+          new_block = "\n".join([
+              "        signal_counts[signal] += 1",
+              "        actionable = signal in (\"BUY MNQ\", \"SELL MNQ\")",
+              "        if open_trade is not None:",
+              "            if actionable and signal != open_trade[\"direction\"]:",
+              "                close_trade(open_trade, c, ts, signal, reason, trades)",
+              "                open_trade = None",
+              "                wait_streak = 0",
+              "            elif not actionable:",
+              "                wait_streak += 1",
+              "                if wait_streak >= 3:",
+              "                    close_trade(open_trade, c, ts, signal, \"3 CONSECUTIVE WAIT MINUTES · \" + reason, trades)",
+              "                    open_trade = None",
+              "                    wait_streak = 0",
+              "            else:",
+              "                wait_streak = 0",
+              "        if actionable and open_trade is None:",
+              "            open_trade = {",
+              "                \"direction\": signal, \"opened_at\": ts, \"entry_price\": c,",
+              "                \"entry_score\": score, \"entry_reason\": reason,",
+              "                \"alignment\": f\"{t30.state}/{t15.state}/{t5.state}/{t1.state}\",",
+              "                \"daily_state\": dstate[\"state\"],",
+              "            }",
+              "            wait_streak = 0",
+          ]) + "\n"
           src = src[:start] + new_block + src[end:]
 
           src = src.replace('"strategy": "WTC MNQ Signal Engine V1"', '"strategy": "WTC MNQ Signal Engine V2 Shadow — 3-WAIT Hysteresis"', 1)
