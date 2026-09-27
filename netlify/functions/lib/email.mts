@@ -27,12 +27,14 @@ async function send(subject:string,text:string,idempotencyKey:string){
 export async function sendSignalEmail(current:any){
   const alignment=`${current.frames["30m"].state}/${current.frames["15m"].state}/${current.frames["5m"].state}/${current.frames["1m"].state}`;
   const subject=current.signal==="BUY MNQ"?"MNQ BUY":"MNQ SELL";
+  const contract=current.instrument?.symbol || "NQ";
   const text=[
     subject,
-    `QQQ proxy: $${current.price}`,
+    `${contract}: $${current.price}`,
     `Score: ${current.score>0?"+":""}${current.score}/9`,
     `Alignment: ${alignment}`,
     `Reason: ${current.reason||"—"}`,
+    `Source: ${current.source||"tastytrade DXLink / CME"}`,
     `Time: ${current.checkedAt||new Date().toISOString()}`,
     "Dashboard: https://wtc-futes.netlify.app/"
   ].join("\n");
