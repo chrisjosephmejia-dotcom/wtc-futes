@@ -38,63 +38,63 @@ jobs:
           start = src.index(start_marker)
           end = src.index(end_marker, start)
 
-          score0_block = '''        signal_counts[signal] += 1
-          actionable = signal in ("BUY MNQ", "SELL MNQ")
-          if open_trade is not None:
-              opposite = ((open_trade["direction"] == "BUY MNQ" and signal == "SELL MNQ") or
-                          (open_trade["direction"] == "SELL MNQ" and signal == "BUY MNQ"))
-              should_exit = False
-              exit_reason = reason
-              if opposite:
-                  should_exit = True
-                  exit_reason = "OPPOSITE FULL SIGNAL · " + reason
-              elif open_trade["direction"] == "BUY MNQ" and score <= 0:
-                  should_exit = True
-                  exit_reason = f"LONG EXIT HYSTERESIS · SCORE {score} <= 0"
-              elif open_trade["direction"] == "SELL MNQ" and score >= 0:
-                  should_exit = True
-                  exit_reason = f"SHORT EXIT HYSTERESIS · SCORE {score} >= 0"
-              if should_exit:
-                  close_trade(open_trade, c, ts, signal, exit_reason, trades)
-                  open_trade = None
-          if actionable and open_trade is None:
-              open_trade = {
-                  "direction": signal, "opened_at": ts, "entry_price": c,
-                  "entry_score": score, "entry_reason": reason,
-                  "alignment": f"{t30.state}/{t15.state}/{t5.state}/{t1.state}",
-                  "daily_state": dstate["state"],
-              }
-          '''
-          # Normalize indentation added by the triple-quoted helper.
-          score0_block = '\n'.join(line[10:] if line.startswith('          ') else line for line in score0_block.splitlines()) + '\n'
-          baseline = src[:start] + score0_block + src[end:]
+          lines = [
+              '        signal_counts[signal] += 1',
+              '        actionable = signal in ("BUY MNQ", "SELL MNQ")',
+              '        if open_trade is not None:',
+              '            opposite = ((open_trade["direction"] == "BUY MNQ" and signal == "SELL MNQ") or',
+              '                        (open_trade["direction"] == "SELL MNQ" and signal == "BUY MNQ"))',
+              '            should_exit = False',
+              '            exit_reason = reason',
+              '            if opposite:',
+              '                should_exit = True',
+              '                exit_reason = "OPPOSITE FULL SIGNAL · " + reason',
+              '            elif open_trade["direction"] == "BUY MNQ" and score <= 0:',
+              '                should_exit = True',
+              '                exit_reason = f"LONG EXIT HYSTERESIS · SCORE {score} <= 0"',
+              '            elif open_trade["direction"] == "SELL MNQ" and score >= 0:',
+              '                should_exit = True',
+              '                exit_reason = f"SHORT EXIT HYSTERESIS · SCORE {score} >= 0"',
+              '            if should_exit:',
+              '                close_trade(open_trade, c, ts, signal, exit_reason, trades)',
+              '                open_trade = None',
+              '        if actionable and open_trade is None:',
+              '            open_trade = {',
+              '                "direction": signal, "opened_at": ts, "entry_price": c,',
+              '                "entry_score": score, "entry_reason": reason,',
+              '                "alignment": f"{t30.state}/{t15.state}/{t5.state}/{t1.state}",',
+              '                "daily_state": dstate["state"],',
+              '            }',
+          ]
+          new_block = "\n".join(lines) + "\n"
+          baseline = src[:start] + new_block + src[end:]
           baseline = baseline.replace('"strategy": "WTC MNQ Signal Engine V1"', '"strategy": "WTC V2 Score-0 Hysteresis Baseline"', 1)
           baseline = baseline.replace('"trade_lifecycle": "signal-to-signal; no fixed stop/target; 1 MNQ; WAIT/reversal/session close exits"', '"trade_lifecycle": "same V1 entries; ignore raw WAIT; long exit score <= 0; short exit score >= 0; opposite full signal reverses; session-close flatten; no fixed stop"', 1)
           Path('/tmp/wtc_score0.py').write_text(baseline)
 
           stop_marker = '        in_entry = not first_five_block_et(ts)\n'
-          stop_block = '''        # Research-only $200 hard stop on 1 MNQ = 100 NQ points adverse from entry.
-          # Stop is checked against the next/subsequent 1-minute OHLC range before the
-          # bar-close score exit. If a bar opens beyond the stop, fill at that worse open.
-          if open_trade is not None:
-              stop_points = 200.0 / MNQ_DOLLARS_PER_POINT
-              entry_px = float(open_trade["entry_price"])
-              if open_trade["direction"] == "BUY MNQ":
-                  stop_px = entry_px - stop_points
-                  if l <= stop_px:
-                      fill_px = o if o < stop_px else stop_px
-                      close_trade(open_trade, fill_px, ts, "STOP", "HARD STOP $200 · 100 NQ POINTS", trades)
-                      open_trade = None
-              else:
-                  stop_px = entry_px + stop_points
-                  if h >= stop_px:
-                      fill_px = o if o > stop_px else stop_px
-                      close_trade(open_trade, fill_px, ts, "STOP", "HARD STOP $200 · 100 NQ POINTS", trades)
-                      open_trade = None
-
-          in_entry = not first_five_block_et(ts)
-          '''
-          stop_block = '\n'.join(line[10:] if line.startswith('          ') else line for line in stop_block.splitlines()) + '\n'
+          stop_lines = [
+              '        # Research-only $200 hard stop on 1 MNQ = 100 NQ points adverse from entry.',
+              '        # Check 1-minute OHLC before the bar-close score exit. Gap-through fills at the worse open.',
+              '        if open_trade is not None:',
+              '            stop_points = 200.0 / MNQ_DOLLARS_PER_POINT',
+              '            entry_px = float(open_trade["entry_price"])',
+              '            if open_trade["direction"] == "BUY MNQ":',
+              '                stop_px = entry_px - stop_points',
+              '                if l <= stop_px:',
+              '                    fill_px = o if o < stop_px else stop_px',
+              '                    close_trade(open_trade, fill_px, ts, "STOP", "HARD STOP $200 · 100 NQ POINTS", trades)',
+              '                    open_trade = None',
+              '            else:',
+              '                stop_px = entry_px + stop_points',
+              '                if h >= stop_px:',
+              '                    fill_px = o if o > stop_px else stop_px',
+              '                    close_trade(open_trade, fill_px, ts, "STOP", "HARD STOP $200 · 100 NQ POINTS", trades)',
+              '                    open_trade = None',
+              '',
+              '        in_entry = not first_five_block_et(ts)',
+          ]
+          stop_block = "\n".join(stop_lines) + "\n"
           stopped = baseline.replace(stop_marker, stop_block, 1)
           stopped = stopped.replace('"strategy": "WTC V2 Score-0 Hysteresis Baseline"', '"strategy": "WTC V2 Score-0 Hysteresis + $200 Hard Stop"', 1)
           stopped = stopped.replace('session-close flatten; no fixed stop', 'session-close flatten; $200 hard stop (100 NQ points) checked on 1-minute OHLC')
@@ -159,7 +159,8 @@ jobs:
           delta = {k: None for k in s}
           delta['variant'] = 'stop200_minus_baseline'
           for k in s:
-              if k == 'variant': continue
+              if k == 'variant':
+                  continue
               if isinstance(s[k], (int,float)) and isinstance(b[k], (int,float)):
                   delta[k] = round(s[k] - b[k], 4)
 
