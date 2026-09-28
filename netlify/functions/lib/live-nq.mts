@@ -2,6 +2,9 @@ import WebSocket from "ws";
 
 const BASE = "https://api.tastyworks.com";
 const USER_AGENT = "wtc-futes/1.0";
+const FLAG_TX_PENDING = 0x01;
+const FLAG_SNAPSHOT_END = 0x08;
+const FLAG_SNAPSHOT_SNIP = 0x10;
 
 async function readJson(res: Response) {
   return res.json().catch(() => ({}));
@@ -113,15 +116,19 @@ async function fetchLatestMinute(dxlinkUrl: string, quoteToken: string, streamer
     const processCompact = (data: any[]) => {
       if (data.length < 2 || data[0] !== "Candle" || !Array.isArray(data[1])) return;
       const values = data[1];
+      let snapshotEnded = false;
       for (let cursor = 0; cursor + eventFields.length <= values.length; cursor += eventFields.length) {
         const row: Record<string, any> = {};
         for (let i = 0; i < eventFields.length; i++) row[eventFields[i]] = values[cursor + i];
         const time = Number(row.time);
         const close = Number(row.close);
-        if (!Number.isFinite(time) || !Number.isFinite(close) || time <= 0) continue;
-        if (!latest || time >= latest.time) latest = { time, close };
+        const flags = Number(row.eventFlags) || 0;
+        if (Number.isFinite(time) && Number.isFinite(close) && time > 0) {
+          if (!latest || time >= latest.time) latest = { time, close };
+        }
+        if (!(flags & FLAG_TX_PENDING) && (flags & (FLAG_SNAPSHOT_END | FLAG_SNAPSHOT_SNIP))) snapshotEnded = true;
       }
-      if (latest) setTimeout(finish, 120);
+      if (snapshotEnded && latest) setTimeout(finish, 50);
     };
 
     ws.on("open", () => send({
