@@ -1,0 +1,191 @@
+name: WTC V2 Score0 $200 Stop Backtest
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/wtc-score0-stop200-backtest.yml"
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout WTC
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip pandas
+
+      - name: Download public NQ 1-minute history
+        run: |
+          curl -L --fail --retry 3 --retry-delay 2 \
+            'https://raw.githubusercontent.com/s-k-28/nq-es-trader-5k-payout/main/data/Dataset_NQ_1min_2022_2025.csv' \
+            -o /tmp/Dataset_NQ_1min_2022_2025.csv
+
+      - name: Build current score-zero baseline and $200-stop variant
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          src = Path('research/wtc_v1_backtest.py').read_text()
+          start_marker = '        signal_counts[signal] += 1\n'
+          end_marker = '\n\n    if open_trade is not None and last_session_price is not None:'
+          start = src.index(start_marker)
+          end = src.index(end_marker, start)
+
+          score0_block = '''        signal_counts[signal] += 1
+          actionable = signal in ("BUY MNQ", "SELL MNQ")
+          if open_trade is not None:
+              opposite = ((open_trade["direction"] == "BUY MNQ" and signal == "SELL MNQ") or
+                          (open_trade["direction"] == "SELL MNQ" and signal == "BUY MNQ"))
+              should_exit = False
+              exit_reason = reason
+              if opposite:
+                  should_exit = True
+                  exit_reason = "OPPOSITE FULL SIGNAL · " + reason
+              elif open_trade["direction"] == "BUY MNQ" and score <= 0:
+                  should_exit = True
+                  exit_reason = f"LONG EXIT HYSTERESIS · SCORE {score} <= 0"
+              elif open_trade["direction"] == "SELL MNQ" and score >= 0:
+                  should_exit = True
+                  exit_reason = f"SHORT EXIT HYSTERESIS · SCORE {score} >= 0"
+              if should_exit:
+                  close_trade(open_trade, c, ts, signal, exit_reason, trades)
+                  open_trade = None
+          if actionable and open_trade is None:
+              open_trade = {
+                  "direction": signal, "opened_at": ts, "entry_price": c,
+                  "entry_score": score, "entry_reason": reason,
+                  "alignment": f"{t30.state}/{t15.state}/{t5.state}/{t1.state}",
+                  "daily_state": dstate["state"],
+              }
+          '''
+          # Normalize indentation added by the triple-quoted helper.
+          score0_block = '\n'.join(line[10:] if line.startswith('          ') else line for line in score0_block.splitlines()) + '\n'
+          baseline = src[:start] + score0_block + src[end:]
+          baseline = baseline.replace('"strategy": "WTC MNQ Signal Engine V1"', '"strategy": "WTC V2 Score-0 Hysteresis Baseline"', 1)
+          baseline = baseline.replace('"trade_lifecycle": "signal-to-signal; no fixed stop/target; 1 MNQ; WAIT/reversal/session close exits"', '"trade_lifecycle": "same V1 entries; ignore raw WAIT; long exit score <= 0; short exit score >= 0; opposite full signal reverses; session-close flatten; no fixed stop"', 1)
+          Path('/tmp/wtc_score0.py').write_text(baseline)
+
+          stop_marker = '        in_entry = not first_five_block_et(ts)\n'
+          stop_block = '''        # Research-only $200 hard stop on 1 MNQ = 100 NQ points adverse from entry.
+          # Stop is checked against the next/subsequent 1-minute OHLC range before the
+          # bar-close score exit. If a bar opens beyond the stop, fill at that worse open.
+          if open_trade is not None:
+              stop_points = 200.0 / MNQ_DOLLARS_PER_POINT
+              entry_px = float(open_trade["entry_price"])
+              if open_trade["direction"] == "BUY MNQ":
+                  stop_px = entry_px - stop_points
+                  if l <= stop_px:
+                      fill_px = o if o < stop_px else stop_px
+                      close_trade(open_trade, fill_px, ts, "STOP", "HARD STOP $200 · 100 NQ POINTS", trades)
+                      open_trade = None
+              else:
+                  stop_px = entry_px + stop_points
+                  if h >= stop_px:
+                      fill_px = o if o > stop_px else stop_px
+                      close_trade(open_trade, fill_px, ts, "STOP", "HARD STOP $200 · 100 NQ POINTS", trades)
+                      open_trade = None
+
+          in_entry = not first_five_block_et(ts)
+          '''
+          stop_block = '\n'.join(line[10:] if line.startswith('          ') else line for line in stop_block.splitlines()) + '\n'
+          stopped = baseline.replace(stop_marker, stop_block, 1)
+          stopped = stopped.replace('"strategy": "WTC V2 Score-0 Hysteresis Baseline"', '"strategy": "WTC V2 Score-0 Hysteresis + $200 Hard Stop"', 1)
+          stopped = stopped.replace('session-close flatten; no fixed stop', 'session-close flatten; $200 hard stop (100 NQ points) checked on 1-minute OHLC')
+          Path('/tmp/wtc_score0_stop200.py').write_text(stopped)
+          PY
+
+      - name: Run baseline
+        run: |
+          python /tmp/wtc_score0.py \
+            --csv /tmp/Dataset_NQ_1min_2022_2025.csv \
+            --out score0_baseline.json \
+            --trades score0_baseline_trades.csv
+
+      - name: Run $200-stop variant
+        run: |
+          python /tmp/wtc_score0_stop200.py \
+            --csv /tmp/Dataset_NQ_1min_2022_2025.csv \
+            --out score0_stop200.json \
+            --trades score0_stop200_trades.csv
+
+      - name: Compare economics
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import pandas as pd
+
+          RT_FEE = 1.72
+          base = json.loads(Path('score0_baseline.json').read_text())
+          stop = json.loads(Path('score0_stop200.json').read_text())
+          stop_trades = pd.read_csv('score0_stop200_trades.csv')
+          stop_hits = int(stop_trades['exit_reason'].astype(str).str.startswith('HARD STOP').sum())
+
+          def row(label, d):
+              a = d['all_time']
+              fees = round(a['trades'] * RT_FEE, 2)
+              net = round(a['theoretical_pnl_1_mnq'] - fees, 2)
+              return {
+                  'variant': label,
+                  'trades': a['trades'],
+                  'wins': a['wins'],
+                  'losses': a['losses'],
+                  'win_rate_pct': a['win_rate_pct'],
+                  'gross_pnl': a['theoretical_pnl_1_mnq'],
+                  'fees': fees,
+                  'net_after_fees_before_slippage': net,
+                  'avg_trade_pnl_gross': a['avg_trade_pnl'],
+                  'avg_win': a['avg_win'],
+                  'avg_loss': a['avg_loss'],
+                  'profit_factor': a['profit_factor'],
+                  'max_closed_trade_drawdown': a['max_closed_trade_drawdown'],
+                  'max_losing_streak': a['max_losing_streak'],
+                  'median_duration_minutes': a['median_duration_minutes'],
+                  'stop_hits': 0 if label == 'baseline_score0' else stop_hits,
+                  '2023_gross': d['by_year'].get('2023',{}).get('pnl'),
+                  '2024_gross': d['by_year'].get('2024',{}).get('pnl'),
+                  '2025_gross': d['by_year'].get('2025',{}).get('pnl'),
+              }
+
+          b = row('baseline_score0', base)
+          s = row('score0_stop200', stop)
+          delta = {k: None for k in s}
+          delta['variant'] = 'stop200_minus_baseline'
+          for k in s:
+              if k == 'variant': continue
+              if isinstance(s[k], (int,float)) and isinstance(b[k], (int,float)):
+                  delta[k] = round(s[k] - b[k], 4)
+
+          out = {
+              'assumptions': [
+                  '$200 stop on 1 MNQ equals 100 NQ points adverse from entry.',
+                  'Stop is evaluated from 1-minute OHLC after entry; same entry bar cannot stop because theoretical entry occurs at that bar close.',
+                  'If the next bar opens beyond the stop, the model fills at the worse bar open; otherwise at the stop price.',
+                  'After an intrabar stop, the normal 1-minute engine may re-enter at that bar close if the full entry signal is still actionable.',
+                  'Robinhood Gold modeled at $1.72 per completed round trip; slippage excluded except gap-through-stop open handling.',
+              ],
+              'rows': [b, s, delta],
+          }
+          Path('wtc_score0_stop200_comparison.json').write_text(json.dumps(out, indent=2))
+          pd.DataFrame([b,s,delta]).to_csv('wtc_score0_stop200_comparison.csv', index=False)
+          print('WTC_STOP200_RESULT_START')
+          print(json.dumps(out, indent=2))
+          print('WTC_STOP200_RESULT_END')
+          PY
+
+      - name: Upload comparison
+        uses: actions/upload-artifact@v4
+        with:
+          name: wtc-score0-stop200-comparison
+          path: |
+            wtc_score0_stop200_comparison.json
+            wtc_score0_stop200_comparison.csv
+            score0_stop200_trades.csv
+          retention-days: 90
