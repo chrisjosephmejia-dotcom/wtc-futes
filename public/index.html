@@ -16,7 +16,7 @@
 <div class="wrap">
   <div class="top"><div><div class="brand">WHEELHOUSE TRADING CO.</div><h1>MNQ FUTURES ALIGNMENT</h1></div><div class="clock" id="clock">—</div></div>
   <div class="card hero">
-    <div class="kicker">WTC V2 STATEFUL POSITION · LIVE CME NQ · 1-MIN ENGINE</div>
+    <div class="kicker">WTC V2 STATEFUL POSITION · LIVE CME NQ · 15-SEC PRICE · 1-MIN ENGINE</div>
     <div id="signal" class="signal wait">WAIT</div>
     <div id="reason" class="reason">Loading engine status…</div>
     <div class="grid">
@@ -26,7 +26,7 @@
       <div class="metric"><div class="label">Session VWAP</div><div class="value" id="vwap">—</div></div>
     </div>
     <div class="statusline">
-      <span id="raw" class="pill">RAW SIGNAL —</span><span id="feed" class="pill">FEED —</span><span id="window" class="pill">CME SESSION —</span><span id="daily" class="pill">DAILY —</span><span id="subs" class="pill">PUSH SUBSCRIBERS —</span>
+      <span id="raw" class="pill">RAW SIGNAL —</span><span id="feed" class="pill">FEED —</span><span id="livePriceState" class="pill">LIVE PRICE —</span><span id="window" class="pill">CME SESSION —</span><span id="daily" class="pill">DAILY —</span><span id="subs" class="pill">PUSH SUBSCRIBERS —</span>
     </div>
   </div>
 
@@ -77,9 +77,9 @@
 
   <div class="card">
     <div class="sectionTitle">LOCKED OPERATING RULES · V2</div>
-    <ul class="rules"><li>CME NQ normal hours: Sunday–Friday 5:00 p.m.–4:00 p.m. CT, with the daily 4:00–5:00 p.m. CT maintenance break. The first five minutes after each 5:00 p.m. reopen are blocked for new entries.</li><li>Entry logic is unchanged: trend-aligned setup needs at least ±5/9; mixed daily regime uses ±6/9; countertrend needs ±7/9, with 30m/15m/5m/1m alignment.</li><li>WAIT is no longer an automatic exit. Once long, hold through raw WAIT while master score stays above 0; exit when score reaches 0 or below. Once short, hold while score stays below 0; exit when score reaches 0 or above.</li><li>A full opposite BUY/SELL signal reverses immediately. CME session close or unavailable/stale market data flattens for safety. No fixed stop or profit target is added.</li><li>Signals use direct NQ futures candles from tastytrade/DXLink. The live ledger assumes 1 MNQ and tracks Robinhood Gold fees at $0.86 per side / $1.72 round trip; slippage is not modeled.</li></ul>
+    <ul class="rules"><li>CME NQ normal hours: Sunday–Friday 5:00 p.m.–4:00 p.m. CT, with the daily 4:00–5:00 p.m. CT maintenance break. The first five minutes after each 5:00 p.m. reopen are blocked for new entries.</li><li>Entry logic is unchanged: trend-aligned setup needs at least ±5/9; mixed daily regime uses ±6/9; countertrend needs ±7/9, with 30m/15m/5m/1m alignment.</li><li>WAIT is no longer an automatic exit. Once long, hold through raw WAIT while master score stays above 0; exit when score reaches 0 or below. Once short, hold while score stays below 0; exit when score reaches 0 or above.</li><li>A full opposite BUY/SELL signal reverses immediately. CME session close or unavailable/stale market data flattens for safety. No fixed stop or profit target is added.</li><li>Signals use direct NQ futures candles from tastytrade/DXLink. The displayed NQ price refreshes every 15 seconds, but strategy decisions and logging remain on the 1-minute engine. The live ledger assumes 1 MNQ and tracks Robinhood Gold fees at $0.86 per side / $1.72 round trip; slippage is not modeled.</li></ul>
   </div>
-  <div class="foot">Market data source: tastytrade DXLink using the active CME NQ futures contract. Normal CME Globex hours are Sunday–Friday 5:00 p.m.–4:00 p.m. CT with a daily 4:00–5:00 p.m. maintenance break. WTC V2 separates the raw setup signal from the stateful position signal to reduce flicker-driven churn. This dashboard is an execution aid, not a guarantee of profitability or investment advice.</div>
+  <div class="foot">Market data source: tastytrade DXLink using the active CME NQ futures contract. Normal CME Globex hours are Sunday–Friday 5:00 p.m.–4:00 p.m. CT with a daily 4:00–5:00 p.m. maintenance break. WTC V2 separates the raw setup signal from the stateful position signal to reduce flicker-driven churn. Display price refresh is read-only and does not alter the 1-minute trading engine. This dashboard is an execution aid, not a guarantee of profitability or investment advice.</div>
 </div>
 <script>
 const $=id=>document.getElementById(id); let currentSub=null;
@@ -116,6 +116,7 @@ function renderLog(data){
   if(data?.note)$('logNote').textContent=data.note;
 }
 async function refresh(){try{const r=await fetch('/api/status',{cache:'no-store'});update(await r.json());}catch(e){$('reason').textContent='STATUS ERROR · '+e.message;}}
+async function refreshLivePrice(){try{const r=await fetch('/api/live-price',{cache:'no-store'});if(!r.ok)throw new Error('Live price unavailable');const q=await r.json();if(Number.isFinite(Number(q.price)))$('price').textContent=`$${Number(q.price).toFixed(2)}`;if(q.symbol)$('priceLabel').textContent=`${q.symbol} futures · live`;$('livePriceState').textContent='LIVE PRICE · 15S';$('livePriceState').className='pill good';}catch(e){$('livePriceState').textContent='LIVE PRICE PAUSED';$('livePriceState').className='pill warn';}}
 async function refreshLog(){try{const r=await fetch('/api/signal-log',{cache:'no-store'});if(!r.ok)throw new Error('Signal log unavailable');renderLog(await r.json());}catch(e){const body=$('logBody');body.innerHTML='<tr><td colspan="12" class="emptyLog">SIGNAL LOG ERROR</td></tr>';}}
 function tick(){ $('clock').textContent=new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',weekday:'short',hour:'numeric',minute:'2-digit',second:'2-digit'}).format(new Date())+' CT'; }
 async function initPush(){
@@ -127,6 +128,6 @@ function renderPush(){const on=!!currentSub;$('enable').disabled=on;$('test').di
 $('enable').onclick=async()=>{try{const perm=await Notification.requestPermission();if(perm!=='granted')throw new Error('Notification permission not granted');const reg=await navigator.serviceWorker.ready;const {publicKey}=await (await fetch('/api/vapid-key')).json();currentSub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ToBytes(publicKey)});const r=await fetch('/api/subscription',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(currentSub.toJSON())});if(!r.ok)throw new Error('Server subscription failed');renderPush();await refresh();}catch(e){alert(e.message);renderPush();}};
 $('test').onclick=async()=>{try{const r=await fetch('/api/test-push',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(currentSub.toJSON())});const j=await r.json();if(!r.ok)throw new Error(j.error||'Push test failed');$('pushState').textContent='SERVER TEST SENT · WATCH FOR NOTIFICATION';}catch(e){alert(e.message);}};
 $('disable').onclick=async()=>{if(!currentSub)return;const json=currentSub.toJSON();await fetch('/api/subscription',{method:'DELETE',headers:{'content-type':'application/json'},body:JSON.stringify(json)}).catch(()=>{});await currentSub.unsubscribe();currentSub=null;renderPush();await refresh();};
-setInterval(tick,1000);setInterval(()=>{refresh();refreshLog();},30000);tick();refresh();refreshLog();initPush();
+setInterval(tick,1000);setInterval(()=>{refresh();refreshLivePrice();},15000);setInterval(refreshLog,30000);tick();refresh();refreshLivePrice();refreshLog();initPush();
 </script>
 </body></html>
