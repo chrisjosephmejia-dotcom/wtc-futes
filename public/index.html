@@ -10,7 +10,7 @@
 .positionEmpty{height:100%;min-height:220px;display:flex;flex-direction:column;justify-content:center}.positionTitle{font-size:22px;font-weight:900;margin:7px 0}.positionGrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:14px}.mini{border:1px solid #1c2d3e;border-radius:12px;background:#08131e;padding:11px}.mini .label,.card .label{font-size:9px;text-transform:uppercase;letter-spacing:.09em;color:#75899d}.mini strong{display:block;font-size:16px;margin-top:4px}.pnlPos{color:var(--green)}.pnlNeg{color:var(--red)}
 .sectionHead{display:flex;justify-content:space-between;align-items:end;gap:14px;margin:26px 0 11px}.sectionTitle{font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.12em;color:#a2b3c3}.sectionNote{font-size:11px;color:#6f8295}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.card{border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:14px}.card .value{font-size:19px;font-weight:850;margin-top:5px}.card .small{font-size:10px;color:#758a9d;margin-top:4px}
 .scorecard{border:1px solid var(--line);border-radius:14px;overflow:hidden}.factor{display:grid;grid-template-columns:1.1fr 1.6fr 80px;gap:10px;padding:10px 12px;border-bottom:1px solid #182a3a;align-items:center;font-size:11px}.factor:last-child{border-bottom:0}.factor.head{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:#75899d;background:#09131e}.factorName{font-weight:800}.factorDetail{color:#8598ab}.pts{font-weight:900;text-align:right}.pts.pos{color:var(--green)}.pts.neg{color:var(--red)}
-.perf{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}.perf .card .value{font-size:17px}.downloads{display:flex;gap:8px;flex-wrap:wrap}.btn{display:inline-flex;align-items:center;justify-content:center;border:1px solid #28425a;background:#0b1a28;color:#c8d6e3;border-radius:10px;padding:9px 11px;font-size:10px;font-weight:850;letter-spacing:.05em}.btn:hover{border-color:#426782}.tableWrap{overflow:auto;border:1px solid var(--line);border-radius:14px}.trades{width:100%;border-collapse:collapse;min-width:980px;font-size:10px}.trades th,.trades td{padding:9px 10px;border-bottom:1px solid #182a39;text-align:left;white-space:nowrap}.trades th{font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:#73879a;background:#09131d}.trades tbody tr:last-child td{border-bottom:0}.callTxt{color:var(--green);font-weight:900}.putTxt{color:var(--red);font-weight:900}.footer{margin-top:24px;border-top:1px solid #142535;padding-top:16px;font-size:10px;color:#617487;line-height:1.5}
+.perf{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}.perf .card .value{font-size:17px}.downloads{display:flex;gap:8px;flex-wrap:wrap}.btn{display:inline-flex;align-items:center;justify-content:center;border:1px solid #28425a;background:#0b1a28;color:#c8d6e3;border-radius:10px;padding:9px 11px;font-size:10px;font-weight:850;letter-spacing:.05em;cursor:pointer}.btn:hover{border-color:#426782}.btn:disabled{opacity:.42;cursor:not-allowed}.alertPanel{margin-top:16px;display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}.alertCopy{max-width:650px}.alertControls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.iosHint{display:none;margin-top:9px;color:var(--amber);font-size:10px;line-height:1.45}.tableWrap{overflow:auto;border:1px solid var(--line);border-radius:14px}.trades{width:100%;border-collapse:collapse;min-width:980px;font-size:10px}.trades th,.trades td{padding:9px 10px;border-bottom:1px solid #182a39;text-align:left;white-space:nowrap}.trades th{font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:#73879a;background:#09131d}.trades tbody tr:last-child td{border-bottom:0}.callTxt{color:var(--green);font-weight:900}.putTxt{color:var(--red);font-weight:900}.footer{margin-top:24px;border-top:1px solid #142535;padding-top:16px;font-size:10px;color:#617487;line-height:1.5}
 @media(max-width:850px){.hero{grid-template-columns:1fr}.grid{grid-template-columns:repeat(2,1fr)}.perf{grid-template-columns:repeat(3,1fr)}}@media(max-width:520px){.wrap{padding:22px 13px 42px}.headline{font-size:33px}.grid,.perf{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
@@ -30,6 +30,23 @@
   <div id="gates" class="gates"></div>
  </div>
  <div class="panel" id="positionPanel"><div class="positionEmpty"><div class="eyebrow">Modeled position</div><div class="positionTitle">FLAT</div><div class="reason">No XSP contract is open. A trade is logged only after the full score + trigger + liquidity gates agree.</div></div></div>
+</section>
+
+<section class="panel alertPanel">
+ <div class="alertCopy">
+  <div class="eyebrow">App notifications</div>
+  <div class="positionTitle" style="font-size:18px">ENTRY + EXIT ALERTS</div>
+  <div class="reason">Browser/app push only. Alerts fire when the model opens an XSP CALL/PUT and when that modeled position exits. No email and no WAIT/setup-flicker notifications.</div>
+  <div id="iosHint" class="iosHint">iPhone/iPad: add this site to your Home Screen, open it from the new icon, then enable notifications.</div>
+ </div>
+ <div>
+  <div class="alertControls">
+   <button id="enablePush" class="btn">ENABLE PUSH</button>
+   <button id="testPush" class="btn" disabled>SERVER TEST</button>
+   <button id="disablePush" class="btn" disabled>TURN OFF</button>
+  </div>
+  <div style="margin-top:9px;display:flex;gap:7px;flex-wrap:wrap"><span id="pushState" class="pill">PUSH STATUS —</span><span id="pushSubs" class="pill">SUBSCRIBERS —</span></div>
+ </div>
 </section>
 
 <div class="sectionHead"><div class="sectionTitle">Market structure</div><div id="stamp" class="sectionNote">—</div></div>
@@ -64,7 +81,8 @@
 <div class="footer">WTC XSP 0DTE V1 is a forward-test model using read-only Tastytrade market data. SPY drives the entry model; ES contributes a capped confirmation layer. Entries use the modeled XSP option ask and exits use the bid, so the primary P&L includes the quoted spread. No orders are placed. V1 rules are intentionally frozen until a useful sample exists.</div>
 </main>
 <script>
-const $=id=>document.getElementById(id),money=n=>Number.isFinite(+n)?(+n).toLocaleString(undefined,{style:'currency',currency:'USD',minimumFractionDigits:2}):'—',num=(n,d=2)=>Number.isFinite(+n)?(+n).toFixed(d):'—',pct=n=>Number.isFinite(+n)?((+n>=0?'+':'')+num(n,2)+'%'):'—';
+const $=id=>document.getElementById(id),money=n=>Number.isFinite(+n)?(+n).toLocaleString(undefined,{style:'currency',currency:'USD',minimumFractionDigits:2}):'—',num=(n,d=2)=>Number.isFinite(+n)?(+n).toFixed(d):'—',pct=n=>Number.isFinite(+n)?((+n>=0?'+':'')+num(n,2)+'%'):'—';let currentSub=null;
+function b64ToBytes(s){const p='='.repeat((4-s.length%4)%4);const b=atob((s+p).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from([...b].map(c=>c.charCodeAt(0)));}
 function paintVal(el,n){el.className='value '+(+n>0?'pnlPos':+n<0?'pnlNeg':'')}
 function headlineClass(s){if(/^HOLD XSP CALL|BUY XSP CALL/.test(s))return'call';if(/^HOLD XSP PUT|BUY XSP PUT/.test(s))return'put';return'wait'}
 function renderPosition(st){
@@ -89,7 +107,7 @@ function renderTrades(xs){
 async function refresh(){
  try{
   const r=await fetch('/api/0dte-status',{cache:'no-store'}),d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'Status unavailable');
-  const st=d.status||{},sig=st.signal||{},p=d.performance||{};
+  const st=d.status||{},sig=st.signal||{},p=d.performance||{};$('pushSubs').textContent='SUBSCRIBERS '+(d.pushSubscribers??'—');
   $('feed').innerHTML='<span class="dot"></span>'+(st.ok===false?'DATA ISSUE':'TASTYTRADE LIVE');$('feed').className='pill '+(st.ok===false?'bad':'live');
   $('headline').textContent=st.headline||sig.setup||'WAIT';$('headline').className='headline '+headlineClass($('headline').textContent);
   $('reason').textContent=st.lastAction?.reason||sig.blockReason||('Trigger: '+(sig.trigger||'waiting for a qualifying retest / reclaim'));
@@ -109,6 +127,46 @@ async function refresh(){
   renderTrades(d.recentTrades);
  }catch(e){$('feed').textContent='DATA ISSUE';$('feed').className='pill bad';$('headline').textContent='WAIT — DATA CHECK';$('headline').className='headline wait';$('reason').textContent=e.message}
 }
-refresh();setInterval(refresh,15000);
+function renderPush(){
+ const on=!!currentSub,perm=('Notification'in window)?Notification.permission:'unsupported';
+ $('enablePush').disabled=on;$('testPush').disabled=!on;$('disablePush').disabled=!on;
+ $('pushState').textContent=on?'PUSH ON':('PUSH OFF · '+String(perm).toUpperCase());
+ $('pushState').className='pill '+(on?'live':perm==='denied'?'bad':'warn');
+}
+async function initPush(){
+ if(!('serviceWorker'in navigator)||!('PushManager'in window)||!('Notification'in window)){
+   $('pushState').textContent='PUSH NOT SUPPORTED';$('pushState').className='pill bad';$('enablePush').disabled=true;return;
+ }
+ const isiOS=/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream;
+ const standalone=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+ if(isiOS&&!standalone)$('iosHint').style.display='block';
+ const reg=await navigator.serviceWorker.register('/sw.js');
+ currentSub=await reg.pushManager.getSubscription();
+ renderPush();
+}
+$('enablePush').onclick=async()=>{
+ try{
+  const perm=await Notification.requestPermission();if(perm!=='granted')throw new Error('Notification permission not granted');
+  const reg=await navigator.serviceWorker.ready;
+  const {publicKey}=await (await fetch('/api/vapid-key',{cache:'no-store'})).json();
+  currentSub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ToBytes(publicKey)});
+  const rr=await fetch('/api/subscription',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(currentSub.toJSON())});
+  if(!rr.ok)throw new Error('Server subscription failed');
+  renderPush();await refresh();
+ }catch(e){alert(e.message);renderPush();}
+};
+$('testPush').onclick=async()=>{
+ try{
+  const rr=await fetch('/api/test-push',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(currentSub.toJSON())});
+  const j=await rr.json();if(!rr.ok)throw new Error(j.error||'Push test failed');
+  $('pushState').textContent='SERVER TEST SENT';
+ }catch(e){alert(e.message);}
+};
+$('disablePush').onclick=async()=>{
+ if(!currentSub)return;
+ const j=currentSub.toJSON();await fetch('/api/subscription',{method:'DELETE',headers:{'content-type':'application/json'},body:JSON.stringify(j)}).catch(()=>{});
+ await currentSub.unsubscribe();currentSub=null;renderPush();await refresh();
+};
+refresh();initPush();setInterval(refresh,15000);
 </script>
 </body></html>
