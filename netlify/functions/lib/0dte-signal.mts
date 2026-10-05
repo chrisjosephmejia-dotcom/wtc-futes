@@ -50,6 +50,7 @@ export function build0DteSignal(input:{
   minuteBars:Bar[];
   dailyBars:Bar[];
   quotes:Record<string,Quote>;
+  esMinuteBars?:Bar[];
   highImpactLockout:boolean;
   highImpactReason?:string;
   nowMs?:number;
@@ -78,6 +79,18 @@ export function build0DteSignal(input:{
   const overextended=Math.abs(vwapPct)>Math.max(.30,(Number.isFinite(atrPct)?atrPct*.35:.35))||rsi5>=80||rsi5<=20;
 
   const qqq=fromOpen(input.quotes.QQQ),iwm=fromOpen(input.quotes.IWM),vix=fromOpen(input.quotes.VIX);
+
+  const esBars=input.esMinuteBars||[];
+  const esRth=esBars.filter(b=>{const p=ct(b.t);return p.date===now.date&&p.minute>=510&&p.minute<=900});
+  let es:any={available:false,symbol:"ES",price:null,vwap:null,vwapPct:null,trend5:"NEUTRAL",overnightHigh:null,overnightLow:null,overnightMid:null,overnightLocation:"UNKNOWN"};
+  if(esRth.length>=5){
+    const ev=cumulativeVwap(esRth),lastEs=esRth[esRth.length-1],esVwap=ev[ev.length-1],es5=resample(esRth,5),et=trend(es5);
+    const beforeOpen=esBars.filter(b=>{const p=ct(b.t);return (p.date===now.date&&p.minute<510)||(p.date!==now.date&&p.minute>=1020)});
+    const overnight=beforeOpen.slice(-900);
+    const oh=overnight.length?Math.max(...overnight.map(b=>b.h)):NaN,ol=overnight.length?Math.min(...overnight.map(b=>b.l)):NaN,om=Number.isFinite(oh)&&Number.isFinite(ol)?(oh+ol)/2:NaN;
+    const loc=Number.isFinite(oh)&&lastEs.c>oh?"ABOVE O/N HIGH":Number.isFinite(ol)&&lastEs.c<ol?"BELOW O/N LOW":Number.isFinite(om)?(lastEs.c>=om?"ABOVE O/N MID":"BELOW O/N MID"):"UNKNOWN";
+    es={available:true,symbol:"ES",price:lastEs.c,vwap:esVwap,vwapPct:pct(lastEs.c,esVwap),trend5:et.state,overnightHigh:Number.isFinite(oh)?oh:null,overnightLow:Number.isFinite(ol)?ol:null,overnightMid:Number.isFinite(om)?om:null,overnightLocation:loc};
+  }
   let score=0;const factors:SignalFactor[]=[];
   const add=(name:string,points:number,detail:string)=>{score+=points;factors.push({name,points,detail})};
 
@@ -91,6 +104,10 @@ export function build0DteSignal(input:{
   if(qqq>=.03)add("QQQ confirmation",1,`+${qqq.toFixed(2)}% from open`);else if(qqq<=-.03)add("QQQ confirmation",-1,`${qqq.toFixed(2)}% from open`);
   if(iwm>=.03)add("IWM confirmation",1,`+${iwm.toFixed(2)}% from open`);else if(iwm<=-.03)add("IWM confirmation",-1,`${iwm.toFixed(2)}% from open`);
   if(vix<=-.10)add("VIX confirmation",1,`${vix.toFixed(2)}% from open`);else if(vix>=.10)add("VIX confirmation",-1,`+${vix.toFixed(2)}% from open`);
+  if(es.available){
+    if(es.vwapPct>=.015)add("ES RTH VWAP",1,`+${es.vwapPct.toFixed(2)}% above ES RTH VWAP`);else if(es.vwapPct<=-.015)add("ES RTH VWAP",-1,`${es.vwapPct.toFixed(2)}% below ES RTH VWAP`);
+    if(es.trend5==="BULLISH")add("ES 5m trend",1,`Bullish · ${es.overnightLocation}`);else if(es.trend5==="BEARISH")add("ES 5m trend",-1,`Bearish · ${es.overnightLocation}`);
+  }else factors.push({name:"ES confirmation",points:0,detail:"ES context unavailable"});
 
   const recent=session.slice(-4),touchOrHigh=orComplete&&Number.isFinite(orHigh)&&recent.some(b=>b.l<=orHigh*1.0008&&b.h>=orHigh*.9995);
   const touchOrLow=orComplete&&Number.isFinite(orLow)&&recent.some(b=>b.h>=orLow*.9992&&b.l<=orLow*1.0005);
@@ -130,13 +147,13 @@ export function build0DteSignal(input:{
   if(blockReason)raw="WAIT";
 
   return {
-    raw,directionalRaw,setup:blockReason||setup,score:clamp(Math.round(score),-13,13),trigger,
+    raw,directionalRaw,setup:blockReason||setup,score:clamp(Math.round(score),-15,15),trigger,
     triggers:{call:callTrigger,put:putTrigger},
     eligibleForNewEntry:newEntryWindow&&!input.highImpactLockout&&!chop&&!stale,
     blockReason,overextended,chop,vwapCrosses20m:crosses,lastBarAgeSec,
     spy:{price:last.c,vwap,vwapPct,vwapSlope,open:session[0].o,orHigh,orLow,orState,orComplete,rsi5,momentum1:mom1,atrPct},
     timeframes:{m5:t5,m15:t15},
-    confirmations:{qqqFromOpen:qqq,iwmFromOpen:iwm,vixFromOpen:vix},
+    confirmations:{qqqFromOpen:qqq,iwmFromOpen:iwm,vixFromOpen:vix,es},
     factors,nowCt:{date:now.date,hour:now.hour,minute:now.min,totalMinutes:now.minute}
   };
 }
