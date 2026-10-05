@@ -36,20 +36,20 @@ function normQuote(x:any):Quote{
   };
 }
 
-export async function getMarketSnapshot(){
-  const token=await tastyAccessToken();
+export async function getMarketSnapshot(token?:string){
+  const t=token||await tastyAccessToken();
   const q=new URLSearchParams();
   for(const s of ["SPY","QQQ","IWM"])q.append("equity[]",s);
   for(const s of ["XSP","VIX"])q.append("index[]",s);
   const r=await fetch(`${BASE}/market-data/by-type?${q.toString()}`,{
-    headers:{Authorization:`Bearer ${token}`,"User-Agent":UA,Accept:"application/json"}
+    headers:{Authorization:`Bearer ${t}`,"User-Agent":UA,Accept:"application/json"}
   });
   const b:any=await body(r);
   if(!r.ok)throw new Error(`market snapshot failed (${r.status})`);
   const items=(b?.data?.items||[]).map(normQuote);
   const map:any={};
   for(const x of items)map[x.symbol]=x;
-  return {token,quotes:map as Record<string,Quote>};
+  return {token:t,quotes:map as Record<string,Quote>};
 }
 
 function ctDate(){
