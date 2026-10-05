@@ -4,6 +4,7 @@ import { tastyAccessToken, getMarketSnapshot, chooseXspContract, getOptionQuotes
 import { build0DteSignal } from "./lib/0dte-signal.mts";
 import { get0DteStore } from "./lib/0dte-store.mts";
 import { get0DteEventState } from "./lib/0dte-events.mts";
+import { getFutureFastContext } from "./lib/future-data.mts";
 
 type Position={
   id:string;direction:"CALL"|"PUT";contract:any;entryTime:string;entryMs:number;entrySpy:number;entryXsp:number;
@@ -56,10 +57,11 @@ export default async()=>{
     }
 
     const token=await tastyAccessToken();
-    const [snapshot,bars]=await Promise.all([getMarketSnapshot(token),getEquityFastContext("SPY",token)]);
+    const [snapshot,bars,esBars]=await Promise.all([getMarketSnapshot(token),getEquityFastContext("SPY",token),getFutureFastContext("ES",token).catch(()=>null)]);
     const prelimEvent=await get0DteEventState(store,now.date,now.total);
     const signal=build0DteSignal({
       minuteBars:bars.minuteBars,dailyBars:bars.dailyBars,quotes:snapshot.quotes,
+      esMinuteBars:esBars?.minuteBars||[],
       highImpactLockout:prelimEvent.highImpactLockout,
       highImpactReason:prelimEvent.active?.name,
       nowMs
