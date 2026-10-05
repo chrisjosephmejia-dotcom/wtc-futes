@@ -5,6 +5,7 @@ import { build0DteSignal } from "./lib/0dte-signal.mts";
 import { get0DteStore } from "./lib/0dte-store.mts";
 import { get0DteEventState } from "./lib/0dte-events.mts";
 import { getFutureFastContext } from "./lib/future-data.mts";
+import { sendAll } from "./lib/push.mts";
 
 type Position={
   id:string;direction:"CALL"|"PUT";contract:any;entryTime:string;entryMs:number;entrySpy:number;entryXsp:number;
@@ -116,6 +117,15 @@ export default async()=>{
           await appendTrade(store,trade);
           state.position=null;state.lastExitMs=nowMs;state.lastAction={type:"EXIT",reason,tradeId:trade.id,time:iso(),pnlPct:trade.pnlPct,pnlDollars:trade.pnlDollars};
           action=state.lastAction;
+          await sendAll({
+            title:`WTC 0DTE · EXIT ${pos.direction}`,
+            body:`${currentPnl.dollars>=0?"+":""}${currentPnl.dollars.toFixed(2)} (${currentPnl.pct>=0?"+":""}${currentPnl.pct.toFixed(1)}%) · ${reason}`,
+            tag:`wtc-0dte-exit-${trade.id}`,
+            url:"/",
+            kind:"exit",
+            signal:`EXIT ${pos.direction}`,
+            ts:Date.now()
+          }).catch(err=>console.error("0DTE exit push",err));
         }
       }
     }
@@ -141,6 +151,15 @@ export default async()=>{
           };
           state.position=pos;state.entriesToday++;state.lastAction={type:"ENTRY",direction:dir,tradeId:id,time:iso(),contract:pick.contract.symbol,ask};
           action=state.lastAction;optionQuote=q;currentPnl=initial;
+          await sendAll({
+            title:`WTC 0DTE · BUY ${dir}`,
+            body:`XSP ${pick.contract.strike} ${dir==="CALL"?"C":"P"} @ ${ask.toFixed(2)} ask · score ${signal.score>0?"+":""}${signal.score} · ${signal.trigger||"confirmed trigger"}`,
+            tag:`wtc-0dte-entry-${id}`,
+            url:"/",
+            kind:"entry",
+            signal:`BUY ${dir}`,
+            ts:Date.now()
+          }).catch(err=>console.error("0DTE entry push",err));
         }
       }
     }
