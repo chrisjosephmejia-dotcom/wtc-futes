@@ -1,5 +1,6 @@
 import type { Context, Config } from "@netlify/functions";
 import { get0DteStore } from "./lib/0dte-store.mts";
+import { pushSubscriberCount } from "./lib/push.mts";
 
 function stats(trades:any[]){
   const xs=trades||[];let cum=0,peak=0,maxDd=0,gp=0,gl=0;
@@ -17,14 +18,16 @@ function stats(trades:any[]){
 export default async(_req:Request,_ctx:Context)=>{
   try{
     const store=get0DteStore();
-    const [status,trades]=await Promise.all([
+    const [status,trades,subscribers]=await Promise.all([
       store.get("status/current.json",{type:"json"}).catch(()=>null),
-      store.get("trades/index.json",{type:"json"}).catch(()=>null)
+      store.get("trades/index.json",{type:"json"}).catch(()=>null),
+      pushSubscriberCount().catch(()=>0)
     ]);
     const ledger=Array.isArray(trades)?trades:[];
     return Response.json({
       ok:true,
       status:status||{ok:true,version:"WTC XSP 0DTE V1",headline:"INITIALIZING"},
+      pushSubscribers:subscribers,
       performance:stats(ledger),
       recentTrades:ledger.slice(-25).reverse()
     },{headers:{"Cache-Control":"no-store"}});
