@@ -1,7 +1,7 @@
 import WebSocket from "ws";
 
 export type Bar={t:number;o:number;h:number;l:number;c:number;v:number};
-const BASE="https://api.tastyworks.com", UA="wtc-options-seller/1.0";
+const BASE="https://api.tastyworks.com", UA="wtc-0dte/1.0";
 const TX=1, RM=2, SB=4, SE=8, SS=16;
 const num=(v:any)=>Number.isFinite(Number(v))?Number(v):null;
 async function json(r:Response){return r.json().catch(()=>({}));}
@@ -48,5 +48,17 @@ function bars(c:Candle[]):Bar[]{return c.filter(x=>x.open!==null&&x.high!==null&
 export async function getEquityBars(symbol:string){
   const at=await accessToken(); const [eq,qt]=await Promise.all([equity(at,symbol),quoteToken(at)]); const ss=eq["streamer-symbol"]; const now=Date.now();
   const [mins,days]=await Promise.all([history(qt["dxlink-url"],qt.token,ss,1,"m",now-8*24*3600e3,500),history(qt["dxlink-url"],qt.token,ss,1,"d",now-420*24*3600e3,220)]);
+  return {symbol,streamerSymbol:ss,minuteBars:bars(mins),dailyBars:bars(days),source:"tastytrade DXLink"};
+}
+
+
+export async function getEquityFastContext(symbol:string){
+  const at=await accessToken();
+  const [eq,qt]=await Promise.all([equity(at,symbol),quoteToken(at)]);
+  const ss=eq["streamer-symbol"],now=Date.now();
+  const [mins,days]=await Promise.all([
+    history(qt["dxlink-url"],qt.token,ss,1,"m",now-3*24*3600e3,180),
+    history(qt["dxlink-url"],qt.token,ss,1,"d",now-75*24*3600e3,30)
+  ]);
   return {symbol,streamerSymbol:ss,minuteBars:bars(mins),dailyBars:bars(days),source:"tastytrade DXLink"};
 }
