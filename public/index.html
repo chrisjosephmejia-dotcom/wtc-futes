@@ -1,133 +1,161 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<meta name="theme-color" content="#071018" />
-<link rel="manifest" href="/manifest.webmanifest" />
-<link rel="apple-touch-icon" href="/icons/icon-192.png" />
-<title>WTC MNQ Futes</title>
-<style>
-:root{color-scheme:dark;--bg:#071018;--panel:#0d1822;--panel2:#101f2b;--text:#eef7fb;--muted:#8fa7b5;--line:#1e3544;--green:#4ee0a1;--red:#ff6b78;--amber:#f7c85c;--blue:#5fb7ff}
-*{box-sizing:border-box} body{margin:0;background:radial-gradient(circle at 20% 0,#102739 0,#071018 40%);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;min-height:100vh}.wrap{max-width:980px;margin:auto;padding:22px 16px 56px}.top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:14px}.brand{font-weight:900;letter-spacing:.12em;font-size:12px;color:var(--blue)}h1{margin:5px 0 0;font-size:28px}.clock{font-variant-numeric:tabular-nums;color:var(--muted);font-size:13px;text-align:right}.card{background:linear-gradient(180deg,rgba(16,31,43,.96),rgba(10,23,33,.96));border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 14px 50px rgba(0,0,0,.18)}.hero{padding:20px;margin-bottom:14px}.kicker{font-size:12px;font-weight:800;letter-spacing:.09em;color:var(--muted)}.signal{font-size:44px;font-weight:950;line-height:1;margin:10px 0 8px}.signal.buy{color:var(--green)}.signal.sell{color:var(--red)}.signal.wait{color:var(--amber)}.reason{font-size:15px;color:#c4d6df}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px}.metric{background:#091620;border:1px solid var(--line);padding:12px;border-radius:12px}.metric .label{font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}.metric .value{font-size:20px;font-weight:800;margin-top:4px}.row{display:grid;grid-template-columns:1.2fr .8fr;gap:14px;margin-bottom:14px}.frames{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px}.frame{border:1px solid var(--line);border-radius:12px;padding:12px;background:#091620}.state{font-weight:900;font-size:18px}.BUY{color:var(--green)}.SELL{color:var(--red)}.NEUTRAL{color:var(--amber)}.small{font-size:12px;color:var(--muted);line-height:1.45}.buttons{display:flex;flex-wrap:wrap;gap:9px;margin-top:12px}button,.downloadLink{border:1px solid var(--line);border-radius:10px;padding:10px 13px;background:#132635;color:var(--text);font-weight:800;cursor:pointer;text-decoration:none;font-size:13px;display:inline-block}button.primary{background:#183e34;border-color:#2e6655}button.warn{background:#392f19;border-color:#6f5a28}button:disabled{opacity:.45;cursor:not-allowed}.downloadLink{background:#10283a;border-color:#28516c}.statusline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px}.pill{border:1px solid var(--line);background:#091620;border-radius:999px;padding:6px 9px;font-size:11px;color:var(--muted)}.pill.good{color:var(--green);border-color:#255442}.pill.bad{color:var(--red);border-color:#63313a}.pill.warn{color:var(--amber);border-color:#615128}.sectionTitle{font-weight:900;font-size:15px}.diag{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.diag div{padding:9px;background:#091620;border-radius:10px;border:1px solid var(--line)}.diag b{display:block;font-size:12px}.diag span{font-size:12px;color:var(--muted)}.rules{margin:10px 0 0;padding-left:18px;color:#b9ccd6;font-size:13px;line-height:1.55}.foot{margin-top:16px;color:#6f8998;font-size:11px;line-height:1.5}.ios{display:none;margin-top:10px;padding:10px;border:1px solid #5b4a24;background:#2b2414;border-radius:10px;color:#e9d792;font-size:12px}.logCard{margin-bottom:14px}.logStats{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin-top:12px}.logStat{background:#091620;border:1px solid var(--line);border-radius:11px;padding:10px}.logStat .label{font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}.logStat .value{font-size:18px;font-weight:900;margin-top:3px}.pos{color:var(--green)!important}.neg{color:var(--red)!important}.flat{color:var(--muted)!important}.tableWrap{overflow-x:auto;margin-top:12px;border:1px solid var(--line);border-radius:12px}table{width:100%;border-collapse:collapse;min-width:1100px;background:#091620}th,td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:left;font-size:11px;white-space:nowrap}th{color:var(--muted);font-size:10px;letter-spacing:.06em;text-transform:uppercase;background:#0c1a25}tbody tr:last-child td{border-bottom:0}.openRow td{background:rgba(95,183,255,.04)}.emptyLog{padding:18px;color:var(--muted);text-align:center;font-size:12px}.logNote{margin-top:9px;font-size:11px;color:#6f8998;line-height:1.45}@media(max-width:720px){.signal{font-size:38px}.grid{grid-template-columns:repeat(2,1fr)}.row{grid-template-columns:1fr}.frames{grid-template-columns:repeat(2,1fr)}.logStats{grid-template-columns:repeat(2,1fr)}h1{font-size:24px}}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#071018" />
+  <meta name="description" content="ONE WTC — Wheelhouse Trading Co. trading systems command center." />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <title>ONE WTC</title>
+  <style>
+    :root{
+      font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      color-scheme:dark;
+      --bg:#071018;
+      --panel:#0b1622;
+      --panel2:#0e1b29;
+      --line:#1d3042;
+      --text:#f5f8fb;
+      --muted:#8da0b3;
+      --cyan:#70d8ff;
+      --green:#55e6a5;
+      --amber:#ffd866;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      min-height:100vh;
+      color:var(--text);
+      background:
+        radial-gradient(circle at 14% 4%,rgba(55,115,151,.25),transparent 31%),
+        radial-gradient(circle at 88% 15%,rgba(35,116,97,.18),transparent 28%),
+        linear-gradient(180deg,#08121c 0%,#071018 55%,#050c12 100%);
+    }
+    a{color:inherit;text-decoration:none}
+    .wrap{max-width:1180px;margin:0 auto;padding:34px 22px 54px}
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:20px}
+    .brand{font-size:11px;font-weight:900;letter-spacing:.18em;text-transform:uppercase;color:var(--cyan)}
+    .status{display:flex;align-items:center;gap:9px;padding:8px 12px;border:1px solid #213649;background:rgba(10,22,34,.72);border-radius:999px;color:#c9d6e2;font-size:11px;font-weight:800;letter-spacing:.04em}
+    .dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 4px rgba(85,230,165,.10)}
+    .hero{padding:82px 0 48px;max-width:850px}
+    .kicker{color:#7f94a8;font-size:12px;text-transform:uppercase;letter-spacing:.16em;font-weight:800}
+    h1{margin:8px 0 12px;font-size:clamp(54px,9vw,108px);line-height:.9;letter-spacing:-.055em;font-weight:950}
+    .hero p{margin:0;max-width:700px;color:#9eb0c1;font-size:17px;line-height:1.6}
+    .systemStrip{display:flex;flex-wrap:wrap;gap:9px;margin-top:25px}
+    .chip{padding:8px 11px;border-radius:999px;border:1px solid #22364a;background:#0b1723;color:#a9b9c8;font-size:11px;font-weight:800}
+    .chip strong{color:var(--green)}
+    .sectionHead{display:flex;justify-content:space-between;gap:16px;align-items:end;margin:34px 0 14px}
+    .sectionTitle{font-size:12px;text-transform:uppercase;letter-spacing:.13em;font-weight:900;color:#9bb0c3}
+    .sectionNote{font-size:12px;color:#677b8e}
+    .apps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+    .app{
+      position:relative;
+      min-height:330px;
+      padding:24px;
+      border:1px solid var(--line);
+      border-radius:22px;
+      background:
+        linear-gradient(180deg,rgba(17,34,49,.92),rgba(8,18,28,.96));
+      overflow:hidden;
+      transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;
+    }
+    .app:before{
+      content:"";
+      position:absolute;
+      width:240px;height:240px;border-radius:50%;
+      top:-120px;right:-70px;
+      filter:blur(10px);
+      opacity:.22;
+    }
+    .app.futes:before{background:#58c8ff}
+    .app.options:before{background:#55e6a5}
+    .app:hover{transform:translateY(-3px);border-color:#34516a;box-shadow:0 20px 55px rgba(0,0,0,.26)}
+    .appTop{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .live{display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(85,230,165,.28);background:rgba(22,78,62,.18);color:#72efb3;padding:6px 9px;border-radius:999px;font-size:10px;font-weight:900;letter-spacing:.08em}
+    .appCode{font-size:11px;color:#6f8498;font-weight:800;letter-spacing:.08em}
+    .app h2{position:relative;margin:50px 0 8px;font-size:32px;letter-spacing:-.025em}
+    .app p{position:relative;margin:0;color:#8fa2b4;line-height:1.55;max-width:470px}
+    .meta{position:relative;display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
+    .meta span{font-size:10px;font-weight:850;letter-spacing:.07em;padding:6px 8px;border-radius:8px;background:#0a141e;border:1px solid #1e3041;color:#8fa5b9}
+    .open{position:absolute;left:24px;right:24px;bottom:22px;display:flex;justify-content:space-between;align-items:center;padding-top:18px;border-top:1px solid #1a2a39;font-size:12px;font-weight:900;letter-spacing:.08em}
+    .futes .open{color:var(--cyan)}
+    .options .open{color:var(--green)}
+    .arrow{font-size:22px;font-weight:400}
+    .roadmap{margin-top:22px;border:1px solid #172838;background:rgba(8,18,28,.72);border-radius:16px;padding:16px 18px;color:#788b9d;font-size:12px;line-height:1.55}
+    .roadmap strong{color:#aebdca}
+    footer{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-top:52px;padding-top:18px;border-top:1px solid #142432;color:#5f7284;font-size:11px}
+    @media(max-width:760px){
+      .wrap{padding:24px 16px 40px}
+      .hero{padding:58px 0 34px}
+      .apps{grid-template-columns:1fr}
+      .app{min-height:300px}
+      .sectionHead{align-items:flex-start;flex-direction:column}
+    }
+  </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="top"><div><div class="brand">WHEELHOUSE TRADING CO.</div><h1>MNQ FUTURES ALIGNMENT</h1></div><div class="clock" id="clock">—</div></div>
-  <div class="card hero">
-    <div class="kicker">WTC V2 STATEFUL POSITION · LIVE CME NQ · 15-SEC PRICE · 1-MIN ENGINE</div>
-    <div id="signal" class="signal wait">WAIT</div>
-    <div id="reason" class="reason">Loading engine status…</div>
-    <div class="grid">
-      <div class="metric"><div class="label" id="priceLabel">NQ futures</div><div class="value" id="price">—</div></div>
-      <div class="metric"><div class="label">From session open</div><div class="value" id="fromOpen">—</div></div>
-      <div class="metric"><div class="label">Master score</div><div class="value" id="score">—</div></div>
-      <div class="metric"><div class="label">Session VWAP</div><div class="value" id="vwap">—</div></div>
+  <main class="wrap">
+    <div class="topbar">
+      <div class="brand">Wheelhouse Trading Co.</div>
+      <div class="status"><span class="dot"></span>2 SYSTEMS LIVE</div>
     </div>
-    <div class="statusline">
-      <span id="raw" class="pill">RAW SIGNAL —</span><span id="feed" class="pill">FEED —</span><span id="livePriceState" class="pill">LIVE PRICE —</span><span id="window" class="pill">CME SESSION —</span><span id="daily" class="pill">DAILY —</span><span id="subs" class="pill">PUSH SUBSCRIBERS —</span>
-    </div>
-  </div>
 
-  <div class="row">
-    <div class="card">
-      <div class="sectionTitle">ALIGNMENT MAP</div><div class="small">30m + 15m establish direction · 5m confirms momentum · 1m triggers. Raw WAIT can now be ignored while the position state remains intact.</div>
-      <div class="frames">
-        <div class="frame"><div class="small">30M TREND</div><div class="state NEUTRAL" id="f30">—</div><div class="small" id="f30d">—</div></div>
-        <div class="frame"><div class="small">15M BIAS</div><div class="state NEUTRAL" id="f15">—</div><div class="small" id="f15d">—</div></div>
-        <div class="frame"><div class="small">5M MOMENTUM</div><div class="state NEUTRAL" id="f5">—</div><div class="small" id="f5d">—</div></div>
-        <div class="frame"><div class="small">1M TRIGGER</div><div class="state NEUTRAL" id="f1">—</div><div class="small" id="f1d">—</div></div>
+    <section class="hero">
+      <div class="kicker">Trading systems command center</div>
+      <h1>ONE WTC</h1>
+      <p>One front door for Wheelhouse Trading Co. systems. Each app runs independently so the engines can keep evolving without changing this hub.</p>
+      <div class="systemStrip">
+        <span class="chip"><strong>●</strong> TASTYTRADE DATA</span>
+        <span class="chip">READ-ONLY MARKET FEEDS</span>
+        <span class="chip">INDEPENDENT WTC APPS</span>
       </div>
-      <div class="diag">
-        <div><b>Session opening range</b><span id="or">—</span></div><div><b>VWAP extension</b><span id="ext">—</span></div>
-        <div><b>Volume</b><span id="vol">—</span></div><div><b>Last market bar</b><span id="bar">—</span></div>
-      </div>
+    </section>
+
+    <div class="sectionHead">
+      <div class="sectionTitle">Live systems</div>
+      <div class="sectionNote">Select a WTC engine</div>
     </div>
 
-    <div class="card">
-      <div class="sectionTitle">BACKGROUND PUSH</div>
-      <div class="small">The server sends alerts for entries, reversals and true exits. Ordinary raw WAIT flicker while a position is held does not alert.</div>
-      <div id="iosHint" class="ios">iPhone/iPad: add this site to your Home Screen, open it from the new icon, then enable push.</div>
-      <div class="buttons"><button id="enable" class="primary">ENABLE PUSH</button><button id="test" class="warn" disabled>SERVER TEST</button><button id="disable" disabled>TURN OFF</button></div>
-      <div class="statusline"><span id="pushState" class="pill">PUSH STATUS —</span></div>
-      <div class="diag"><div><b>Last engine check</b><span id="engine">—</span></div><div><b>Last push sent</b><span id="lastPush">—</span></div></div>
-    </div>
-  </div>
+    <section class="apps">
+      <a class="app futes" href="https://wtc-futes.netlify.app/" aria-label="Open WTC Futes">
+        <div class="appTop">
+          <div class="live"><span class="dot"></span>LIVE</div>
+          <div class="appCode">WTC / FUTURES</div>
+        </div>
+        <h2>WTC Futes</h2>
+        <p>NQ / MNQ futures signal engine built around direct CME market data, multi-timeframe alignment, stateful position logic, and WTC V2 hysteresis.</p>
+        <div class="meta">
+          <span>TASTYTRADE</span>
+          <span>DXLINK</span>
+          <span>NQ / MNQ</span>
+          <span>LIVE SIGNALS</span>
+        </div>
+        <div class="open"><span>OPEN FUTURES</span><span class="arrow">→</span></div>
+      </a>
 
-  <div class="card logCard">
-    <div class="sectionTitle">WTC V2 FORWARD LOG · THEORETICAL MNQ P&amp;L</div>
-    <div class="small">Clean V2 ledger from launch forward. Trades are retained permanently, and every production engine minute is also stored with raw signal, position state, score and timeframe states.</div>
-    <div class="logStats">
-      <div class="logStat"><div class="label">Closed gross P&amp;L</div><div class="value" id="closedPnl">—</div></div>
-      <div class="logStat"><div class="label">Net after RH fees</div><div class="value" id="closedNetPnl">—</div></div>
-      <div class="logStat"><div class="label">Open gross P&amp;L</div><div class="value" id="openPnl">—</div></div>
-      <div class="logStat"><div class="label">Closed trades</div><div class="value" id="tradeCount">0</div></div>
-      <div class="logStat"><div class="label">Win rate</div><div class="value" id="winRate">—</div></div>
-    </div>
-    <div class="buttons"><a class="downloadLink" href="/api/signal-log.csv">DOWNLOAD FULL TRADE CSV</a><a class="downloadLink" href="/api/decision-log.csv?all=1">DOWNLOAD RAW DECISION CSV</a></div>
-    <div class="tableWrap">
-      <table>
-        <thead><tr><th>Status</th><th>Side</th><th>Contract</th><th>Entry</th><th>Exit / Mark</th><th>Score in</th><th>Score out</th><th>Points</th><th>Gross P&amp;L</th><th>Net after fees</th><th>Opened</th><th>Closed</th></tr></thead>
-        <tbody id="logBody"><tr><td colspan="12" class="emptyLog">Loading signal log…</td></tr></tbody>
-      </table>
-    </div>
-    <div class="logNote" id="logNote">WTC V2 score-zero hysteresis. Gross and Robinhood Gold fee-adjusted results are theoretical for 1 MNQ; slippage and actual fills are not included.</div>
-  </div>
+      <a class="app options" href="https://wtc-options-seller.netlify.app/" aria-label="Open WTC Options Seller">
+        <div class="appTop">
+          <div class="live"><span class="dot"></span>LIVE</div>
+          <div class="appCode">WTC / OPTIONS</div>
+        </div>
+        <h2>Options Seller</h2>
+        <p>Premium Vertex covered-call and cash-secured-put timing with live Tastytrade data, weekly outlook, event risk, regime analysis, and confirmed turn logic.</p>
+        <div class="meta">
+          <span>TASTYTRADE</span>
+          <span>PREMIUM VERTEX</span>
+          <span>CC / CSP</span>
+          <span>LIVE MARKET DATA</span>
+        </div>
+        <div class="open"><span>OPEN OPTIONS</span><span class="arrow">→</span></div>
+      </a>
+    </section>
 
-  <div class="card">
-    <div class="sectionTitle">LOCKED OPERATING RULES · V2</div>
-    <ul class="rules"><li>CME NQ normal hours: Sunday–Friday 5:00 p.m.–4:00 p.m. CT, with the daily 4:00–5:00 p.m. CT maintenance break. The first five minutes after each 5:00 p.m. reopen are blocked for new entries.</li><li>Entry logic is unchanged: trend-aligned setup needs at least ±5/9; mixed daily regime uses ±6/9; countertrend needs ±7/9, with 30m/15m/5m/1m alignment.</li><li>WAIT is no longer an automatic exit. Once long, hold through raw WAIT while master score stays above 0; exit when score reaches 0 or below. Once short, hold while score stays below 0; exit when score reaches 0 or above.</li><li>A full opposite BUY/SELL signal reverses immediately. CME session close or unavailable/stale market data flattens for safety. No fixed stop or profit target is added.</li><li>Signals use direct NQ futures candles from tastytrade/DXLink. The displayed NQ price refreshes every 15 seconds, but strategy decisions and logging remain on the 1-minute engine. The live ledger assumes 1 MNQ and tracks Robinhood Gold fees at $0.86 per side / $1.72 round trip; slippage is not modeled.</li></ul>
-  </div>
-  <div class="foot">Market data source: tastytrade DXLink using the active CME NQ futures contract. Normal CME Globex hours are Sunday–Friday 5:00 p.m.–4:00 p.m. CT with a daily 4:00–5:00 p.m. maintenance break. WTC V2 separates the raw setup signal from the stateful position signal to reduce flicker-driven churn. Display price refresh is read-only and does not alter the 1-minute trading engine. This dashboard is an execution aid, not a guarantee of profitability or investment advice.</div>
-</div>
-<script>
-const $=id=>document.getElementById(id); let currentSub=null;
-function b64ToBytes(s){const p='='.repeat((4-s.length%4)%4);const b=atob((s+p).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from([...b].map(c=>c.charCodeAt(0)));}
-function fmtTime(iso){if(!iso)return '—';try{return new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}).format(new Date(iso))+' CT';}catch{return iso}}
-function stateClass(el,state){el.className='state '+state;el.textContent=state;}
-function pnlClass(v){return !Number.isFinite(Number(v))?'flat':Number(v)>0?'pos':Number(v)<0?'neg':'flat';}
-function money(v){if(!Number.isFinite(Number(v)))return '—';const n=Number(v);return `${n>0?'+':''}$${n.toFixed(2)}`;}
-function points(v){if(!Number.isFinite(Number(v)))return '—';const n=Number(v);return `${n>0?'+':''}${n.toFixed(2)}`;}
-function score(v){if(!Number.isFinite(Number(v)))return '—';const n=Number(v);return `${n>0?'+':''}${n}`;}
-function update(s){
-  const sig=s.signal||'WAIT'; $('signal').textContent=sig; $('signal').className='signal '+(sig.startsWith('BUY')?'buy':sig.startsWith('SELL')?'sell':'wait'); $('reason').textContent=s.reason||'—';
-  $('raw').textContent=`RAW ${s.rawSignal||sig}`;$('raw').className='pill '+((s.rawSignal||sig).startsWith('BUY')?'good':(s.rawSignal||sig).startsWith('SELL')?'bad':'warn');
-  $('priceLabel').textContent=s.instrument?.symbol?`${s.instrument.symbol} futures`:'NQ futures'; $('price').textContent=s.price?`$${s.price.toFixed(2)}`:'—'; $('fromOpen').textContent=Number.isFinite(s.fromOpen)?`${s.fromOpen>0?'+':''}${s.fromOpen.toFixed(2)}%`:'—'; $('score').textContent=Number.isFinite(s.score)?`${s.score>0?'+':''}${s.score}/9`:'—'; $('vwap').textContent=s.vwap?`$${s.vwap.toFixed(2)}`:'—';
-  $('feed').textContent=s.market?.feedActive?'NQ FEED ACTIVE':'NQ FEED PAUSED'; $('feed').className='pill '+(s.market?.feedActive?'good':'warn'); $('window').textContent=s.market?.session?(s.market?.inEntry?'CME SESSION OPEN · SIGNALS ON':'CME SESSION OPEN · FIRST 5M BLOCK'):'CME SESSION CLOSED'; $('window').className='pill '+(s.market?.inEntry?'good':'warn'); $('daily').textContent='DAILY '+(s.daily?.state||'—'); $('subs').textContent=`PUSH SUBSCRIBERS ${s.pushSubscribers??'—'}`;
-  for(const [key,id] of [['30m','f30'],['15m','f15'],['5m','f5'],['1m','f1']]){const f=s.frames?.[key];if(!f)continue;stateClass($(id),f.state);$(id+'d').textContent=`${f.ema} EMA · RSI ${f.rsi} · MACD ${f.macd} · ${f.score>0?'+':''}${f.score}/5`;}
-  $('or').textContent=s.openingRange?`$${s.openingRange.low.toFixed(2)} – $${s.openingRange.high.toFixed(2)}`:'—'; $('ext').textContent=s.extension?`${s.extension.pct.toFixed(2)}% / limit ${s.extension.limitPct.toFixed(2)}%${s.extension.blocked?' · BLOCKED':''}`:'—'; $('vol').textContent=Number.isFinite(s.volumeRatio)?`${s.volumeRatio.toFixed(1)}× recent`:'—'; $('bar').textContent=s.market?.lastBarLabel||'—'; $('engine').textContent=fmtTime(s.checkedAt); $('lastPush').textContent=s.lastPush?`${s.lastPush.title||s.lastPush.signal} · ${fmtTime(s.lastPush.at)}`:'None yet';
-}
-function renderLog(data){
-  const st=data?.stats||{};
-  $('closedPnl').textContent=money(st.closedPnl);$('closedPnl').className='value '+pnlClass(st.closedPnl);
-  $('closedNetPnl').textContent=money(st.closedNetPnlBeforeSlippage);$('closedNetPnl').className='value '+pnlClass(st.closedNetPnlBeforeSlippage);
-  $('openPnl').textContent=money(st.openPnl);$('openPnl').className='value '+pnlClass(st.openPnl);
-  $('tradeCount').textContent=Number.isFinite(Number(st.closedTrades))?String(st.closedTrades):'0';
-  $('winRate').textContent=Number.isFinite(Number(st.winRate))?`${Number(st.winRate).toFixed(1)}%`:'—';
-  const body=$('logBody');body.textContent='';const rows=Array.isArray(data?.trades)?data.trades.slice(0,25):[];
-  if(!rows.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=12;td.className='emptyLog';td.textContent='No V2 trades logged yet. The first actionable entry will appear here automatically.';tr.appendChild(td);body.appendChild(tr);return;}
-  for(const t of rows){
-    const tr=document.createElement('tr');if(t.status==='OPEN')tr.className='openRow';
-    const vals=[t.status,t.direction,t.contract,Number.isFinite(Number(t.entryPrice))?`$${Number(t.entryPrice).toFixed(2)}`:'—',Number.isFinite(Number(t.status==='OPEN'?t.markPrice:t.exitPrice))?`$${Number(t.status==='OPEN'?t.markPrice:t.exitPrice).toFixed(2)}`:'—',score(t.entryScore),t.status==='OPEN'?'—':score(t.exitScore),points(t.points),money(t.theoreticalPnl),money(t.netPnlBeforeSlippage),fmtTime(t.openedAt),t.status==='OPEN'?'—':fmtTime(t.closedAt)];
-    vals.forEach((v,i)=>{const td=document.createElement('td');td.textContent=String(v);if(i===1)td.className=t.direction==='BUY MNQ'?'pos':'neg';if(i===7||i===8||i===9)td.className=pnlClass(t.theoreticalPnl);tr.appendChild(td);});
-    body.appendChild(tr);
-  }
-  if(data?.note)$('logNote').textContent=data.note;
-}
-async function refresh(){try{const r=await fetch('/api/status',{cache:'no-store'});update(await r.json());}catch(e){$('reason').textContent='STATUS ERROR · '+e.message;}}
-async function refreshLivePrice(){try{const r=await fetch('/api/live-price',{cache:'no-store'});if(!r.ok)throw new Error('Live price unavailable');const q=await r.json();if(Number.isFinite(Number(q.price)))$('price').textContent=`$${Number(q.price).toFixed(2)}`;if(q.symbol)$('priceLabel').textContent=`${q.symbol} futures · live`;$('livePriceState').textContent='LIVE PRICE · 15S';$('livePriceState').className='pill good';}catch(e){$('livePriceState').textContent='LIVE PRICE PAUSED';$('livePriceState').className='pill warn';}}
-async function refreshLog(){try{const r=await fetch('/api/signal-log',{cache:'no-store'});if(!r.ok)throw new Error('Signal log unavailable');renderLog(await r.json());}catch(e){const body=$('logBody');body.innerHTML='<tr><td colspan="12" class="emptyLog">SIGNAL LOG ERROR</td></tr>';}}
-function tick(){ $('clock').textContent=new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',weekday:'short',hour:'numeric',minute:'2-digit',second:'2-digit'}).format(new Date())+' CT'; }
-async function initPush(){
-  if(!('serviceWorker'in navigator)||!('PushManager'in window)||!('Notification'in window)){ $('pushState').textContent='PUSH NOT SUPPORTED';$('pushState').className='pill bad';$('enable').disabled=true;return; }
-  const isiOS=/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream; const standalone=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true; if(isiOS&&!standalone)$('iosHint').style.display='block';
-  const reg=await navigator.serviceWorker.register('/sw.js'); currentSub=await reg.pushManager.getSubscription(); renderPush();
-}
-function renderPush(){const on=!!currentSub;$('enable').disabled=on;$('test').disabled=!on;$('disable').disabled=!on;$('pushState').textContent=on?'PUSH ON · SERVER SUBSCRIBED':`PUSH OFF · ${Notification.permission.toUpperCase()}`;$('pushState').className='pill '+(on?'good':Notification.permission==='denied'?'bad':'warn');}
-$('enable').onclick=async()=>{try{const perm=await Notification.requestPermission();if(perm!=='granted')throw new Error('Notification permission not granted');const reg=await navigator.serviceWorker.ready;const {publicKey}=await (await fetch('/api/vapid-key')).json();currentSub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ToBytes(publicKey)});const r=await fetch('/api/subscription',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(currentSub.toJSON())});if(!r.ok)throw new Error('Server subscription failed');renderPush();await refresh();}catch(e){alert(e.message);renderPush();}};
-$('test').onclick=async()=>{try{const r=await fetch('/api/test-push',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(currentSub.toJSON())});const j=await r.json();if(!r.ok)throw new Error(j.error||'Push test failed');$('pushState').textContent='SERVER TEST SENT · WATCH FOR NOTIFICATION';}catch(e){alert(e.message);}};
-$('disable').onclick=async()=>{if(!currentSub)return;const json=currentSub.toJSON();await fetch('/api/subscription',{method:'DELETE',headers:{'content-type':'application/json'},body:JSON.stringify(json)}).catch(()=>{});await currentSub.unsubscribe();currentSub=null;renderPush();await refresh();};
-setInterval(tick,1000);setInterval(()=>{refresh();refreshLivePrice();},15000);setInterval(refreshLog,30000);tick();refresh();refreshLivePrice();refreshLog();initPush();
-</script>
-</body></html>
+    <div class="roadmap"><strong>ONE WTC architecture:</strong> specialized apps stay independently hosted. XSP 0DTE and Ticker Pulse can be added here after their Tastytrade-data migrations without changing the existing live systems.</div>
+
+    <footer>
+      <span>ONE WTC · Wheelhouse Trading Co.</span>
+      <span>Market-data and decision-support tools · Manual execution</span>
+    </footer>
+  </main>
+</body>
+</html>
