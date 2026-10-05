@@ -13,7 +13,7 @@ This system is decision support only. It uses read-only tastytrade credentials a
 ## Instrument model
 
 - Directional signal source: SPY intraday structure.
-- Cross-market confirmation: QQQ, IWM and VIX from tastytrade.
+- Cross-market confirmation: ES futures, QQQ, IWM and VIX from tastytrade. SPY remains the primary entry engine; ES is capped confirmation, not the driver.
 - Modeled trade instrument: XSP same-day-expiration equity option.
 - One modeled contract per signal.
 - CALL = long XSP call.
@@ -91,6 +91,13 @@ Signed master score: positive favors CALL, negative favors PUT.
 9. VIX confirmation from its regular-session open
    - falling: +1 to CALL side
    - rising: -1 / PUT support
+
+10. ES futures confirmation (maximum ±2 total)
+   - above ES 8:30 CT RTH VWAP: +1
+   - below ES 8:30 CT RTH VWAP: -1
+   - bullish ES 5-minute EMA structure: +1
+   - bearish ES 5-minute EMA structure: -1
+   - overnight high/low/mid context is logged and displayed, but does not independently trigger a trade.
 
 ## Entry trigger layer
 
@@ -284,6 +291,7 @@ Market-structure panel:
 - opening range
 - 5m and 15m trend
 - RSI
+- ES RTH VWAP / 5m trend / overnight context
 - QQQ confirmation
 - IWM confirmation
 - VIX confirmation
@@ -323,6 +331,7 @@ Primary questions for later analysis:
 - CALL vs PUT asymmetry.
 - Time-of-day expectancy.
 - Score at entry vs outcome.
+- Effect of ES confirmation and whether its ±2 cap is useful.
 - Effect of QQQ/IWM/VIX confirmation.
 - Effect of VWAP-cross/chop gate.
 - Option spread drag.
