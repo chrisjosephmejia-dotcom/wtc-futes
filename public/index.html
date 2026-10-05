@@ -1,73 +1,86 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="theme-color" content="#090d14" />
-  <title>WTC Options Seller</title>
-  <style>
-    :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color-scheme:dark;--bg:#090d14;--panel:#0e1625;--line:#202d43;--muted:#8492a6;--text:#f5f7fb;--ok:#7dd3fc;--good:#22c55e;--warn:#f5c451}
-    *{box-sizing:border-box} body{margin:0;background:radial-gradient(circle at 20% 0,#132033 0,#090d14 44%);color:var(--text);min-height:100vh}
-    .wrap{max-width:980px;margin:0 auto;padding:28px 18px 60px}.top{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;flex-wrap:wrap}.brand{font-size:11px;font-weight:800;letter-spacing:.14em;color:#7dd3fc;text-transform:uppercase}h1{font-size:30px;margin:4px 0 6px}.sub{color:#94a3b8;font-size:14px}.pill{border:1px solid #253047;background:#111827;border-radius:999px;padding:8px 12px;font-size:12px;color:#cbd5e1}.controls{display:flex;gap:10px;margin:24px 0 16px}.controls input{width:140px;border:1px solid #2b3952;background:#0f172a;color:white;border-radius:10px;padding:11px 12px;font-size:16px;text-transform:uppercase}.controls button{border:0;background:#f3f4f6;color:#111827;border-radius:10px;padding:11px 16px;font-weight:700;cursor:pointer}.hero{border:1px solid #24324a;background:linear-gradient(180deg,#101827,#0b1220);border-radius:18px;padding:24px;margin-bottom:16px}.ticker{font-size:14px;color:#93a4bc}.price{font-size:48px;font-weight:800;letter-spacing:-1px;margin:6px 0}.status{font-size:13px;color:#94a3b8}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.card{border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:15px}.label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}.value{font-size:20px;font-weight:700;margin-top:5px}.engine{margin-top:16px;border:1px solid #2d3b55;background:#0b1220;border-radius:16px;padding:18px}.engineTitle{font-weight:800;margin-bottom:5px}.engineText{color:#94a3b8;font-size:13px;line-height:1.5}.footer{margin-top:18px;color:#708099;font-size:12px;line-height:1.5}.ok{color:var(--ok)}.bad{color:#fca5a5}.pulse{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--good);margin-right:7px;box-shadow:0 0 0 4px rgba(34,197,94,.12)}
-    @media(max-width:700px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.price{font-size:40px}}
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="theme-color" content="#090d14" />
+<title>WTC Options Seller</title>
+<style>
+:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color-scheme:dark;--bg:#090d14;--panel:#0e1625;--line:#202d43;--muted:#8492a6;--text:#f5f7fb;--blue:#7dd3fc;--green:#4ee0a1;--red:#ff7b86;--amber:#f5c451}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 20% 0,#132033 0,#090d14 44%);color:var(--text);min-height:100vh}.wrap{max-width:1040px;margin:0 auto;padding:28px 18px 60px}.top{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap}.brand{font-size:11px;font-weight:900;letter-spacing:.14em;color:var(--blue);text-transform:uppercase}h1{font-size:30px;margin:4px 0 6px}.sub,.small{color:#94a3b8;font-size:13px}.pill{border:1px solid #253047;background:#111827;border-radius:999px;padding:8px 12px;font-size:12px;color:#cbd5e1}.pulse{display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;margin-right:7px;box-shadow:0 0 0 4px rgba(34,197,94,.12)}.controls{display:flex;gap:10px;margin:24px 0 16px}.controls input{width:140px;border:1px solid #2b3952;background:#0f172a;color:#fff;border-radius:10px;padding:11px 12px;font-size:16px;text-transform:uppercase}.controls button{border:0;background:#f3f4f6;color:#111827;border-radius:10px;padding:11px 16px;font-weight:800;cursor:pointer}.decision{border:1px solid #2d3b55;background:linear-gradient(180deg,#101827,#0b1220);border-radius:18px;padding:24px;margin-bottom:16px}.decisionLabel{font-size:11px;color:#8fa0b8;letter-spacing:.1em;text-transform:uppercase}.decisionText{font-size:42px;font-weight:950;margin:8px 0}.wait{color:var(--amber)}.cc{color:var(--red)}.csp{color:var(--green)}.reason{color:#b7c4d6;line-height:1.45}.readiness{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px}.meter{border:1px solid var(--line);background:#0e1625;border-radius:13px;padding:14px}.meterTop{display:flex;justify-content:space-between}.bar{height:7px;background:#182336;border-radius:99px;overflow:hidden;margin-top:9px}.fill{height:100%;background:#cbd5e1}.quoteHero{border:1px solid #24324a;background:#0b1220;border-radius:18px;padding:20px;margin-bottom:16px}.price{font-size:40px;font-weight:900}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.card{border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:15px}.label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}.value{font-size:18px;font-weight:800;margin-top:5px}.section{margin-top:16px;border:1px solid var(--line);background:#0b1220;border-radius:16px;padding:18px}.sectionTitle{font-weight:900;margin-bottom:12px}.statusline{display:flex;flex-wrap:wrap;gap:8px}.chip{padding:7px 9px;border-radius:999px;border:1px solid var(--line);font-size:11px;color:#b9c7d7}.good{color:var(--green)}.bad{color:var(--red)}.footer{margin-top:18px;color:#708099;font-size:12px;line-height:1.5}
+@media(max-width:720px){.grid{grid-template-columns:repeat(2,1fr)}.decisionText{font-size:34px}.readiness{grid-template-columns:1fr}.price{font-size:36px}}
+</style>
 </head>
 <body>
-  <main class="wrap">
-    <div class="top">
-      <div><div class="brand">Wheelhouse Trading Co.</div><h1>WTC Options Seller</h1><div class="sub">Premium Vertex engine · Tastytrade real-time market data</div></div>
-      <div class="pill" id="feedStatus"><span class="pulse"></span>Connecting…</div>
+<main class="wrap">
+  <div class="top">
+    <div><div class="brand">Wheelhouse Trading Co.</div><h1>WTC Options Seller</h1><div class="sub">Premium Vertex engine · Tastytrade real-time market data</div></div>
+    <div class="pill" id="feedStatus"><span class="pulse"></span>Connecting…</div>
+  </div>
+
+  <div class="controls"><input id="tickerInput" value="SPY" maxlength="10" autocomplete="off"/><button id="loadBtn">Load ticker</button></div>
+
+  <section class="decision">
+    <div class="decisionLabel">Final premium decision</div>
+    <div id="decision" class="decisionText wait">CALCULATING…</div>
+    <div id="reason" class="reason">Building live Premium Vertex context from Tastytrade candles…</div>
+    <div class="readiness">
+      <div class="meter"><div class="meterTop"><b>CC readiness</b><b id="ccScore">—</b></div><div class="bar"><div id="ccBar" class="fill" style="width:0%"></div></div></div>
+      <div class="meter"><div class="meterTop"><b>CSP readiness</b><b id="cspScore">—</b></div><div class="bar"><div id="cspBar" class="fill" style="width:0%"></div></div></div>
     </div>
+  </section>
 
-    <div class="controls">
-      <input id="tickerInput" value="SPY" maxlength="10" autocomplete="off" />
-      <button id="loadBtn">Load ticker</button>
+  <section class="quoteHero">
+    <div class="label" id="ticker">SPY</div><div class="price" id="mark">—</div><div class="small" id="stamp">Waiting for Tastytrade…</div>
+  </section>
+
+  <section class="grid">
+    <div class="card"><div class="label">Bid</div><div class="value" id="bid">—</div></div>
+    <div class="card"><div class="label">Ask</div><div class="value" id="ask">—</div></div>
+    <div class="card"><div class="label">Session range</div><div class="value" id="rangeLoc">—</div></div>
+    <div class="card"><div class="label">VWAP distance</div><div class="value" id="vwapDist">—</div></div>
+    <div class="card"><div class="label">5m RSI</div><div class="value" id="rsi5">—</div></div>
+    <div class="card"><div class="label">5m momentum</div><div class="value" id="mom5">—</div></div>
+    <div class="card"><div class="label">Daily ATR</div><div class="value" id="atr">—</div></div>
+    <div class="card"><div class="label">Realized vol</div><div class="value" id="rv">—</div></div>
+  </section>
+
+  <section class="section">
+    <div class="sectionTitle">Vertex confirmation</div>
+    <div class="statusline">
+      <span id="upTurn" class="chip">UPSIDE TURN —</span><span id="downTurn" class="chip">DOWNSIDE TURN —</span>
+      <span id="m30" class="chip">30M —</span><span id="m15" class="chip">15M —</span><span id="m5" class="chip">5M —</span>
+      <span id="dailyTrend" class="chip">DAILY —</span>
     </div>
+  </section>
 
-    <section class="hero">
-      <div class="ticker" id="ticker">SPY</div>
-      <div class="price" id="mark">—</div>
-      <div class="status" id="stamp">Waiting for Tastytrade…</div>
-    </section>
+  <div class="footer">Premium Vertex waits for a sufficiently stretched intraday extreme plus a confirmed momentum turn before allowing CC VERTEX or CSP VERTEX. Tastytrade credentials remain server-side.</div>
+</main>
 
-    <section class="grid">
-      <div class="card"><div class="label">Bid</div><div class="value" id="bid">—</div></div>
-      <div class="card"><div class="label">Ask</div><div class="value" id="ask">—</div></div>
-      <div class="card"><div class="label">Mid</div><div class="value" id="mid">—</div></div>
-      <div class="card"><div class="label">Last</div><div class="value" id="last">—</div></div>
-      <div class="card"><div class="label">Open</div><div class="value" id="open">—</div></div>
-      <div class="card"><div class="label">Day High</div><div class="value" id="high">—</div></div>
-      <div class="card"><div class="label">Day Low</div><div class="value" id="low">—</div></div>
-      <div class="card"><div class="label">Volume</div><div class="value" id="volume">—</div></div>
-    </section>
-
-    <section class="engine">
-      <div class="engineTitle">Premium Vertex</div>
-      <div class="engineText">This page is the live-data foundation for the existing WAIT · CSP VERTEX · CC VERTEX decision engine. Market data refreshes every 15 seconds; the strategy logic remains separate so changing the data feed does not change the trading rules.</div>
-    </section>
-
-    <div class="footer">Read-only dashboard. Tastytrade credentials stay server-side and are never exposed to the browser.</div>
-  </main>
-
-  <script>
-    const $ = id => document.getElementById(id);
-    let ticker = new URLSearchParams(location.search).get('ticker')?.toUpperCase() || 'SPY';
-    let timer;
-    function fmt(n,digits=2){ return Number.isFinite(Number(n)) ? Number(n).toLocaleString(undefined,{minimumFractionDigits:digits,maximumFractionDigits:digits}) : '—'; }
-    function setTicker(next){ ticker=(next||'SPY').trim().toUpperCase(); $('tickerInput').value=ticker; $('ticker').textContent=ticker; const u=new URL(location.href); u.searchParams.set('ticker',ticker); history.replaceState({},'',u); refresh(); }
-    async function refresh(){
-      clearTimeout(timer); $('feedStatus').innerHTML='<span class="pulse"></span>Refreshing…';
-      try{
-        const res=await fetch(`/api/equity-quote?ticker=${encodeURIComponent(ticker)}`,{cache:'no-store'});
-        const data=await res.json();
-        if(!res.ok||!data.ok) throw new Error(data.error||`HTTP ${res.status}`);
-        $('ticker').textContent=data.ticker; $('mark').textContent='$'+fmt(data.mark ?? data.mid ?? data.last); $('bid').textContent='$'+fmt(data.bid); $('ask').textContent='$'+fmt(data.ask); $('mid').textContent='$'+fmt(data.mid); $('last').textContent='$'+fmt(data.last); $('open').textContent='$'+fmt(data.open); $('high').textContent='$'+fmt(data.dayHigh); $('low').textContent='$'+fmt(data.dayLow); $('volume').textContent=Number.isFinite(Number(data.volume))?Number(data.volume).toLocaleString():'—';
-        const t=data.updatedAt?new Date(data.updatedAt):new Date(data.receivedAt||Date.now()); $('stamp').textContent=`Tastytrade • updated ${t.toLocaleTimeString()} • next refresh in 15s`; $('feedStatus').innerHTML='<span class="pulse"></span>Tastytrade live'; $('feedStatus').className='pill ok';
-      }catch(err){ $('stamp').textContent=`Feed error: ${err.message}`; $('feedStatus').textContent='Feed unavailable'; $('feedStatus').className='pill bad'; }
-      finally{ timer=setTimeout(refresh,15000); }
-    }
-    $('loadBtn').addEventListener('click',()=>setTicker($('tickerInput').value)); $('tickerInput').addEventListener('keydown',e=>{if(e.key==='Enter')setTicker(e.target.value)}); setTicker(ticker);
-  </script>
-  <!-- deployment refresh -->
+<script>
+const $=id=>document.getElementById(id);let ticker=new URLSearchParams(location.search).get('ticker')?.toUpperCase()||'SPY';let timer;
+const fmt=(n,d=2)=>Number.isFinite(Number(n))?Number(n).toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d}):'—';
+function setTicker(v){ticker=(v||'SPY').trim().toUpperCase();$('tickerInput').value=ticker;$('ticker').textContent=ticker;const u=new URL(location.href);u.searchParams.set('ticker',ticker);history.replaceState({},'',u);refresh()}
+function stateChip(id,label,state){const el=$(id);el.textContent=label+' '+state;el.className='chip '+(state==='BULLISH'||state==='CONFIRMED'?'good':state==='BEARISH'?'bad':'')}
+async function refresh(){
+ clearTimeout(timer);$('feedStatus').innerHTML='<span class="pulse"></span>Refreshing…';
+ try{
+  const [qr,sr]=await Promise.all([
+   fetch('/api/equity-quote?ticker='+encodeURIComponent(ticker),{cache:'no-store'}),
+   fetch('/api/vertex-signal?ticker='+encodeURIComponent(ticker),{cache:'no-store'})
+  ]);
+  const q=await qr.json(),s=await sr.json();if(!qr.ok||!q.ok)throw new Error(q.error||'Quote unavailable');if(!sr.ok||!s.ok)throw new Error(s.error||'Vertex engine unavailable');
+  $('ticker').textContent=q.ticker;$('mark').textContent='$'+fmt(q.mark??q.mid??q.last);$('bid').textContent='$'+fmt(q.bid);$('ask').textContent='$'+fmt(q.ask);
+  $('stamp').textContent='Tastytrade • '+new Date(q.updatedAt||q.receivedAt||Date.now()).toLocaleTimeString()+' • refresh 15s';
+  $('decision').textContent=s.decision;$('decision').className='decisionText '+(s.decision.startsWith('CC')?'cc':s.decision.startsWith('CSP')?'csp':'wait');$('reason').textContent=s.reason;
+  $('ccScore').textContent=s.readiness.cc+'/100';$('cspScore').textContent=s.readiness.csp+'/100';$('ccBar').style.width=s.readiness.cc+'%';$('cspBar').style.width=s.readiness.csp+'%';
+  $('rangeLoc').textContent=fmt(s.intraday.sessionLocation,0)+'%';$('vwapDist').textContent=(s.intraday.vwapPct>=0?'+':'')+fmt(s.intraday.vwapPct)+'%';$('rsi5').textContent=fmt(s.intraday.rsi5,0);$('mom5').textContent=(s.intraday.momentum5>=0?'+':'')+fmt(s.intraday.momentum5)+'%';$('atr').textContent=fmt(s.daily.atrPct)+'%';$('rv').textContent=fmt(s.daily.realizedVol,0)+'%';
+  stateChip('upTurn','UPSIDE TURN',s.turns.upside?'CONFIRMED':'NOT YET');stateChip('downTurn','DOWNSIDE TURN',s.turns.downside?'CONFIRMED':'NOT YET');stateChip('m30','30M',s.timeframes.m30.state);stateChip('m15','15M',s.timeframes.m15.state);stateChip('m5','5M',s.timeframes.m5.state);stateChip('dailyTrend','DAILY',s.daily.trend);
+  $('feedStatus').innerHTML='<span class="pulse"></span>Tastytrade live';$('feedStatus').className='pill good';
+ }catch(e){$('decision').textContent='WAIT — DATA CHECK';$('decision').className='decisionText wait';$('reason').textContent='Engine error: '+e.message;$('feedStatus').textContent='Feed issue';$('feedStatus').className='pill bad'}
+ finally{timer=setTimeout(refresh,15000)}
+}
+$('loadBtn').addEventListener('click',()=>setTicker($('tickerInput').value));$('tickerInput').addEventListener('keydown',e=>{if(e.key==='Enter')setTicker(e.target.value)});setTicker(ticker);
+</script>
 </body>
 </html>
