@@ -25,13 +25,16 @@ export async function tastyAccessToken(){
 
 function normQuote(x:any):Quote{
   const bid=n(x?.bid),ask=n(x?.ask);
-  const mid=bid!==null&&ask!==null?(bid+ask)/2:n(x?.mid);
+  const mid=x?.mid!=null?n(x.mid):(bid!==null&&ask!==null?(bid+ask)/2:null);
+  const last=n(x?.last??x?.["last-mkt"]);
   return {
     symbol:String(x?.symbol||""),
     instrumentType:String(x?.instrumentType||x?.["instrument-type"]||""),
-    bid,ask,mid,mark:n(x?.mark),last:n(x?.last),
-    open:n(x?.open),prevClose:n(x?.previousClose??x?.["previous-close"]??x?.prevClose),
-    dayHigh:n(x?.dayHigh??x?.["day-high"]),dayLow:n(x?.dayLow??x?.["day-low"]),
+    bid,ask,mid,mark:n(x?.mark),last,
+    open:n(x?.open),
+    prevClose:n(x?.previousClose??x?.["previous-close"]??x?.prevClose??x?.["prev-close"]),
+    dayHigh:n(x?.dayHigh??x?.["day-high"]??x?.["day-high-price"]),
+    dayLow:n(x?.dayLow??x?.["day-low"]??x?.["day-low-price"]),
     updatedAt:x?.updatedAt??x?.["updated-at"]??null
   };
 }
