@@ -1,10 +1,10 @@
 {
-  "name":"WTC Options Seller",
-  "short_name":"WTC Options",
+  "name":"WTC XSP 0DTE",
+  "short_name":"WTC 0DTE",
   "start_url":"/",
   "display":"standalone",
-  "background_color":"#090d14",
-  "theme_color":"#090d14",
+  "background_color":"#071018",
+  "theme_color":"#071018",
   "icons":[
     {"src":"/icons/icon-192.png","sizes":"192x192","type":"image/png"},
     {"src":"/icons/icon-512.png","sizes":"512x512","type":"image/png"}
