@@ -51,9 +51,8 @@ export async function getEquityBars(symbol:string){
   return {symbol,streamerSymbol:ss,minuteBars:bars(mins),dailyBars:bars(days),source:"tastytrade DXLink"};
 }
 
-
-export async function getEquityFastContext(symbol:string){
-  const at=await accessToken();
+export async function getEquityFastContext(symbol:string,token?:string){
+  const at=token||await accessToken();
   const [eq,qt]=await Promise.all([equity(at,symbol),quoteToken(at)]);
   const ss=eq["streamer-symbol"],now=Date.now();
   const [mins,days]=await Promise.all([
