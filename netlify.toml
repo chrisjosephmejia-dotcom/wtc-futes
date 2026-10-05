@@ -2,5 +2,4 @@
   publish = "public"
 
 [functions]
-  directory = "netlify/functions"
-  node_bundler = "esbuild"
+  directory = "one-wtc-functions"
