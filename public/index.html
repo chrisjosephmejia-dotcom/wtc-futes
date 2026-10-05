@@ -49,8 +49,10 @@
     .apps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
     .app{
       position:relative;
-      min-height:330px;
+      min-height:360px;
       padding:24px;
+      display:flex;
+      flex-direction:column;
       border:1px solid var(--line);
       border-radius:22px;
       background:
@@ -75,9 +77,9 @@
     .appCode{font-size:11px;color:#6f8498;font-weight:800;letter-spacing:.08em}
     .app h2{position:relative;margin:50px 0 8px;font-size:32px;letter-spacing:-.025em}
     .app p{position:relative;margin:0;color:#8fa2b4;line-height:1.55;max-width:470px}
-    .meta{position:relative;display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
+    .meta{position:relative;display:flex;flex-wrap:wrap;gap:8px;margin-top:22px;margin-bottom:18px}
     .meta span{font-size:10px;font-weight:850;letter-spacing:.07em;padding:6px 8px;border-radius:8px;background:#0a141e;border:1px solid #1e3041;color:#8fa5b9}
-    .open{position:absolute;left:24px;right:24px;bottom:22px;display:flex;justify-content:space-between;align-items:center;padding-top:18px;border-top:1px solid #1a2a39;font-size:12px;font-weight:900;letter-spacing:.08em}
+    .open{position:relative;left:auto;right:auto;bottom:auto;display:flex;justify-content:space-between;align-items:center;margin-top:auto;padding-top:18px;border-top:1px solid #1a2a39;font-size:12px;font-weight:900;letter-spacing:.08em}
     .futes .open{color:var(--cyan)}
     .options .open{color:var(--green)}
     .odte .open{color:var(--amber)}
@@ -90,7 +92,7 @@
       .wrap{padding:24px 16px 40px}
       .hero{padding:46px 0 32px}
       .apps{grid-template-columns:1fr}
-      .app{min-height:300px}
+      .app{min-height:330px}
       .sectionHead{align-items:flex-start;flex-direction:column}
     }
   </style>
