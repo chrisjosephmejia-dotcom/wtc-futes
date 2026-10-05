@@ -109,14 +109,15 @@ export function build0DteSignal(input:{
     if(putTrigger==="VWAP_REJECTION"){}else if(putTrigger&&putTrigger!=="OR_BREAKDOWN_RETEST"&&putTrigger!=="TREND_BOUNCE_RESUME")putTrigger=null;
   }
 
+  let directionalRaw:"CALL"|"PUT"|"WAIT"="WAIT",setup="WAIT — NO EDGE",trigger:string|null=null;
+  if(score>=7){setup="CALL SETUP — WAIT FOR TRIGGER";if(callTrigger){directionalRaw="CALL";setup="BUY XSP CALL";trigger=callTrigger}}
+  else if(score<=-7){setup="PUT SETUP — WAIT FOR TRIGGER";if(putTrigger){directionalRaw="PUT";setup="BUY XSP PUT";trigger=putTrigger}}
+
   const minutes=now.minute,marketOpen=minutes>=510&&minutes<=900,newEntryWindow=minutes>=515&&minutes<=630;
   const openingBlock=minutes>=510&&minutes<515,lateBlock=minutes>630;
   const chop=crosses>=4,stale=lastBarAgeSec>90;
 
-  let raw:"CALL"|"PUT"|"WAIT"="WAIT",setup="WAIT — NO EDGE",trigger:string|null=null;
-  if(score>=7){setup="CALL SETUP — WAIT FOR TRIGGER";if(callTrigger){raw="CALL";setup="BUY XSP CALL";trigger=callTrigger}}
-  else if(score<=-7){setup="PUT SETUP — WAIT FOR TRIGGER";if(putTrigger){raw="PUT";setup="BUY XSP PUT";trigger=putTrigger}}
-
+  let raw=directionalRaw;
   let blockReason:string|null=null;
   if(!marketOpen)blockReason="MARKET CLOSED";
   else if(stale)blockReason="WAIT — STALE DATA";
@@ -127,7 +128,8 @@ export function build0DteSignal(input:{
   if(blockReason)raw="WAIT";
 
   return {
-    raw,setup:blockReason||setup,score:clamp(Math.round(score),-13,13),trigger,
+    raw,directionalRaw,setup:blockReason||setup,score:clamp(Math.round(score),-13,13),trigger,
+    triggers:{call:callTrigger,put:putTrigger},
     eligibleForNewEntry:newEntryWindow&&!input.highImpactLockout&&!chop&&!stale,
     blockReason,overextended,chop,vwapCrosses20m:crosses,lastBarAgeSec,
     spy:{price:last.c,vwap,vwapPct,vwapSlope,open:session[0].o,orHigh,orLow,orState,rsi5,momentum1:mom1,atrPct},
