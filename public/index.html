@@ -17,7 +17,7 @@
 <body>
 <main class="wrap">
 <div class="top">
- <div><div class="brand">Wheelhouse Trading Co.</div><h1>WTC XSP 0DTE</h1><div class="sub">Directional XSP calls & puts · Tastytrade forward-test engine</div></div>
+ <div><div class="brand">Wheelhouse Trading Co.</div><h1>WTC XSP 0DTE</h1><div class="sub">Directional XSP calls & puts · SPY-led, ES-confirmed · Tastytrade forward-test engine</div></div>
  <div class="topRight"><div class="pill" id="feed"><span class="dot"></span>CONNECTING</div><div class="pill">V1 · FROZEN</div><div class="pill">ENTRY 8:35–10:30 CT</div></div>
 </div>
 
@@ -26,7 +26,7 @@
   <div class="eyebrow">Current model state</div>
   <div id="headline" class="headline wait">INITIALIZING</div>
   <div id="reason" class="reason">Waiting for the first production evaluation.</div>
-  <div class="scoreRow"><div id="scoreNum" class="scoreNum">0</div><div style="flex:1"><div class="scoreTrack"><div class="scoreZero"></div><div id="scoreDot" class="scoreDot"></div></div><div class="scoreLabels"><span>PUT −13</span><span>WAIT</span><span>CALL +13</span></div></div></div>
+  <div class="scoreRow"><div id="scoreNum" class="scoreNum">0</div><div style="flex:1"><div class="scoreTrack"><div class="scoreZero"></div><div id="scoreDot" class="scoreDot"></div></div><div class="scoreLabels"><span>PUT −15</span><span>WAIT</span><span>CALL +15</span></div></div></div>
   <div id="gates" class="gates"></div>
  </div>
  <div class="panel" id="positionPanel"><div class="positionEmpty"><div class="eyebrow">Modeled position</div><div class="positionTitle">FLAT</div><div class="reason">No XSP contract is open. A trade is logged only after the full score + trigger + liquidity gates agree.</div></div></div>
@@ -41,6 +41,7 @@
  <div class="card"><div class="label">QQQ from open</div><div id="qqq" class="value">—</div><div class="small">Cross-market confirmation</div></div>
  <div class="card"><div class="label">IWM from open</div><div id="iwm" class="value">—</div><div class="small">Breadth proxy</div></div>
  <div class="card"><div class="label">VIX from open</div><div id="vix" class="value">—</div><div class="small">Inverse confirmation</div></div>
+ <div class="card"><div class="label">ES confirmation</div><div id="es" class="value">—</div><div id="esText" class="small">RTH VWAP / 5m trend / overnight context</div></div>
  <div class="card"><div class="label">VWAP chop</div><div id="chop" class="value">—</div><div id="chopText" class="small">—</div></div>
 </section>
 
@@ -60,7 +61,7 @@
 <div class="sectionHead"><div class="sectionTitle">Last 25 completed trades</div><div id="split" class="sectionNote">—</div></div>
 <div class="tableWrap"><table class="trades"><thead><tr><th>Date</th><th>Side</th><th>Setup</th><th>Contract</th><th>Entry</th><th>Exit</th><th>P&L $</th><th>P&L %</th><th>MFE</th><th>MAE</th><th>Score in</th><th>Score out</th><th>Exit reason</th></tr></thead><tbody id="tradeRows"><tr><td colspan="13">No completed trades yet.</td></tr></tbody></table></div>
 
-<div class="footer">WTC XSP 0DTE V1 is a forward-test model using read-only Tastytrade market data. Entries use the modeled XSP option ask and exits use the bid, so the primary P&L includes the quoted spread. No orders are placed. V1 rules are intentionally frozen until a useful sample exists.</div>
+<div class="footer">WTC XSP 0DTE V1 is a forward-test model using read-only Tastytrade market data. SPY drives the entry model; ES contributes a capped confirmation layer. Entries use the modeled XSP option ask and exits use the bid, so the primary P&L includes the quoted spread. No orders are placed. V1 rules are intentionally frozen until a useful sample exists.</div>
 </main>
 <script>
 const $=id=>document.getElementById(id),money=n=>Number.isFinite(+n)?(+n).toLocaleString(undefined,{style:'currency',currency:'USD',minimumFractionDigits:2}):'—',num=(n,d=2)=>Number.isFinite(+n)?(+n).toFixed(d):'—',pct=n=>Number.isFinite(+n)?((+n>=0?'+':'')+num(n,2)+'%'):'—';
@@ -92,7 +93,7 @@ async function refresh(){
   $('feed').innerHTML='<span class="dot"></span>'+(st.ok===false?'DATA ISSUE':'TASTYTRADE LIVE');$('feed').className='pill '+(st.ok===false?'bad':'live');
   $('headline').textContent=st.headline||sig.setup||'WAIT';$('headline').className='headline '+headlineClass($('headline').textContent);
   $('reason').textContent=st.lastAction?.reason||sig.blockReason||('Trigger: '+(sig.trigger||'waiting for a qualifying retest / reclaim'));
-  const sc=Number(sig.score||0);$('scoreNum').textContent=(sc>0?'+':'')+sc;$('scoreDot').style.left=((sc+13)/26*100)+'%';
+  const sc=Number(sig.score||0);$('scoreNum').textContent=(sc>0?'+':'')+sc;$('scoreDot').style.left=((sc+15)/30*100)+'%';
   const gates=[];gates.push('<span class="chip '+(sig.eligibleForNewEntry?'good':'warn')+'">'+(sig.eligibleForNewEntry?'ENTRY WINDOW OPEN':'ENTRY GATED')+'</span>');if(sig.overextended)gates.push('<span class="chip warn">ANTI-CHASE</span>');if(sig.chop)gates.push('<span class="chip bad">VWAP CHOP</span>');if(st.eventRisk?.highImpactLockout)gates.push('<span class="chip bad">EVENT LOCKOUT</span>');if(sig.directionalRaw)gates.push('<span class="chip">RAW '+sig.directionalRaw+'</span>');$('gates').innerHTML=gates.join('');
   renderPosition(st);
   $('stamp').textContent='Updated '+new Date(st.updatedAt||Date.now()).toLocaleTimeString()+' · '+(st.nowCt?.label||'CT');
@@ -100,6 +101,7 @@ async function refresh(){
   $('orState').textContent=sig.spy?.orState||'—';$('orText').textContent='L '+money(sig.spy?.orLow)+' · H '+money(sig.spy?.orHigh);
   $('m5').textContent=sig.timeframes?.m5?.state||'—';$('rsi').textContent='5m RSI '+num(sig.spy?.rsi5,0);
   $('m15').textContent=sig.timeframes?.m15?.state||'—';$('qqq').textContent=pct(sig.confirmations?.qqqFromOpen);$('iwm').textContent=pct(sig.confirmations?.iwmFromOpen);$('vix').textContent=pct(sig.confirmations?.vixFromOpen);
+  const es=sig.confirmations?.es||{};$('es').textContent=es.available?(es.trend5+' · '+pct(es.vwapPct)):'—';$('esText').textContent=es.available?('ES '+money(es.price)+' · '+es.overnightLocation):'ES context unavailable';
   $('chop').textContent=(sig.vwapCrosses20m??'—')+' crosses';$('chopText').textContent=sig.chop?'ENTRY BLOCKED':'20m VWAP cross count';
   $('trigger').textContent='Trigger: '+(sig.trigger||'—');renderScorecard(sig);
   $('totalPnl').textContent=money(p.totalPnl);paintVal($('totalPnl'),p.totalPnl);$('tradesCount').textContent=p.trades??0;$('winRate').textContent=num(p.winRate,1)+'%';$('avgPnl').textContent=money(p.avgPnl);paintVal($('avgPnl'),p.avgPnl);$('pf').textContent=Number.isFinite(p.profitFactor)?num(p.profitFactor,2):(p.profitFactor===Infinity?'∞':'0.00');$('mdd').textContent=money(p.maxDrawdown);
