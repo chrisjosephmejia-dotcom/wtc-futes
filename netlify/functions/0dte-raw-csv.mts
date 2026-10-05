@@ -17,6 +17,7 @@ function flat(r:any){
     spyPrice:r.spy?.price,spyVwap:r.spy?.vwap,spyVwapPct:r.spy?.vwapPct,spyOrState:r.spy?.orState,
     spyRsi5:r.spy?.rsi5,spyMomentum1:r.spy?.momentum1,m5:r.timeframes?.m5?.state,m15:r.timeframes?.m15?.state,
     qqqFromOpen:r.confirmations?.qqqFromOpen,iwmFromOpen:r.confirmations?.iwmFromOpen,vixFromOpen:r.confirmations?.vixFromOpen,
+    esPrice:r.confirmations?.es?.price,esVwapPct:r.confirmations?.es?.vwapPct,esTrend5:r.confirmations?.es?.trend5,esOvernightLocation:r.confirmations?.es?.overnightLocation,
     chop:r.chop,eventLockout:r.eventLockout,blockReason:r.blockReason,optionSymbol:r.optionSymbol,
     optionBid:r.optionBid,optionAsk:r.optionAsk,modelPnlPct:r.modelPnlPct,action:r.action?.type||null,actionReason:r.action?.reason||null
   };
@@ -36,7 +37,7 @@ export default async(req:Request,_ctx:Context)=>{
     const xs=rows.map(flat),cols=[
       "minuteKey","timestamp","date","rawSignal","directionalRaw","headline","positionState","score","trigger",
       "spyPrice","spyVwap","spyVwapPct","spyOrState","spyRsi5","spyMomentum1","m5","m15",
-      "qqqFromOpen","iwmFromOpen","vixFromOpen","chop","eventLockout","blockReason",
+      "qqqFromOpen","iwmFromOpen","vixFromOpen","esPrice","esVwapPct","esTrend5","esOvernightLocation","chop","eventLockout","blockReason",
       "optionSymbol","optionBid","optionAsk","modelPnlPct","action","actionReason"
     ];
     const out=[cols.join(","),...xs.map((r:any)=>cols.map(k=>csvCell(r[k])).join(","))].join("\n");
