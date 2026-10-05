@@ -63,9 +63,10 @@ export function build0DteSignal(input:{
   const cs=session.map(b=>b.c),ema1_8=emaSeries(cs,8),lastEma1=ema1_8[ema1_8.length-1];
   const vwaps=cumulativeVwap(session),vwap=vwaps[vwaps.length-1],vwap10=vwaps[Math.max(0,vwaps.length-11)],vwapSlope=pct(vwap,vwap10);
   const vwapPct=pct(last.c,vwap),rsi5=rsi(five.map(b=>b.c),14),mom1=pct(last.c,prev.c);
+  const orComplete=now.minute>=525;
   const first15=session.filter(b=>{const p=ct(b.t);return p.minute>=510&&p.minute<525});
   const orHigh=first15.length?Math.max(...first15.map(b=>b.h)):NaN,orLow=first15.length?Math.min(...first15.map(b=>b.l)):NaN;
-  const orState=Number.isFinite(orHigh)&&last.c>orHigh?"ABOVE":Number.isFinite(orLow)&&last.c<orLow?"BELOW":"INSIDE";
+  const orState=!orComplete?"FORMING":Number.isFinite(orHigh)&&last.c>orHigh?"ABOVE":Number.isFinite(orLow)&&last.c<orLow?"BELOW":"INSIDE";
 
   let crosses=0,prevSign=0;
   for(let i=Math.max(0,session.length-20);i<session.length;i++){
@@ -84,17 +85,18 @@ export function build0DteSignal(input:{
   if(vwapSlope>=.015)add("VWAP slope",1,`+${vwapSlope.toFixed(3)}% / 10m`);else if(vwapSlope<=-.015)add("VWAP slope",-1,`${vwapSlope.toFixed(3)}% / 10m`);
   if(t5.state==="BULLISH")add("5m EMA structure",2,"EMA 8 > EMA 21");else if(t5.state==="BEARISH")add("5m EMA structure",-2,"EMA 8 < EMA 21");
   if(t15.state==="BULLISH")add("15m EMA structure",2,"EMA 8 > EMA 21");else if(t15.state==="BEARISH")add("15m EMA structure",-2,"EMA 8 < EMA 21");
-  if(orState==="ABOVE")add("15m opening range",2,"Above opening-range high");else if(orState==="BELOW")add("15m opening range",-2,"Below opening-range low");
+  if(orComplete&&orState==="ABOVE")add("15m opening range",2,"Above completed opening-range high");else if(orComplete&&orState==="BELOW")add("15m opening range",-2,"Below completed opening-range low");
+  else if(!orComplete)factors.push({name:"15m opening range",points:0,detail:"Still forming until 8:45 CT"});
   if(Number.isFinite(rsi5)&&rsi5>=55&&rsi5<=75)add("5m RSI momentum",1,`RSI ${rsi5.toFixed(0)}`);else if(Number.isFinite(rsi5)&&rsi5>=25&&rsi5<=45)add("5m RSI momentum",-1,`RSI ${rsi5.toFixed(0)}`);
   if(qqq>=.03)add("QQQ confirmation",1,`+${qqq.toFixed(2)}% from open`);else if(qqq<=-.03)add("QQQ confirmation",-1,`${qqq.toFixed(2)}% from open`);
   if(iwm>=.03)add("IWM confirmation",1,`+${iwm.toFixed(2)}% from open`);else if(iwm<=-.03)add("IWM confirmation",-1,`${iwm.toFixed(2)}% from open`);
   if(vix<=-.10)add("VIX confirmation",1,`${vix.toFixed(2)}% from open`);else if(vix>=.10)add("VIX confirmation",-1,`+${vix.toFixed(2)}% from open`);
 
-  const recent=session.slice(-4),touchOrHigh=Number.isFinite(orHigh)&&recent.some(b=>b.l<=orHigh*1.0008&&b.h>=orHigh*.9995);
-  const touchOrLow=Number.isFinite(orLow)&&recent.some(b=>b.h>=orLow*.9992&&b.l<=orLow*1.0005);
+  const recent=session.slice(-4),touchOrHigh=orComplete&&Number.isFinite(orHigh)&&recent.some(b=>b.l<=orHigh*1.0008&&b.h>=orHigh*.9995);
+  const touchOrLow=orComplete&&Number.isFinite(orLow)&&recent.some(b=>b.h>=orLow*.9992&&b.l<=orLow*1.0005);
   const prevVwap=vwaps[vwaps.length-2]??vwap;
-  const callOr=orState==="ABOVE"&&touchOrHigh&&last.c>prev.c&&last.c>vwap;
-  const putOr=orState==="BELOW"&&touchOrLow&&last.c<prev.c&&last.c<vwap;
+  const callOr=orComplete&&orState==="ABOVE"&&touchOrHigh&&last.c>prev.c&&last.c>vwap;
+  const putOr=orComplete&&orState==="BELOW"&&touchOrLow&&last.c<prev.c&&last.c<vwap;
   const callReclaim=prev.c<=prevVwap&&last.c>vwap&&t5.state==="BULLISH";
   const putReject=prev.c>=prevVwap&&last.c<vwap&&t5.state==="BEARISH";
   const nearSupport=Math.min(Math.abs(pct(last.c,vwap)),Math.abs(pct(last.c,lastEma1)))<=.12;
@@ -115,7 +117,7 @@ export function build0DteSignal(input:{
 
   const minutes=now.minute,marketOpen=minutes>=510&&minutes<=900,newEntryWindow=minutes>=515&&minutes<=630;
   const openingBlock=minutes>=510&&minutes<515,lateBlock=minutes>630;
-  const chop=crosses>=4,stale=lastBarAgeSec>90;
+  const chop=crosses>=4,stale=lastBarAgeSec>150;
 
   let raw=directionalRaw;
   let blockReason:string|null=null;
@@ -132,7 +134,7 @@ export function build0DteSignal(input:{
     triggers:{call:callTrigger,put:putTrigger},
     eligibleForNewEntry:newEntryWindow&&!input.highImpactLockout&&!chop&&!stale,
     blockReason,overextended,chop,vwapCrosses20m:crosses,lastBarAgeSec,
-    spy:{price:last.c,vwap,vwapPct,vwapSlope,open:session[0].o,orHigh,orLow,orState,rsi5,momentum1:mom1,atrPct},
+    spy:{price:last.c,vwap,vwapPct,vwapSlope,open:session[0].o,orHigh,orLow,orState,orComplete,rsi5,momentum1:mom1,atrPct},
     timeframes:{m5:t5,m15:t15},
     confirmations:{qqqFromOpen:qqq,iwmFromOpen:iwm,vixFromOpen:vix},
     factors,nowCt:{date:now.date,hour:now.hour,minute:now.min,totalMinutes:now.minute}
