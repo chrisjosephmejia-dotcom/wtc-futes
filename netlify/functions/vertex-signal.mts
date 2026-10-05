@@ -17,7 +17,7 @@ export default async(req:Request,_ctx:Context)=>{
  try{
   const u=new URL(req.url),ticker=(u.searchParams.get("ticker")||"SPY").trim().toUpperCase();
   if(!/^[A-Z][A-Z0-9./-]{0,9}$/.test(ticker))return Response.json({ok:false,error:"invalid_ticker"},{status:400});
-  const [d,context]=await Promise.all([getEquityBars(ticker),getMarketContext()]);
+  const [d,context]=await Promise.all([getEquityBars(ticker),getMarketContext(ticker)]);
   const mins=d.minuteBars,daily=d.dailyBars;
   const session=regularSession(mins);if(session.length<20)throw new Error("Not enough regular-session history");
   const five=resample(session,5),fifteen=resample(session,15),thirty=resample(session,30);
