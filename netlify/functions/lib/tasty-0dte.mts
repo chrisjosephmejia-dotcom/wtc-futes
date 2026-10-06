@@ -42,8 +42,8 @@ function normQuote(x:any):Quote{
 export async function getMarketSnapshot(token?:string){
   const t=token||await tastyAccessToken();
   const q=new URLSearchParams();
-  for(const s of ["SPY","QQQ","IWM"])q.append("equity[]",s);
-  for(const s of ["XSP","VIX"])q.append("index[]",s);
+  q.set("equity","SPY,QQQ,IWM");
+  q.set("index","XSP,VIX");
   const r=await fetch(`${BASE}/market-data/by-type?${q.toString()}`,{
     headers:{Authorization:`Bearer ${t}`,"User-Agent":UA,Accept:"application/json"}
   });
@@ -116,7 +116,7 @@ export async function getSameDayXspContracts(token?:string){
 export async function getOptionQuotes(symbols:string[],token?:string){
   if(!symbols.length)return[] as Quote[];
   const t=token||await tastyAccessToken(),q=new URLSearchParams();
-  for(const s of symbols.slice(0,100))q.append("equity-option[]",s);
+  q.set("equity-option",symbols.slice(0,100).join(","));
   const r=await fetch(`${BASE}/market-data/by-type?${q.toString()}`,{
     headers:{Authorization:`Bearer ${t}`,"User-Agent":UA,Accept:"application/json"}
   });
