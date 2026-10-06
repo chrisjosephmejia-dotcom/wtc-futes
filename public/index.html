@@ -110,7 +110,7 @@ async function refresh(){
   const st=d.status||{},sig=st.signal||{},p=d.performance||{};$('pushSubs').textContent='SUBSCRIBERS '+(d.pushSubscribers??'—');
   $('feed').innerHTML='<span class="dot"></span>'+(st.ok===false?'DATA ISSUE':'TASTYTRADE LIVE');$('feed').className='pill '+(st.ok===false?'bad':'live');
   $('headline').textContent=st.headline||sig.setup||'WAIT';$('headline').className='headline '+headlineClass($('headline').textContent);
-  $('reason').textContent=st.lastAction?.reason||sig.blockReason||('Trigger: '+(sig.trigger||'waiting for a qualifying retest / reclaim'));
+  $('reason').textContent=st.ok===false?(st.error||'Backend data error'):st.lastAction?.reason||sig.blockReason||('Trigger: '+(sig.trigger||'waiting for a qualifying retest / reclaim'));
   const sc=Number(sig.score||0);$('scoreNum').textContent=(sc>0?'+':'')+sc;$('scoreDot').style.left=((sc+15)/30*100)+'%';
   const gates=[];gates.push('<span class="chip '+(sig.eligibleForNewEntry?'good':'warn')+'">'+(sig.eligibleForNewEntry?'ENTRY WINDOW OPEN':'ENTRY GATED')+'</span>');if(sig.overextended)gates.push('<span class="chip warn">ANTI-CHASE</span>');if(sig.chop)gates.push('<span class="chip bad">VWAP CHOP</span>');if(st.eventRisk?.highImpactLockout)gates.push('<span class="chip bad">EVENT LOCKOUT</span>');if(sig.directionalRaw)gates.push('<span class="chip">RAW '+sig.directionalRaw+'</span>');$('gates').innerHTML=gates.join('');
   renderPosition(st);
