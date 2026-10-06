@@ -58,7 +58,12 @@ export default async()=>{
     }
 
     const token=await tastyAccessToken();
-    const [snapshot,bars,esBars]=await Promise.all([getMarketSnapshot(token),getEquityFastContext("SPY",token),getFutureFastContext("ES",token).catch(()=>null)]);
+    const [bars,snapshotResult,esBars]=await Promise.all([
+      getEquityFastContext("SPY",token),
+      getMarketSnapshot(token).then(x=>({ok:true,...x})).catch((error:any)=>({ok:false,token,quotes:{},health:{equities:false,xsp:false,vix:false},error:error?.message||String(error)})),
+      getFutureFastContext("ES",token).catch(()=>null)
+    ]);
+    const snapshot:any=snapshotResult;
     const prelimEvent=await get0DteEventState(store,now.date,now.total);
     const signal=build0DteSignal({
       minuteBars:bars.minuteBars,dailyBars:bars.dailyBars,quotes:snapshot.quotes,
@@ -169,7 +174,7 @@ export default async()=>{
     const headline=position?`HOLD XSP ${position.direction}`:action?.type==="BLOCK"?action.reason:signal.setup;
     const status={
       ok:true,version:"WTC XSP 0DTE V1",updatedAt:iso(),nowCt:now,session:"REGULAR",
-      headline,signal,eventRisk:events,state,position,optionQuote,currentPnl,xspPrice,marketQuotes:snapshot.quotes,lastAction:action||state.lastAction
+      headline,signal,eventRisk:events,state,position,optionQuote,currentPnl,xspPrice,marketQuotes:snapshot.quotes,marketHealth:{...snapshot.health,restOk:snapshot.ok!==false,restError:snapshot.error||null,spyDxlink:true,esDxlink:Boolean(esBars)},lastAction:action||state.lastAction
     };
 
     const rawRow={
