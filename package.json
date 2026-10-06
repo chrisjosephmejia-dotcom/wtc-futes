@@ -1,11 +1,9 @@
 {
-  "name": "wtc-futes",
+  "name": "wtc-stock-trader",
   "private": true,
   "type": "module",
   "dependencies": {
-    "@netlify/blobs": "latest",
     "@netlify/functions": "latest",
-    "web-push": "latest",
     "ws": "latest"
   }
 }

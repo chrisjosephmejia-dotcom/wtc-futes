@@ -1,29 +1,19 @@
-# WTC Futes
+# WTC Stock Trader
 
-MNQ futures alignment dashboard for Wheelhouse Trading Co.
+Development branch for the rebuilt stock decision site.
 
-- Netlify project: `wtc-futes`
-- Production URL: https://wtc-futes.netlify.app/
-- QQQ proxy signal engine runs server-side on Netlify Functions.
-- Web Push is handled from the server using VAPID keys stored as Netlify environment variables.
-- BUY/SELL signal changes can also send transactional email alerts through Resend.
-- Stale market data, blocked time windows, timeframe conflict, or excess VWAP extension force `WAIT`.
+## Purpose
+A practical rules-based "should I buy this dip?" tool. It is not a generic stock screener.
 
-## Netlify
+## V0.1
+- Tastytrade REST live quote
+- Tastytrade DXLink history
+- Volatility-adjusted three-stage dip ladder
+- BUY SMALL / BUY MORE / STRONG DIP / WAIT decisions
+- Long-term trend damage guard
+- Strong-dip thesis re-check gate placeholder
 
-Publish directory: `public`
-Functions directory: `netlify/functions`
+## Product rule
+Business quality controls conviction and size. Price controls entry timing. "Unproven" is a warning, not an automatic veto.
 
-Required environment variables:
-
-- `VAPID_SUBJECT`
-- `VAPID_PUBLIC_KEY`
-- `VAPID_PRIVATE_KEY`
-- `RESEND_API_KEY`
-- `ALERT_EMAIL_TO`
-- `TASTY_CLIENT_SECRET`
-- `TASTY_REFRESH_TOKEN`
-
-The existing Netlify site ID is `8e525588-b977-4c0b-8f61-f4374eaa8e71`.
-
-Deployment refresh marker: 2026-09-27 02:24 UTC.
+Production ticker-pulse is intentionally untouched while this branch is developed.
