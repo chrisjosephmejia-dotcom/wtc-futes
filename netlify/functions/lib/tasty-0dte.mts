@@ -8,6 +8,9 @@ export type XspContract={symbol:string;strike:number;optionType:"C"|"P";expirati
 
 const n=(v:any)=>Number.isFinite(Number(v))?Number(v):null;
 async function body(r:Response){return r.json().catch(()=>({}))}
+function apiMessage(b:any){
+  return b?.error?.message||b?.message||b?.error_description||b?.error?.code||b?.code||"unknown API error";
+}
 
 export async function tastyAccessToken(){
   const clientSecret=Netlify.env.get("TASTY_CLIENT_SECRET")?.trim();
@@ -19,7 +22,7 @@ export async function tastyAccessToken(){
     body:JSON.stringify({grant_type:"refresh_token",refresh_token:refreshToken,client_secret:clientSecret})
   });
   const b:any=await body(r);
-  if(!r.ok||!b?.access_token)throw new Error(`tastytrade OAuth failed (${r.status})`);
+  if(!r.ok||!b?.access_token)throw new Error(`tastytrade OAuth ${r.status}: ${apiMessage(b)}`);
   return b.access_token as string;
 }
 
@@ -39,20 +42,41 @@ function normQuote(x:any):Quote{
   };
 }
 
-export async function getMarketSnapshot(token?:string){
-  const t=token||await tastyAccessToken();
+async function quoteBatch(token:string,type:"equity"|"index"|"equity-option",symbols:string[]){
+  if(!symbols.length)return[] as Quote[];
   const q=new URLSearchParams();
-  q.set("equity","SPY,QQQ,IWM");
-  q.set("index","XSP,VIX");
+  q.set(type,symbols.join(","));
   const r=await fetch(`${BASE}/market-data/by-type?${q.toString()}`,{
-    headers:{Authorization:`Bearer ${t}`,"User-Agent":UA,Accept:"application/json"}
+    headers:{Authorization:`Bearer ${token}`,"User-Agent":UA,Accept:"application/json"}
   });
   const b:any=await body(r);
-  if(!r.ok)throw new Error(`market snapshot failed (${r.status})`);
-  const items=(b?.data?.items||[]).map(normQuote);
+  if(!r.ok)throw new Error(`${type} quotes ${r.status}: ${apiMessage(b)}`);
+  return (b?.data?.items||[]).map(normQuote) as Quote[];
+}
+
+export async function getMarketSnapshot(token?:string){
+  const t=token||await tastyAccessToken();
+
+  // Equities are the required cross-market inputs. Keep index feeds isolated so
+  // a CBOE/index entitlement or symbol issue cannot take down the whole engine.
+  const equities=await quoteBatch(t,"equity",["SPY","QQQ","IWM"]);
+  const [xsp,vix]=await Promise.all([
+    quoteBatch(t,"index",["XSP"]).catch(()=>[] as Quote[]),
+    quoteBatch(t,"index",["VIX"]).catch(()=>[] as Quote[])
+  ]);
+
+  const items=[...equities,...xsp,...vix];
   const map:any={};
   for(const x of items)map[x.symbol]=x;
-  return {token:t,quotes:map as Record<string,Quote>};
+  return {
+    token:t,
+    quotes:map as Record<string,Quote>,
+    health:{
+      equities:equities.length>0,
+      xsp:xsp.length>0,
+      vix:vix.length>0
+    }
+  };
 }
 
 function ctDate(){
@@ -115,14 +139,8 @@ export async function getSameDayXspContracts(token?:string){
 
 export async function getOptionQuotes(symbols:string[],token?:string){
   if(!symbols.length)return[] as Quote[];
-  const t=token||await tastyAccessToken(),q=new URLSearchParams();
-  q.set("equity-option",symbols.slice(0,100).join(","));
-  const r=await fetch(`${BASE}/market-data/by-type?${q.toString()}`,{
-    headers:{Authorization:`Bearer ${t}`,"User-Agent":UA,Accept:"application/json"}
-  });
-  const b:any=await body(r);
-  if(!r.ok)throw new Error(`option quote failed (${r.status})`);
-  return (b?.data?.items||[]).map(normQuote) as Quote[];
+  const t=token||await tastyAccessToken();
+  return quoteBatch(t,"equity-option",symbols.slice(0,100));
 }
 
 export async function chooseXspContract(direction:"CALL"|"PUT",xspPrice:number,token?:string){
