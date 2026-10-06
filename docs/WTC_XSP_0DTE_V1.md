@@ -339,3 +339,6 @@ Primary questions for later analysis:
 - Whether -75% emergency stop is too loose/tight.
 - Whether score-zero hysteresis is optimal for 0DTE.
 - Whether ATM/slightly-ITM selection should be replaced with a delta-based selector.
+
+
+Redeploy marker: env refresh
