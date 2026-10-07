@@ -16,7 +16,7 @@
 <div class="wrap">
   <div class="top"><div><div class="brand">WHEELHOUSE TRADING CO.</div><h1>MNQ FUTURES ALIGNMENT</h1></div><div class="clock" id="clock">—</div></div>
   <div class="card hero">
-    <div class="kicker">WTC V2 STATEFUL POSITION · LIVE CME NQ · 15-SEC PRICE · 1-MIN ENGINE</div>
+    <div class="kicker">WTC V3 STATEFUL POSITION · LIVE CME NQ · 15-SEC PRICE · 1-MIN ENGINE</div>
     <div id="signal" class="signal wait">WAIT</div>
     <div id="reason" class="reason">Loading engine status…</div>
     <div class="grid">
@@ -56,8 +56,8 @@
   </div>
 
   <div class="card logCard">
-    <div class="sectionTitle">WTC V2 FORWARD LOG · THEORETICAL MNQ P&amp;L</div>
-    <div class="small">Clean V2 ledger from launch forward. Trades are retained permanently, and every production engine minute is also stored with raw signal, position state, score and timeframe states.</div>
+    <div class="sectionTitle">WTC FORWARD LOG · V2 TRADES 1–46 · V3 TRADE 47+</div>
+    <div class="small">Continuous forward ledger: trades 1–46 are frozen V2; trade 47 onward is WTC V3. Every production engine minute is retained with strategy version, raw signal, position state, score, timeframe states and V3 risk state.</div>
     <div class="logStats">
       <div class="logStat"><div class="label">Closed gross P&amp;L</div><div class="value" id="closedPnl">—</div></div>
       <div class="logStat"><div class="label">Net after RH fees</div><div class="value" id="closedNetPnl">—</div></div>
@@ -68,18 +68,18 @@
     <div class="buttons"><a class="downloadLink" href="/api/signal-log.csv">DOWNLOAD FULL TRADE CSV</a><a class="downloadLink" href="/api/decision-log.csv?all=1">DOWNLOAD RAW DECISION CSV</a></div>
     <div class="tableWrap">
       <table>
-        <thead><tr><th>Status</th><th>Side</th><th>Contract</th><th>Entry</th><th>Exit / Mark</th><th>Score in</th><th>Score out</th><th>Points</th><th>Gross P&amp;L</th><th>Net after fees</th><th>Opened</th><th>Closed</th></tr></thead>
-        <tbody id="logBody"><tr><td colspan="12" class="emptyLog">Loading signal log…</td></tr></tbody>
+        <thead><tr><th>#</th><th>Version</th><th>Status</th><th>Side</th><th>Contract</th><th>Entry</th><th>Exit / Mark</th><th>Score in</th><th>Score out</th><th>Points</th><th>Gross P&amp;L</th><th>Net after fees</th><th>Opened</th><th>Closed</th></tr></thead>
+        <tbody id="logBody"><tr><td colspan="14" class="emptyLog">Loading signal log…</td></tr></tbody>
       </table>
     </div>
-    <div class="logNote" id="logNote">WTC V2 score-zero hysteresis. Gross and Robinhood Gold fee-adjusted results are theoretical for 1 MNQ; slippage and actual fills are not included.</div>
+    <div class="logNote" id="logNote">WTC V3 begins with trade 47. Gross and Robinhood Gold fee-adjusted results are theoretical for 1 MNQ; slippage and actual fills are not included.</div>
   </div>
 
   <div class="card">
-    <div class="sectionTitle">LOCKED OPERATING RULES · V2</div>
-    <ul class="rules"><li>CME NQ normal hours: Sunday–Friday 5:00 p.m.–4:00 p.m. CT, with the daily 4:00–5:00 p.m. CT maintenance break. The first five minutes after each 5:00 p.m. reopen are blocked for new entries.</li><li>Entry logic is unchanged: trend-aligned setup needs at least ±5/9; mixed daily regime uses ±6/9; countertrend needs ±7/9, with 30m/15m/5m/1m alignment.</li><li>WAIT is no longer an automatic exit. Once long, hold through raw WAIT while master score stays above 0; exit when score reaches 0 or below. Once short, hold while score stays below 0; exit when score reaches 0 or above.</li><li>A full opposite BUY/SELL signal reverses immediately. CME session close or unavailable/stale market data flattens for safety. No fixed stop or profit target is added.</li><li>Signals use direct NQ futures candles from tastytrade/DXLink. The displayed NQ price refreshes every 15 seconds, but strategy decisions and logging remain on the 1-minute engine. The live ledger assumes 1 MNQ and tracks Robinhood Gold fees at $0.86 per side / $1.72 round trip; slippage is not modeled.</li></ul>
+    <div class="sectionTitle">LOCKED OPERATING RULES · V3</div>
+    <ul class="rules"><li>CME NQ normal hours: Sunday–Friday 5:00 p.m.–4:00 p.m. CT, with the daily 4:00–5:00 p.m. CT maintenance break. The first five minutes after each 5:00 p.m. reopen are blocked for new entries.</li><li>Entry logic is unchanged: trend-aligned setup needs at least ±5/9; mixed daily regime uses ±6/9; countertrend needs ±7/9, with 30m/15m/5m/1m alignment.</li><li>WAIT is no longer an automatic exit. Once long, hold through raw WAIT while master score stays above 0; exit when score reaches 0 or below. Once short, hold while score stays below 0; exit when score reaches 0 or above.</li><li>A full opposite BUY/SELL signal reverses immediately. Every V3 trade has a hard -25 NQ point stop (-$50 gross on 1 MNQ). Default take-profit is +300 points (+$600 gross); a short entered while the daily state is BULLISH uses +25 points (+$50 gross).</li><li>After a hard stop or take-profit, same-direction re-entry stays locked until the original V2 lifecycle would have ended: long lock clears at score <= 0 or an opposite SELL; short lock clears at score >= 0 or an opposite BUY.</li><li>Signals use direct NQ futures candles from tastytrade/DXLink. The displayed NQ price refreshes every 15 seconds, but strategy decisions and logging remain on the 1-minute engine. The live ledger assumes 1 MNQ and tracks Robinhood Gold fees at $0.86 per side / $1.72 round trip; slippage is not modeled.</li></ul>
   </div>
-  <div class="foot">Market data source: tastytrade DXLink using the active CME NQ futures contract. Normal CME Globex hours are Sunday–Friday 5:00 p.m.–4:00 p.m. CT with a daily 4:00–5:00 p.m. maintenance break. WTC V2 separates the raw setup signal from the stateful position signal to reduce flicker-driven churn. Display price refresh is read-only and does not alter the 1-minute trading engine. This dashboard is an execution aid, not a guarantee of profitability or investment advice.</div>
+  <div class="foot">Market data source: tastytrade DXLink using the active CME NQ futures contract. Normal CME Globex hours are Sunday–Friday 5:00 p.m.–4:00 p.m. CT with a daily 4:00–5:00 p.m. maintenance break. WTC V3 preserves V2 score-zero hysteresis and adds hard risk exits, state-aware profit-taking and lifecycle lockout. Display price refresh is read-only and does not alter the 1-minute trading engine. This dashboard is an execution aid, not a guarantee of profitability or investment advice.</div>
 </div>
 <script>
 const $=id=>document.getElementById(id); let currentSub=null;
@@ -106,18 +106,18 @@ function renderLog(data){
   $('tradeCount').textContent=Number.isFinite(Number(st.closedTrades))?String(st.closedTrades):'0';
   $('winRate').textContent=Number.isFinite(Number(st.winRate))?`${Number(st.winRate).toFixed(1)}%`:'—';
   const body=$('logBody');body.textContent='';const rows=Array.isArray(data?.trades)?data.trades.slice(0,25):[];
-  if(!rows.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=12;td.className='emptyLog';td.textContent='No V2 trades logged yet. The first actionable entry will appear here automatically.';tr.appendChild(td);body.appendChild(tr);return;}
+  if(!rows.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=14;td.className='emptyLog';td.textContent='No trades logged yet. The first actionable entry will appear here automatically.';tr.appendChild(td);body.appendChild(tr);return;}
   for(const t of rows){
     const tr=document.createElement('tr');if(t.status==='OPEN')tr.className='openRow';
-    const vals=[t.status,t.direction,t.contract,Number.isFinite(Number(t.entryPrice))?`$${Number(t.entryPrice).toFixed(2)}`:'—',Number.isFinite(Number(t.status==='OPEN'?t.markPrice:t.exitPrice))?`$${Number(t.status==='OPEN'?t.markPrice:t.exitPrice).toFixed(2)}`:'—',score(t.entryScore),t.status==='OPEN'?'—':score(t.exitScore),points(t.points),money(t.theoreticalPnl),money(t.netPnlBeforeSlippage),fmtTime(t.openedAt),t.status==='OPEN'?'—':fmtTime(t.closedAt)];
-    vals.forEach((v,i)=>{const td=document.createElement('td');td.textContent=String(v);if(i===1)td.className=t.direction==='BUY MNQ'?'pos':'neg';if(i===7||i===8||i===9)td.className=pnlClass(t.theoreticalPnl);tr.appendChild(td);});
+    const version=(t.strategyVersion||'').startsWith('WTC V3')?'V3':'V2';const vals=[t.tradeNumber??'—',version,t.status,t.direction,t.contract,Number.isFinite(Number(t.entryPrice))?`${Number(t.entryPrice).toFixed(2)}`:'—',Number.isFinite(Number(t.status==='OPEN'?t.markPrice:t.exitPrice))?`${Number(t.status==='OPEN'?t.markPrice:t.exitPrice).toFixed(2)}`:'—',score(t.entryScore),t.status==='OPEN'?'—':score(t.exitScore),points(t.points),money(t.theoreticalPnl),money(t.netPnlBeforeSlippage),fmtTime(t.openedAt),t.status==='OPEN'?'—':fmtTime(t.closedAt)];
+    vals.forEach((v,i)=>{const td=document.createElement('td');td.textContent=String(v);if(i===3)td.className=t.direction==='BUY MNQ'?'pos':'neg';if(i===9||i===10||i===11)td.className=pnlClass(t.theoreticalPnl);tr.appendChild(td);});
     body.appendChild(tr);
   }
   if(data?.note)$('logNote').textContent=data.note;
 }
 async function refresh(){try{const r=await fetch('/api/status',{cache:'no-store'});update(await r.json());}catch(e){$('reason').textContent='STATUS ERROR · '+e.message;}}
 async function refreshLivePrice(){try{const r=await fetch('/api/live-price',{cache:'no-store'});if(!r.ok)throw new Error('Live price unavailable');const q=await r.json();if(Number.isFinite(Number(q.price)))$('price').textContent=`$${Number(q.price).toFixed(2)}`;if(q.symbol)$('priceLabel').textContent=`${q.symbol} futures · live`;$('livePriceState').textContent='LIVE PRICE · 15S';$('livePriceState').className='pill good';}catch(e){$('livePriceState').textContent='LIVE PRICE PAUSED';$('livePriceState').className='pill warn';}}
-async function refreshLog(){try{const r=await fetch('/api/signal-log',{cache:'no-store'});if(!r.ok)throw new Error('Signal log unavailable');renderLog(await r.json());}catch(e){const body=$('logBody');body.innerHTML='<tr><td colspan="12" class="emptyLog">SIGNAL LOG ERROR</td></tr>';}}
+async function refreshLog(){try{const r=await fetch('/api/signal-log',{cache:'no-store'});if(!r.ok)throw new Error('Signal log unavailable');renderLog(await r.json());}catch(e){const body=$('logBody');body.innerHTML='<tr><td colspan="14" class="emptyLog">SIGNAL LOG ERROR</td></tr>';}}
 function tick(){ $('clock').textContent=new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',weekday:'short',hour:'numeric',minute:'2-digit',second:'2-digit'}).format(new Date())+' CT'; }
 async function initPush(){
   if(!('serviceWorker'in navigator)||!('PushManager'in window)||!('Notification'in window)){ $('pushState').textContent='PUSH NOT SUPPORTED';$('pushState').className='pill bad';$('enable').disabled=true;return; }
