@@ -27,9 +27,10 @@
       min-height:100vh;
       color:var(--text);
       background:
-        radial-gradient(circle at 14% 4%,rgba(55,115,151,.25),transparent 31%),
-        radial-gradient(circle at 88% 15%,rgba(35,116,97,.18),transparent 28%),
-        linear-gradient(180deg,#08121c 0%,#071018 55%,#050c12 100%);
+        linear-gradient(180deg,rgba(4,11,18,.74),rgba(4,10,16,.88)),
+        radial-gradient(circle at 14% 4%,rgba(55,115,151,.18),transparent 31%),
+        url("/wallstreet.webp") center top / cover fixed no-repeat,
+        #071018;
     }
     a{color:inherit;text-decoration:none}
     .wrap{max-width:1180px;margin:0 auto;padding:34px 22px 54px}
@@ -122,12 +123,12 @@
     </div>
 
     <section class="apps">
-      <a class="app futes" href="https://wtc-futes.netlify.app/" aria-label="Open WTC Futes">
+      <a class="app futes" href="https://wtc-futes.netlify.app/" aria-label="Open MNQ Futures">
         <div class="appTop">
           <div class="live"><span class="dot"></span>LIVE</div>
           <div class="appCode">WTC / FUTURES</div>
         </div>
-        <h2>WTC Futes</h2>
+        <h2>MNQ Futures</h2>
         <p>NQ / MNQ futures signal engine built around direct CME market data, multi-timeframe alignment, stateful position logic, and WTC V2 hysteresis.</p>
         <div class="meta">
           <span>TASTYTRADE</span>
@@ -135,7 +136,7 @@
           <span>NQ / MNQ</span>
           <span>LIVE SIGNALS</span>
         </div>
-        <div class="open"><span>OPEN FUTURES</span><span class="arrow">→</span></div>
+        <div class="open"><span>OPEN MNQ FUTURES</span><span class="arrow">→</span></div>
       </a>
 
       <a class="app options" href="https://wtc-options-seller.netlify.app/" aria-label="Open WTC Options Seller">
@@ -154,7 +155,7 @@
         <div class="open"><span>OPEN OPTIONS</span><span class="arrow">→</span></div>
       </a>
 
-      <a class="app stocks" href="https://ticker-pulse-devstage-test.netlify.app/" aria-label="Open WTC Stock Trader">
+      <a class="app stocks" href="https://ticker-pulse-devstage-test.netlify.app/?ticker=SPCX" aria-label="Open WTC Stock Trader with SPCX loaded">
         <div class="appTop">
           <div class="live"><span class="dot"></span>LIVE · DEVELOPMENT</div>
           <div class="appCode">WTC / STOCKS</div>
