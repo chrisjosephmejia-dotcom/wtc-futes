@@ -20,13 +20,13 @@ export default async (req:Request,_context:Context) => {
   else if(keys.length) selected=[keys[keys.length-1]];
 
   const headers=[
-    "checked_at","strategy_version","source_contract","price","score","raw_signal","raw_reason","position_signal","position_event","position_reason","daily_state","frame_30m","frame_15m","frame_5m","frame_1m","vwap","feed_active","session","in_entry","extension_blocked"
+    "checked_at","strategy_version","source_contract","price","score","raw_signal","raw_reason","position_signal","position_event","position_reason","daily_state","frame_30m","frame_15m","frame_5m","frame_1m","vwap","feed_active","session","in_entry","extension_blocked","risk_open_points","risk_take_profit_points","risk_trigger","risk_lock_direction","risk_lock_active"
   ];
   const lines=[headers.join(",")];
   for(const key of selected){
     const saved:any=await s.get(key,{type:"json"}) || {};
     for(const e of (Array.isArray(saved.entries)?saved.entries:[])){
-      const values=[e.checkedAt,e.strategyVersion,e.sourceContract,e.price,e.score,e.rawSignal,e.rawReason,e.positionSignal,e.positionEvent,e.positionReason,e.dailyState,e.frame30,e.frame15,e.frame5,e.frame1,e.vwap,e.feedActive,e.session,e.inEntry,e.extensionBlocked];
+      const values=[e.checkedAt,e.strategyVersion,e.sourceContract,e.price,e.score,e.rawSignal,e.rawReason,e.positionSignal,e.positionEvent,e.positionReason,e.dailyState,e.frame30,e.frame15,e.frame5,e.frame1,e.vwap,e.feedActive,e.session,e.inEntry,e.extensionBlocked,e.riskCap?.openPoints,e.riskCap?.takeProfitPoints,e.riskCap?.trigger,e.riskCap?.lockDirection,e.riskCap?.lockActive];
       lines.push(values.map(csvCell).join(","));
     }
   }
@@ -34,7 +34,7 @@ export default async (req:Request,_context:Context) => {
   return new Response(lines.join("\n")+"\n",{
     headers:{
       "Content-Type":"text/csv; charset=utf-8",
-      "Content-Disposition":`attachment; filename="wtc-mnq-v2-decision-log-${suffix}.csv"`,
+      "Content-Disposition":`attachment; filename="wtc-mnq-decision-log-${suffix}.csv"`,
       "Cache-Control":"no-store"
     }
   });
