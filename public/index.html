@@ -30,31 +30,6 @@
       background:#071018;
       position:relative;
     }
-    .pageBg{
-      position:fixed;
-      inset:0;
-      width:100vw;
-      height:100vh;
-      z-index:0;
-      overflow:hidden;
-      background:#071018;
-      pointer-events:none;
-    }
-    .pageBg img{
-      position:absolute;
-      inset:0;
-      width:100%;
-      height:100%;
-      object-fit:cover;
-      object-position:center center;
-      opacity:.78;
-    }
-    .pageBg::after{
-      content:"";
-      position:absolute;
-      inset:0;
-      background:linear-gradient(180deg,rgba(3,9,15,.18),rgba(3,9,15,.42));
-    }
     a{color:inherit;text-decoration:none}
     .wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:34px 22px 54px}
     .topbar{display:flex;align-items:center;justify-content:space-between;gap:20px}
@@ -63,7 +38,7 @@
     .dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 4px rgba(85,230,165,.10)}
     .hero{padding:64px 0 42px;max-width:850px}
     .kicker{color:#7f94a8;font-size:12px;text-transform:uppercase;letter-spacing:.16em;font-weight:800}
-    h1{margin:10px 0 14px;font-size:clamp(36px,5vw,58px);line-height:1;letter-spacing:-.025em;font-weight:760;color:#e7eef5}
+    h1{margin:10px 0 14px;font-size:clamp(32px,4vw,48px);line-height:1;letter-spacing:-.02em;font-weight:700;color:#e7eef5}
     .systemStrip{display:flex;flex-wrap:wrap;gap:9px;margin-top:18px}
     .chip{padding:8px 11px;border-radius:999px;border:1px solid #22364a;background:#0b1723;color:#a9b9c8;font-size:11px;font-weight:800}
     .chip strong{color:var(--green)}
@@ -124,7 +99,6 @@
   </style>
 </head>
 <body>
-  <div class="pageBg" aria-hidden="true"><img src="/wallstreet-final.webp" alt=""></div>
   <main class="wrap">
     <div class="topbar">
       <div class="brand">Wheelhouse Trading Co.</div>
@@ -132,7 +106,7 @@
     </div>
 
     <section class="hero">
-      <div class="kicker">Trading systems command center</div>
+      <div class="kicker">Trading systems</div>
       <h1>ONE WTC</h1>
       <div class="systemStrip">
         <span class="chip"><strong>●</strong> TASTYTRADE DATA</span>
