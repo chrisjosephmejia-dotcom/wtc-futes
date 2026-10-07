@@ -30,7 +30,7 @@ export default async(req:Request,_ctx:Context)=>{
     else if(inside(price,z2)){decision=damage?"CAUTION • TREND DAMAGE":"BUY MORE";tier=damage?"CAUTION":"BUY_MORE";reason=damage?"Price reached the deeper zone, but long-term trend damage blocks an aggressive add.":"Price is inside the deeper volatility-adjusted add zone."}
     else if(price<z2.low&&price>z3.high){decision="WAIT FOR STRONGER DIP";tier="WAIT";reason="Price is between the deeper add zone and the strong-dip zone."}
     else if(inside(price,z3)){decision="STRONG DIP • THESIS RE-CHECK";tier="THESIS_CHECK";reason="Price reached the strong-dip zone. Cheap is not enough here; fresh thesis confirmation is required before a major add."}
-    else if(price<z3.low){decision="CAUTION • BELOW STRONG-DIP ZONE";tier="CAUTION";reason="Price is below the planned strong-dip band. Treat this as possible thesis or structure damage, not automatically as a bargain."}
+    else if(price<z3.low){decision="STRONG DIP • THESIS RE-CHECK";tier="THESIS_CHECK";reason="Price has fallen through the strong-dip band. Treat that as a stronger thesis-check signal, not as an automatic buy or a reason to abandon the setup purely because it is lower."}
     if(price>z1.high&&extended){decision="WAIT • DO NOT CHASE";tier="WAIT";reason="Price is extended above the first dip zone and daily momentum is hot."}
     const qualityNote=daily.length<200?"LIMITED HISTORY • SIZE SMALLER":"TECHNICAL HISTORY AVAILABLE";
     const thesisRequired=tier==="THESIS_CHECK"||tier==="CAUTION";
