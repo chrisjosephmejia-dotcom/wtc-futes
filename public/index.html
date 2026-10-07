@@ -71,6 +71,7 @@
     .app.futes:before{background:#58c8ff}
     .app.options:before{background:#55e6a5}
     .app.odte:before{background:#ffd866}
+    .app.stocks:before{background:#b58cff}
     .app:hover{transform:translateY(-3px);border-color:#34516a;box-shadow:0 20px 55px rgba(0,0,0,.26)}
     .appTop{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px}
     .live{display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(85,230,165,.28);background:rgba(22,78,62,.18);color:#72efb3;padding:6px 9px;border-radius:999px;font-size:10px;font-weight:900;letter-spacing:.08em}
@@ -83,6 +84,7 @@
     .futes .open{color:var(--cyan)}
     .options .open{color:var(--green)}
     .odte .open{color:var(--amber)}
+    .stocks .open{color:#c7a8ff}
     .arrow{font-size:22px;font-weight:400}
     .roadmap{margin-top:22px;border:1px solid #172838;background:rgba(8,18,28,.72);border-radius:16px;padding:16px 18px;color:#788b9d;font-size:12px;line-height:1.55}
     .roadmap strong{color:#aebdca}
@@ -101,7 +103,7 @@
   <main class="wrap">
     <div class="topbar">
       <div class="brand">Wheelhouse Trading Co.</div>
-      <div class="status"><span class="dot"></span>3 SYSTEMS LIVE</div>
+      <div class="status"><span class="dot"></span>4 SYSTEMS LIVE</div>
     </div>
 
     <section class="hero">
@@ -152,6 +154,22 @@
         <div class="open"><span>OPEN OPTIONS</span><span class="arrow">→</span></div>
       </a>
 
+      <a class="app stocks" href="https://ticker-pulse-devstage-test.netlify.app/" aria-label="Open WTC Stock Trader">
+        <div class="appTop">
+          <div class="live"><span class="dot"></span>LIVE · DEVELOPMENT</div>
+          <div class="appCode">WTC / STOCKS</div>
+        </div>
+        <h2>Stock Trader</h2>
+        <p>Rules-based stock dip-buying decision engine using live Tastytrade quotes, technical history, staged buy zones, and thesis re-check logic for deeper declines.</p>
+        <div class="meta">
+          <span>TASTYTRADE</span>
+          <span>STOCKS</span>
+          <span>DIP LADDER</span>
+          <span>THESIS GATE</span>
+        </div>
+        <div class="open"><span>OPEN STOCK TRADER</span><span class="arrow">→</span></div>
+      </a>
+
       <a class="app odte" href="https://wtc-0dte.netlify.app/" aria-label="Open WTC XSP 0DTE">
         <div class="appTop">
           <div class="live"><span class="dot"></span>LIVE · FORWARD TEST</div>
@@ -169,7 +187,7 @@
       </a>
     </section>
 
-    <div class="roadmap"><strong>ONE WTC architecture:</strong> specialized apps stay independently hosted. Ticker Pulse can join here after its Tastytrade-data migration without changing the existing live systems.</div>
+    <div class="roadmap"><strong>ONE WTC architecture:</strong> specialized apps stay independently hosted while ONE WTC remains the front door. Stock Trader is now connected in development alongside Futes, Options Seller, and XSP 0DTE.</div>
 
     <footer>
       <span>ONE WTC · Wheelhouse Trading Co.</span>
