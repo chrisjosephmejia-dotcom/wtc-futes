@@ -22,6 +22,7 @@
       --amber:#ffd866;
     }
     *{box-sizing:border-box}
+    html,body{min-height:100%}
     body{
       margin:0;
       min-height:100vh;
@@ -29,24 +30,30 @@
       background:#071018;
       position:relative;
     }
-    body::before{
-      content:"";
+    .pageBg{
       position:fixed;
       inset:0;
-      background:url("/wallstreet-v2.webp") center top / cover no-repeat;
-      opacity:.58;
+      width:100vw;
+      height:100vh;
       z-index:0;
+      overflow:hidden;
+      background:#071018;
       pointer-events:none;
     }
-    body::after{
-      content:"";
-      position:fixed;
+    .pageBg img{
+      position:absolute;
       inset:0;
-      background:
-        linear-gradient(180deg,rgba(3,9,15,.34),rgba(3,9,15,.58)),
-        radial-gradient(circle at 14% 4%,rgba(55,115,151,.14),transparent 31%);
-      z-index:0;
-      pointer-events:none;
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      object-position:center center;
+      opacity:.62;
+    }
+    .pageBg::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:linear-gradient(180deg,rgba(3,9,15,.28),rgba(3,9,15,.54));
     }
     a{color:inherit;text-decoration:none}
     .wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:34px 22px 54px}
@@ -117,6 +124,7 @@
   </style>
 </head>
 <body>
+  <div class="pageBg" aria-hidden="true"><img src="/wallstreet-v2.webp" alt=""></div>
   <main class="wrap">
     <div class="topbar">
       <div class="brand">Wheelhouse Trading Co.</div>
