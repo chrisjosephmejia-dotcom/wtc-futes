@@ -43,7 +43,7 @@ async function history(url:string,token:string,symbol:string,period:number,unit:
     const finish=()=>{if(done)return;if(!map.size)return fail(new Error(`No ${cs} history`));done=true;cleanup();resolve([...map.values()].sort((a,b)=>a.time-b.time))};
     const send=(o:any)=>{if(ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify(o))};
     const apply=()=>{for(const r of pending){if(r.flags&RM)map.delete(r.index);else map.set(r.index,{index:r.index,time:r.time,open:r.open,high:r.high,low:r.low,close:r.close,volume:r.volume})}pending=[]};
-    const row=(r:any)=>{if(r.flags&SB){pending=[];snap=true}const end=snap&&Boolean(r.flags&(SE|SS));if(end)snap=false;pending.push(r);if((r.flags&TX)||snap)return;if(end)map.clear();apply();if(map.size>=minEvents)setTimeout(finish,120)};
+    const row=(r:any)=>{if(r.flags&SB){pending=[];snap=true}const end=snap&&Boolean(r.flags&(SE|SS));if(end)snap=false;pending.push(r);if((r.flags&TX)||snap)return;if(end)map.clear();apply();if(end||map.size>=minEvents)setTimeout(finish,80)};
     ws.on("open",()=>send({type:"SETUP",channel:0,version:"0.1-DXF-JS/0.3.0",keepaliveTimeout:60,acceptKeepaliveTimeout:60}));
     ws.on("error",(e:any)=>fail(new Error(e?.message||"DXLink error")));
     ws.on("message",(raw:any)=>{let m:any;try{m=JSON.parse(raw.toString())}catch{return}
@@ -66,4 +66,13 @@ export async function getEquityBars(symbol:string){
     history(qt["dxlink-url"],qt.token,ss,1,"d",now-420*24*3600e3,180)
   ]);
   return {symbol,streamerSymbol:ss,minuteBars:bars(mins),dailyBars:bars(days),source:"tastytrade DXLink"};
+}
+
+
+export async function getEquityDailyBars(symbol:string){
+  const at=await accessToken();
+  const [eq,qt]=await Promise.all([equity(at,symbol),quoteToken(at)]);
+  const ss=eq["streamer-symbol"],now=Date.now();
+  const days=await history(qt["dxlink-url"],qt.token,ss,1,"d",now-420*24*3600e3,200);
+  return {symbol,streamerSymbol:ss,dailyBars:bars(days),source:"tastytrade DXLink"};
 }
