@@ -1,7 +1,7 @@
 import type { Config } from "@netlify/functions";
 import { store } from "./lib/storage.mjs";
 import { computeSignal, getCmeClockState } from "./lib/signal-nq.mjs";
-import { resolvePositionState, actionable, STRATEGY_VERSION } from "./lib/position-state.mjs";
+import { resolvePositionState, actionable, lifecycleLockActive, STRATEGY_VERSION } from "./lib/position-state.mjs";
 import { sendAll } from "./lib/push.mjs";
 import { sendSignalEmail } from "./lib/email.mjs";
 import { updateSignalLog, appendDecisionSnapshot } from "./lib/signal-log.mjs";
@@ -45,8 +45,8 @@ export default async (_req:Request) => {
     const previous:any=await s.get("state",{type:"json"}) || {};
     const lastStatus:any=await s.get("status",{type:"json"}) || {};
 
-    // Initialize/archive the ledger even while CME is closed so the V2 forward
-    // dataset is clean before the Sunday evening reopen.
+    // Keep the forward ledger continuous across strategy versions. Closed CME
+    // sessions flatten positions and clear any hard-exit lifecycle lockout.
     const flatCurrent:any={
       ...lastStatus,
       strategyVersion:STRATEGY_VERSION,
@@ -78,10 +78,11 @@ export default async (_req:Request) => {
     const previous:any=await s.get("state",{type:"json"}) || {};
     const ledger:any=await s.get("signal-log",{type:"json"}) || {};
     const openTrade=Array.isArray(ledger?.trades)?ledger.trades.find((t:any)=>t?.status === "OPEN")||null:null;
-    const current:any=resolvePositionState(raw,previous.signal,openTrade,previous.riskLockDirection||null);
+    const previousRiskLock=previous.riskLockDirection||null;
+    const current:any=resolvePositionState(raw,previous.signal,openTrade,previousRiskLock);
     const nextRiskLockDirection=current?.riskCap?.trigger
       ? (actionable(previous.signal)?previous.signal:null)
-      : (previous.riskLockDirection && current.rawSignal === previous.riskLockDirection ? previous.riskLockDirection : null);
+      : (lifecycleLockActive(raw,previousRiskLock)?previousRiskLock:null);
     const stateChanged=previous.signal !== current.signal;
     let lastPush=previous.lastPush||null;
     let lastEmail=previous.lastEmail||null;
