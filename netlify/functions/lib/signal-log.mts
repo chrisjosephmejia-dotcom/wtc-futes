@@ -1,17 +1,28 @@
 import { store } from "./storage.mjs";
-import { STRATEGY_VERSION, actionable, HARD_STOP_POINTS, TAKE_PROFIT_POINTS } from "./position-state.mjs";
+import {
+  STRATEGY_VERSION,
+  actionable,
+  HARD_STOP_POINTS,
+  DEFAULT_TAKE_PROFIT_POINTS,
+  BULLISH_SHORT_TAKE_PROFIT_POINTS,
+} from "./position-state.mjs";
 
 const MNQ_DOLLARS_PER_POINT = 2;
 const ROBINHOOD_FEE_PER_SIDE = 0.86;
 const ROBINHOOD_ROUND_TRIP_FEE = ROBINHOOD_FEE_PER_SIDE * 2;
+const V3_START_TRADE_NUMBER = 47;
 const RISK_MODEL = {
   hardStopPoints:HARD_STOP_POINTS,
   hardStopGrossDollars:HARD_STOP_POINTS*MNQ_DOLLARS_PER_POINT,
-  takeProfitPoints:TAKE_PROFIT_POINTS,
-  takeProfitGrossDollars:TAKE_PROFIT_POINTS*MNQ_DOLLARS_PER_POINT,
+  defaultTakeProfitPoints:DEFAULT_TAKE_PROFIT_POINTS,
+  defaultTakeProfitGrossDollars:DEFAULT_TAKE_PROFIT_POINTS*MNQ_DOLLARS_PER_POINT,
+  bullishShortTakeProfitPoints:BULLISH_SHORT_TAKE_PROFIT_POINTS,
+  bullishShortTakeProfitGrossDollars:BULLISH_SHORT_TAKE_PROFIT_POINTS*MNQ_DOLLARS_PER_POINT,
+  lifecycleLockout:"After a hard exit, block same-direction re-entry until the original V2 lifecycle exit condition occurs.",
+  v3StartTradeNumber:V3_START_TRADE_NUMBER,
 };
 
-function round(n:number, digits=2){
+function round(n:number,digits=2){
   const p=10**digits;
   return Math.round(n*p)/p;
 }
@@ -24,6 +35,17 @@ function alignment(current:any){
 function mnqContract(nqSymbol:any){
   const s=String(nqSymbol || "");
   return s.startsWith("/NQ") ? s.replace("/NQ","/MNQ") : "MNQ";
+}
+
+function normalizeTradeHistory(trades:any[]){
+  const chronological=[...trades].reverse();
+  const normalized=chronological.map((trade:any,index:number)=>{
+    const tradeNumber=index+1;
+    const next:any={...trade,tradeNumber};
+    if(tradeNumber >= V3_START_TRADE_NUMBER) next.strategyVersion=STRATEGY_VERSION;
+    return next;
+  });
+  return normalized.reverse();
 }
 
 function closeTrade(trade:any,current:any){
@@ -55,17 +77,12 @@ function closeTrade(trade:any,current:any){
 async function loadCurrentLedger(){
   const s=store("mnq-engine");
   const existing:any=await s.get("signal-log",{type:"json"}) || {};
-  if(existing?.strategyVersion === STRATEGY_VERSION) return existing;
-
-  const oldTrades=Array.isArray(existing?.trades)?existing.trades:[];
-  if(oldTrades.length){
-    await s.setJSON("signal-log-archive-pre-v2",{
-      ...existing,
-      archivedAt:new Date().toISOString(),
-      archiveReason:`Production lifecycle changed to ${STRATEGY_VERSION}`,
-    });
-  }
-  return {trades:[],createdAt:new Date().toISOString(),strategyVersion:STRATEGY_VERSION};
+  const trades=normalizeTradeHistory(Array.isArray(existing?.trades)?existing.trades:[]);
+  return {
+    ...existing,
+    trades,
+    createdAt:existing.createdAt || new Date().toISOString(),
+  };
 }
 
 export async function updateSignalLog(current:any){
@@ -74,7 +91,7 @@ export async function updateSignalLog(current:any){
   let trades:any[]=Array.isArray(saved.trades)?saved.trades:[];
   let openIndex=trades.findIndex(t=>t?.status === "OPEN");
   const isActionable=actionable(current?.signal);
-  let changed=false;
+  let changed=saved?.version < 5 || saved?.strategyVersion !== STRATEGY_VERSION;
 
   if(openIndex >= 0){
     const open=trades[openIndex];
@@ -91,9 +108,11 @@ export async function updateSignalLog(current:any){
   const hasOpen=trades.some(t=>t?.status === "OPEN");
   if(isActionable && !hasOpen && Number.isFinite(Number(current?.price))){
     const now=current.checkedAt || new Date().toISOString();
+    const tradeNumber=trades.length+1;
     trades.unshift({
       id:`${now}-${current.signal}`,
-      strategyVersion:STRATEGY_VERSION,
+      tradeNumber,
+      strategyVersion:tradeNumber >= V3_START_TRADE_NUMBER ? STRATEGY_VERSION : (saved.strategyVersion || STRATEGY_VERSION),
       status:"OPEN",
       direction:current.signal,
       contract:mnqContract(current?.instrument?.symbol),
@@ -112,12 +131,13 @@ export async function updateSignalLog(current:any){
     changed=true;
   }
 
-  if(!changed && saved?.version >= 4) return saved;
+  if(!changed) return saved;
 
   const now=new Date().toISOString();
   const result={
-    version:4,
+    version:5,
     strategyVersion:STRATEGY_VERSION,
+    v3StartTradeNumber:V3_START_TRADE_NUMBER,
     riskModel:RISK_MODEL,
     multiplier:MNQ_DOLLARS_PER_POINT,
     feeModel:{provider:"Robinhood Gold",perSide:ROBINHOOD_FEE_PER_SIDE,roundTrip:ROBINHOOD_ROUND_TRIP_FEE},
@@ -135,7 +155,7 @@ export async function appendDecisionSnapshot(current:any){
   const checkedAt=current?.checkedAt || new Date().toISOString();
   const day=checkedAt.slice(0,10);
   const key=`decision-log/${day}`;
-  const saved:any=await s.get(key,{type:"json"}) || {version:1,strategyVersion:STRATEGY_VERSION,date:day,entries:[]};
+  const saved:any=await s.get(key,{type:"json"}) || {version:2,date:day,entries:[]};
   const entries:any[]=Array.isArray(saved.entries)?saved.entries:[];
   const minute=checkedAt.slice(0,16);
   if(entries.length && String(entries[entries.length-1]?.checkedAt||"").slice(0,16) === minute) return saved;
@@ -161,8 +181,9 @@ export async function appendDecisionSnapshot(current:any){
     session:current?.market?.session ?? null,
     inEntry:current?.market?.inEntry ?? null,
     extensionBlocked:current?.extension?.blocked ?? null,
+    riskCap:current?.riskCap || null,
   });
-  const result={...saved,version:1,strategyVersion:STRATEGY_VERSION,date:day,updatedAt:new Date().toISOString(),entries};
+  const result={...saved,version:2,strategyVersion:STRATEGY_VERSION,date:day,updatedAt:new Date().toISOString(),entries};
   await s.setJSON(key,result);
   return result;
 }
@@ -175,4 +196,9 @@ export function theoreticalMark(trade:any,price:any){
   return {points,theoreticalPnl,netPnlBeforeSlippage:round(theoreticalPnl-ROBINHOOD_ROUND_TRIP_FEE,2)};
 }
 
-export { MNQ_DOLLARS_PER_POINT, ROBINHOOD_FEE_PER_SIDE, ROBINHOOD_ROUND_TRIP_FEE };
+export {
+  MNQ_DOLLARS_PER_POINT,
+  ROBINHOOD_FEE_PER_SIDE,
+  ROBINHOOD_ROUND_TRIP_FEE,
+  V3_START_TRADE_NUMBER,
+};

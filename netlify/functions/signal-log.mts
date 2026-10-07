@@ -1,6 +1,6 @@
 import type { Context, Config } from "@netlify/functions";
 import { store } from "./lib/storage.mjs";
-import { MNQ_DOLLARS_PER_POINT, ROBINHOOD_ROUND_TRIP_FEE, theoreticalMark } from "./lib/signal-log.mjs";
+import { MNQ_DOLLARS_PER_POINT, ROBINHOOD_ROUND_TRIP_FEE, V3_START_TRADE_NUMBER, theoreticalMark } from "./lib/signal-log.mjs";
 import { STRATEGY_VERSION } from "./lib/position-state.mjs";
 
 function round(n:number,digits=2){
@@ -40,6 +40,7 @@ export default async (_req:Request,_context:Context) => {
     createdAt:saved.createdAt || null,
     updatedAt:saved.updatedAt || null,
     retention:"permanent",
+    v3StartTradeNumber:V3_START_TRADE_NUMBER,
     displayLimit:25,
     totalStoredTrades:trades.length,
     multiplier:MNQ_DOLLARS_PER_POINT,
@@ -63,7 +64,7 @@ export default async (_req:Request,_context:Context) => {
       openPoints:openMark?.points ?? null,
     },
     trades:rows,
-    note:`${STRATEGY_VERSION}. Hard risk exits now take priority: exit at -25 MNQ points (-$50 gross) or +300 MNQ points (+$600 gross), evaluated at each engine check. After a hard exit, the same-direction raw signal is locked out until it clears or changes, preventing an immediate re-entry. Otherwise ordinary raw WAIT does not exit an open position; long exits at score <= 0, short exits at score >= 0, and a full opposite signal reverses immediately. Gross and Robinhood Gold fee-adjusted P&L are theoretical for 1 MNQ; slippage and actual execution differences are excluded.`
+    note:`${STRATEGY_VERSION}. Trades 1-46 remain V2; trade 47 onward is V3. All V3 trades use a -25 point (-$50 gross) hard stop. The default take-profit is +300 points (+$600 gross), while shorts entered in a BULLISH daily state use +25 points (+$50 gross). After a hard exit, same-direction re-entry is blocked until the original V2 lifecycle exit condition occurs (long: score <= 0 or SELL; short: score >= 0 or BUY). Otherwise V2 score-zero/reversal exits remain intact. Gross and Robinhood Gold fee-adjusted P&L are theoretical for 1 MNQ; slippage and actual execution differences are excluded.`
   },{headers:{"Cache-Control":"no-store"}});
 };
 
