@@ -1,9 +1,15 @@
 import { store } from "./storage.mjs";
-import { STRATEGY_VERSION, actionable } from "./position-state.mjs";
+import { STRATEGY_VERSION, actionable, HARD_STOP_POINTS, TAKE_PROFIT_POINTS } from "./position-state.mjs";
 
 const MNQ_DOLLARS_PER_POINT = 2;
 const ROBINHOOD_FEE_PER_SIDE = 0.86;
 const ROBINHOOD_ROUND_TRIP_FEE = ROBINHOOD_FEE_PER_SIDE * 2;
+const RISK_MODEL = {
+  hardStopPoints:HARD_STOP_POINTS,
+  hardStopGrossDollars:HARD_STOP_POINTS*MNQ_DOLLARS_PER_POINT,
+  takeProfitPoints:TAKE_PROFIT_POINTS,
+  takeProfitGrossDollars:TAKE_PROFIT_POINTS*MNQ_DOLLARS_PER_POINT,
+};
 
 function round(n:number, digits=2){
   const p=10**digits;
@@ -101,16 +107,18 @@ export async function updateSignalLog(current:any){
       entryRawReason:current.rawReason || current.reason || "—",
       alignment:alignment(current),
       dailyState:current?.daily?.state || null,
+      riskModel:RISK_MODEL,
     });
     changed=true;
   }
 
-  if(!changed && saved?.version >= 3) return saved;
+  if(!changed && saved?.version >= 4) return saved;
 
   const now=new Date().toISOString();
   const result={
-    version:3,
+    version:4,
     strategyVersion:STRATEGY_VERSION,
+    riskModel:RISK_MODEL,
     multiplier:MNQ_DOLLARS_PER_POINT,
     feeModel:{provider:"Robinhood Gold",perSide:ROBINHOOD_FEE_PER_SIDE,roundTrip:ROBINHOOD_ROUND_TRIP_FEE},
     createdAt:saved.createdAt || now,

@@ -69,14 +69,19 @@ export default async (_req:Request) => {
       await s.setJSON("state",{signal:"WAIT",rawSignal:"WAIT",strategyVersion:STRATEGY_VERSION,lastPush,lastEmail,pushSubscribers:listed.blobs.length,checkedAt:flatCurrent.checkedAt});
       return;
     }
-    await s.setJSON("state",{...previous,signal:"WAIT",rawSignal:"WAIT",strategyVersion:STRATEGY_VERSION,checkedAt:flatCurrent.checkedAt});
+    await s.setJSON("state",{...previous,signal:"WAIT",rawSignal:"WAIT",strategyVersion:STRATEGY_VERSION,riskLockDirection:null,checkedAt:flatCurrent.checkedAt});
     return;
   }
 
   try {
     const raw:any=await computeSignal();
     const previous:any=await s.get("state",{type:"json"}) || {};
-    const current:any=resolvePositionState(raw,previous.signal);
+    const ledger:any=await s.get("signal-log",{type:"json"}) || {};
+    const openTrade=Array.isArray(ledger?.trades)?ledger.trades.find((t:any)=>t?.status === "OPEN")||null:null;
+    const current:any=resolvePositionState(raw,previous.signal,openTrade,previous.riskLockDirection||null);
+    const nextRiskLockDirection=current?.riskCap?.trigger
+      ? (actionable(previous.signal)?previous.signal:null)
+      : (previous.riskLockDirection && current.rawSignal === previous.riskLockDirection ? previous.riskLockDirection : null);
     const stateChanged=previous.signal !== current.signal;
     let lastPush=previous.lastPush||null;
     let lastEmail=previous.lastEmail||null;
@@ -97,10 +102,11 @@ export default async (_req:Request) => {
       signal:current.signal,
       rawSignal:current.rawSignal,
       strategyVersion:STRATEGY_VERSION,
+      riskLockDirection:nextRiskLockDirection,
       lastPush,lastEmail,pushSubscribers:listed.blobs.length,checkedAt:current.checkedAt
     };
     await s.setJSON("state",state);
-    await s.setJSON("status",{...current,lastPush,lastEmail,pushSubscribers:listed.blobs.length});
+    await s.setJSON("status",{...current,riskLockDirection:nextRiskLockDirection,lastPush,lastEmail,pushSubscribers:listed.blobs.length});
   } catch(error:any) {
     console.error("engine error",error);
     const previous:any=await s.get("state",{type:"json"}) || {};
