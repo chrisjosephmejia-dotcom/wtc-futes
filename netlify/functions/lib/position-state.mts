@@ -21,7 +21,7 @@ function openPositionPoints(raw:any, previous:any, openTrade:any){
   return Math.round((price-entryPrice)*side*100)/100;
 }
 
-export function resolvePositionState(raw:any, previousSignal:any, openTrade:any=null){
+export function resolvePositionState(raw:any, previousSignal:any, openTrade:any=null, riskLockDirection:any=null){
   const rawSignal=raw?.signal || "WAIT";
   const rawReason=raw?.reason || "—";
   const score=Number(raw?.score);
@@ -90,6 +90,10 @@ export function resolvePositionState(raw:any, previousSignal:any, openTrade:any=
       positionEvent="HOLD";
       reason=rawSignal === "SELL MNQ" ? rawReason : `HOLD SHORT · RAW ${rawSignal} · SCORE ${signedScore(score)} < 0`;
     }
+  } else if(actionable(rawSignal) && riskLockDirection === rawSignal){
+    signal="WAIT";
+    positionEvent="LOCKOUT";
+    reason=`RISK EXIT LOCKOUT · WAIT FOR FRESH ${rawSignal} SIGNAL`;
   } else if(actionable(rawSignal)){
     signal=rawSignal;
     positionEvent="ENTER";
@@ -110,6 +114,7 @@ export function resolvePositionState(raw:any, previousSignal:any, openTrade:any=
       takeProfitPoints:TAKE_PROFIT_POINTS,
       openPoints,
       trigger:riskTrigger,
+      lockDirection:riskLockDirection || null,
     },
   };
 }
