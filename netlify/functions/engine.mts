@@ -76,7 +76,9 @@ export default async (_req:Request) => {
   try {
     const raw:any=await computeSignal();
     const previous:any=await s.get("state",{type:"json"}) || {};
-    const current:any=resolvePositionState(raw,previous.signal);
+    const ledger:any=await s.get("signal-log",{type:"json"}) || {};
+    const openTrade=Array.isArray(ledger?.trades)?ledger.trades.find((t:any)=>t?.status === "OPEN")||null:null;
+    const current:any=resolvePositionState(raw,previous.signal,openTrade);
     const stateChanged=previous.signal !== current.signal;
     let lastPush=previous.lastPush||null;
     let lastEmail=previous.lastEmail||null;
