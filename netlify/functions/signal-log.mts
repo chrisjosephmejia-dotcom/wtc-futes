@@ -45,6 +45,7 @@ export default async (_req:Request,_context:Context) => {
     multiplier:MNQ_DOLLARS_PER_POINT,
     basis:"1 MNQ contract",
     feeModel:{provider:"Robinhood Gold",roundTrip:ROBINHOOD_ROUND_TRIP_FEE},
+    riskModel:saved.riskModel || null,
     downloadUrl:"/api/signal-log.csv",
     rawDecisionDownloadUrl:"/api/decision-log.csv",
     stats:{
@@ -62,7 +63,7 @@ export default async (_req:Request,_context:Context) => {
       openPoints:openMark?.points ?? null,
     },
     trades:rows,
-    note:`${STRATEGY_VERSION}. Entries use the unchanged full WTC signal. Ordinary raw WAIT does not exit an open position; long exits at score <= 0, short exits at score >= 0, and a full opposite signal reverses immediately. Gross and Robinhood Gold fee-adjusted P&L are theoretical for 1 MNQ; slippage and actual execution differences are excluded.`
+    note:`${STRATEGY_VERSION}. Hard risk exits now take priority: exit at -25 MNQ points (-$50 gross) or +300 MNQ points (+$600 gross), evaluated at each engine check. Otherwise ordinary raw WAIT does not exit an open position; long exits at score <= 0, short exits at score >= 0, and a full opposite signal reverses immediately. Gross and Robinhood Gold fee-adjusted P&L are theoretical for 1 MNQ; slippage and actual execution differences are excluded.`
   },{headers:{"Cache-Control":"no-store"}});
 };
 
