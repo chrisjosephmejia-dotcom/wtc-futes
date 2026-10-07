@@ -1,5 +1,5 @@
 import type { Context, Config } from "@netlify/functions";
-import { getEquityBars, type Bar } from "./lib/equity-data.mts";
+import { getEquityDailyBars, type Bar } from "./lib/equity-data.mts";
 
 function ema(xs:number[],n:number){if(!xs.length)return NaN;const k=2/(n+1);let e=xs[0];for(let i=1;i<xs.length;i++)e=xs[i]*k+e*(1-k);return e}
 function rsi(xs:number[],n=14){if(xs.length<n+1)return NaN;let g=0,l=0;for(let i=xs.length-n;i<xs.length;i++){const d=xs[i]-xs[i-1];if(d>=0)g+=d;else l-=d}if(l===0)return 100;const rs=(g/n)/(l/n);return 100-100/(1+rs)}
@@ -13,9 +13,10 @@ export default async(req:Request,_ctx:Context)=>{
   try{
     const u=new URL(req.url),ticker=(u.searchParams.get("ticker")||"PL").trim().toUpperCase();
     if(!/^[A-Z][A-Z0-9.-]{0,9}$/.test(ticker)) return Response.json({ok:false,error:"invalid_ticker"},{status:400});
-    const d=await getEquityBars(ticker),daily=d.dailyBars;
+    const requestedPrice=Number(u.searchParams.get("price"));
+    const d=await getEquityDailyBars(ticker),daily=d.dailyBars;
     if(daily.length<60) throw new Error("Not enough daily history for Stock Trader");
-    const closes=daily.map(b=>b.c),last=daily[daily.length-1],price=(d.minuteBars[d.minuteBars.length-1]?.c)||last.c;
+    const closes=daily.map(b=>b.c),last=daily[daily.length-1],price=Number.isFinite(requestedPrice)&&requestedPrice>0?requestedPrice:last.c;
     const a=atr(daily,14),atrPct=a/price*100,drsi=rsi(closes,14),e20=ema(closes.slice(-120),20),e50=ema(closes.slice(-220),50),e200=daily.length>=200?ema(closes,200):NaN;
     const lookback=daily.slice(-Math.min(252,daily.length)),high=Math.max(...lookback.map(b=>b.h)),low=Math.min(...lookback.map(b=>b.l));
     const recent20=daily.slice(-Math.min(20,daily.length)),anchorHigh=Math.max(...recent20.map(b=>b.h));
