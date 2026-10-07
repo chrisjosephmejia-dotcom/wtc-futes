@@ -33,23 +33,79 @@
 <section class="section"><div class="sectionTitle">Business / thesis gate</div><div class="thesis"><div><div class="eyebrow">Current state</div><div class="status" id="thesis">—</div></div><div class="small" id="quality">—</div></div><div class="footer">V0.1 development build. The first pass deliberately separates price timing from business conviction. The next layer will add the fresh thesis re-check so a severe drop cannot become an automatic buy just because the price looks cheap.</div></section>
 </main>
 <script>
-const q=function(id){return document.getElementById(id)},money=function(x){return x!==null&&x!==undefined&&x!==''&&Number.isFinite(Number(x))?'
-function zoneText(z){return money(z.low)+' – '+money(z.high)}
-function active(p,z){return p>=z.low&&p<=z.high}
+const q=(id)=>document.getElementById(id);
+const money=(x)=>x!==null&&x!==undefined&&x!==""&&Number.isFinite(Number(x)) ? "$"+Number(x).toFixed(2) : "—";
+const pct=(x)=>x!==null&&x!==undefined&&x!==""&&Number.isFinite(Number(x)) ? (Number(x)>=0?"+":"")+Number(x).toFixed(1)+"%" : "—";
+const zoneText=(z)=>money(z.low)+" – "+money(z.high);
+const active=(p,z)=>Number.isFinite(Number(p))&&p>=z.low&&p<=z.high;
+
 async function load(){
-  const ticker=q('tickerInput').value.trim().toUpperCase()||'PL';q('tickerInput').value=ticker;q('ticker').textContent=ticker;q('decision').textContent='CALCULATING…';q('feed').textContent='Connecting…';
-  const u=new URL(location.href);u.searchParams.set('ticker',ticker);history.replaceState({},'',u);
+  const ticker=(q("tickerInput").value.trim().toUpperCase()||"PL");
+  q("tickerInput").value=ticker;
+  q("ticker").textContent=ticker;
+  q("decision").textContent="CALCULATING…";
+  q("reason").textContent="Building technical context…";
+  q("feed").textContent="Connecting…";
+
+  const u=new URL(location.href);
+  u.searchParams.set("ticker",ticker);
+  history.replaceState({},"",u);
+
   try{
-    const rs=await Promise.all([fetch('/api/stock-signal?ticker='+encodeURIComponent(ticker),{cache:'no-store'}),fetch('/api/stock-quote?ticker='+encodeURIComponent(ticker),{cache:'no-store'})]);
-    const s=await rs[0].json(),qt=await rs[1].json();if(!s.ok)throw new Error(s.error||'signal unavailable');
-    const p=qt.ok&&qt.price!=null?qt.price:s.price;q('price').textContent=money(p);q('change').textContent=qt.ok?pct(qt.changePct):'—';q('stamp').textContent='Tastytrade · '+new Date(s.updatedAt).toLocaleTimeString();q('feed').textContent='● LIVE DATA';
-    q('decision').textContent=s.decision;q('reason').textContent=s.reason;q('trend').textContent=s.regime.longTrend;q('rsi').textContent=Number(s.regime.dailyRsi).toFixed(0);q('atr').textContent=money(s.regime.atr)+' · '+pct(s.regime.atrPct);q('dd').textContent='-'+Number(s.regime.drawdownFromHighPct).toFixed(1)+'%';q('m20').textContent=pct(s.regime.move20Pct);q('m60').textContent=pct(s.regime.move60Pct);q('e50').textContent=money(s.regime.ema50);q('e200').textContent=money(s.regime.ema200);
-    q('z1p').textContent=zoneText(s.zones.first);q('z2p').textContent=zoneText(s.zones.deeper);q('z3p').textContent=zoneText(s.zones.strong);q('z1d').textContent='~'+Number(s.zones.first.drawdownPct).toFixed(1)+'% below anchor high';q('z2d').textContent='~'+Number(s.zones.deeper.drawdownPct).toFixed(1)+'% below anchor high';q('z3d').textContent='~'+Number(s.zones.strong.drawdownPct).toFixed(1)+'% below anchor high';
-    ['z1','z2','z3'].forEach(function(id){q(id).classList.remove('active')});if(active(p,s.zones.first))q('z1').classList.add('active');if(active(p,s.zones.deeper))q('z2').classList.add('active');if(active(p,s.zones.strong))q('z3').classList.add('active');
-    q('thesis').textContent=s.thesis.status;q('thesis').className='status '+(s.thesis.required?'warn':'good');q('quality').textContent=s.regime.qualityNote+' · '+s.thesis.note;
-  }catch(e){q('feed').textContent='DATA ISSUE';q('decision').textContent='DATA UNAVAILABLE';q('reason').textContent=e.message||String(e)}
+    const [signalRes,quoteRes]=await Promise.all([
+      fetch("/api/stock-signal?ticker="+encodeURIComponent(ticker),{cache:"no-store"}),
+      fetch("/api/stock-quote?ticker="+encodeURIComponent(ticker),{cache:"no-store"})
+    ]);
+    const s=await signalRes.json();
+    const qt=await quoteRes.json();
+
+    if(!s.ok) throw new Error(s.error||"signal unavailable");
+
+    const p=qt.ok&&qt.price!=null?qt.price:s.price;
+    q("ticker").textContent=ticker;
+    q("price").textContent=money(p);
+    q("change").textContent=qt.ok?pct(qt.changePct):"—";
+    q("stamp").textContent="Tastytrade · "+new Date(s.updatedAt).toLocaleTimeString();
+    q("feed").textContent="● LIVE DATA";
+
+    q("decision").textContent=s.decision;
+    q("reason").textContent=s.reason;
+    q("trend").textContent=s.regime.longTrend;
+    q("rsi").textContent=Number.isFinite(Number(s.regime.dailyRsi))?Number(s.regime.dailyRsi).toFixed(0):"—";
+    q("atr").textContent=money(s.regime.atr)+" · "+pct(s.regime.atrPct);
+    q("dd").textContent=Number.isFinite(Number(s.regime.drawdownFromHighPct))?"-"+Number(s.regime.drawdownFromHighPct).toFixed(1)+"%":"—";
+    q("m20").textContent=pct(s.regime.move20Pct);
+    q("m60").textContent=pct(s.regime.move60Pct);
+    q("e50").textContent=money(s.regime.ema50);
+    q("e200").textContent=money(s.regime.ema200);
+
+    q("z1p").textContent=zoneText(s.zones.first);
+    q("z2p").textContent=zoneText(s.zones.deeper);
+    q("z3p").textContent=zoneText(s.zones.strong);
+    q("z1d").textContent="~"+Number(s.zones.first.drawdownPct).toFixed(1)+"% below 20-session high";
+    q("z2d").textContent="~"+Number(s.zones.deeper.drawdownPct).toFixed(1)+"% below 20-session high";
+    q("z3d").textContent="~"+Number(s.zones.strong.drawdownPct).toFixed(1)+"% below 20-session high";
+
+    ["z1","z2","z3"].forEach((id)=>q(id).classList.remove("active"));
+    if(active(p,s.zones.first))q("z1").classList.add("active");
+    if(active(p,s.zones.deeper))q("z2").classList.add("active");
+    if(active(p,s.zones.strong))q("z3").classList.add("active");
+
+    q("thesis").textContent=s.thesis.status;
+    q("thesis").className="status "+(s.thesis.required?"warn":"good");
+    q("quality").textContent=s.regime.qualityNote+" · "+s.thesis.note;
+  }catch(e){
+    q("feed").textContent="DATA ISSUE";
+    q("decision").textContent="DATA UNAVAILABLE";
+    q("reason").textContent=e?.message||String(e);
+  }
 }
-q('loadBtn').onclick=load;q('tickerInput').addEventListener('keydown',function(e){if(e.key==='Enter')load()});const init=new URL(location.href).searchParams.get('ticker');if(init)q('tickerInput').value=init.toUpperCase();load();
+
+q("loadBtn").onclick=load;
+q("tickerInput").addEventListener("keydown",(e)=>{if(e.key==="Enter")load()});
+const init=new URL(location.href).searchParams.get("ticker");
+if(init)q("tickerInput").value=init.toUpperCase();
+load();
 </script>
 </body>
 </html>
