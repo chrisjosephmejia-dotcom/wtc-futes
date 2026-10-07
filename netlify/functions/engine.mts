@@ -106,7 +106,7 @@ export default async (_req:Request) => {
       lastPush,lastEmail,pushSubscribers:listed.blobs.length,checkedAt:current.checkedAt
     };
     await s.setJSON("state",state);
-    await s.setJSON("status",{...current,lastPush,lastEmail,pushSubscribers:listed.blobs.length});
+    await s.setJSON("status",{...current,riskLockDirection:nextRiskLockDirection,lastPush,lastEmail,pushSubscribers:listed.blobs.length});
   } catch(error:any) {
     console.error("engine error",error);
     const previous:any=await s.get("state",{type:"json"}) || {};
