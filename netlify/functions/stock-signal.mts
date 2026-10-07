@@ -18,9 +18,14 @@ export default async(req:Request,_ctx:Context)=>{
     const closes=daily.map(b=>b.c),last=daily[daily.length-1],price=(d.minuteBars[d.minuteBars.length-1]?.c)||last.c;
     const a=atr(daily,14),atrPct=a/price*100,drsi=rsi(closes,14),e20=ema(closes.slice(-120),20),e50=ema(closes.slice(-220),50),e200=daily.length>=200?ema(closes,200):NaN;
     const lookback=daily.slice(-Math.min(252,daily.length)),high=Math.max(...lookback.map(b=>b.h)),low=Math.min(...lookback.map(b=>b.l));
+    const recent20=daily.slice(-Math.min(20,daily.length)),anchorHigh=Math.max(...recent20.map(b=>b.h));
     const dd=Math.max(0,(1-price/high)*100),move20=pct(price,daily[daily.length-21]?.c||price),move60=pct(price,daily[daily.length-61]?.c||price);
-    const d1=clamp(atrPct*1.65,5,12),d2=clamp(d1*1.9,11,23),d3=clamp(d1*3.25,20,40),w=clamp(atrPct*.7,2,6);
-    const z1=zone(high*(1-d1/100),w),z2=zone(high*(1-d2/100),w*1.12),z3=zone(high*(1-d3/100),w*1.25);
+    const drawdownZone=(anchor:number,shallowPct:number,deepPct:number)=>({low:anchor*(1-deepPct/100),high:anchor*(1-shallowPct/100),center:anchor*(1-((shallowPct+deepPct)/2)/100)});
+    // Recovered Ticker Pulse ladder: dynamic from the rolling 20-session high.
+    // At a $155 anchor this yields the previously verified SPCX bands:
+    // BUY SMALL $139.97-$143.06, BUY MORE $128.96-$132.06, STRONG DIP $103.08-$106.95.
+    const z1=drawdownZone(anchorHigh,7.7,9.7),z2=drawdownZone(anchorHigh,14.8,16.8),z3=drawdownZone(anchorHigh,31.0,33.5);
+    const d1=8.7,d2=15.8,d3=32.25;
     const longTrend=Number.isFinite(e200)?(price>e200&&e50>e200?"BULLISH":price<e200&&e50<e200?"BEARISH":"MIXED"):(price>e50?"BULLISH":"MIXED");
     const damage=Number.isFinite(e200)&&price<e200-a*2&&e50<e200;
     const oversold=drsi<=38,extended=drsi>=72&&price>e20+a;
@@ -30,7 +35,7 @@ export default async(req:Request,_ctx:Context)=>{
     else if(inside(price,z2)){decision=damage?"CAUTION • TREND DAMAGE":"BUY MORE";tier=damage?"CAUTION":"BUY_MORE";reason=damage?"Price reached the deeper zone, but long-term trend damage blocks an aggressive add.":"Price is inside the deeper volatility-adjusted add zone."}
     else if(price<z2.low&&price>z3.high){decision="WAIT FOR STRONGER DIP";tier="WAIT";reason="Price is between the deeper add zone and the strong-dip zone."}
     else if(inside(price,z3)){decision="STRONG DIP • THESIS RE-CHECK";tier="THESIS_CHECK";reason="Price reached the strong-dip zone. Cheap is not enough here; fresh thesis confirmation is required before a major add."}
-    else if(price<z3.low){decision="STRONG DIP • THESIS RE-CHECK";tier="THESIS_CHECK";reason="Price has fallen through the strong-dip band. Treat that as a stronger thesis-check signal, not as an automatic buy or a reason to abandon the setup purely because it is lower."}
+    else if(price<z3.low){decision="CAUTION • THESIS RE-CHECK";tier="CAUTION";reason="Price has fallen below the planned strong-dip band. Re-check the thesis before adding; a deeper decline is not automatically a better buy."}
     if(price>z1.high&&extended){decision="WAIT • DO NOT CHASE";tier="WAIT";reason="Price is extended above the first dip zone and daily momentum is hot."}
     const qualityNote=daily.length<200?"LIMITED HISTORY • SIZE SMALLER":"TECHNICAL HISTORY AVAILABLE";
     const thesisRequired=tier==="THESIS_CHECK"||tier==="CAUTION";
@@ -39,7 +44,7 @@ export default async(req:Request,_ctx:Context)=>{
       ok:true,ticker,decision,tier,reason,score,source:d.source,updatedAt:new Date().toISOString(),
       price,
       regime:{longTrend,dailyRsi:drsi,atr:a,atrPct,drawdownFromHighPct:dd,move20Pct:move20,move60Pct:move60,ema20:e20,ema50:e50,ema200:Number.isFinite(e200)?e200:null,rangeHigh:high,rangeLow:low,historySessions:daily.length,qualityNote},
-      zones:{anchorHigh:high,first:{...z1,label:"BUY SMALL",drawdownPct:d1},deeper:{...z2,label:"BUY MORE",drawdownPct:d2},strong:{...z3,label:"STRONG DIP",drawdownPct:d3}},
+      zones:{anchorHigh,first:{...z1,label:"BUY SMALL",drawdownPct:d1},deeper:{...z2,label:"BUY MORE",drawdownPct:d2},strong:{...z3,label:"STRONG DIP",drawdownPct:d3}},
       thesis:{required:thesisRequired,status:thesisRequired?"REQUIRED":"NOT REQUIRED",note:thesisRequired?"Fresh business/news/filing thesis layer is the next build step.":"No strong-dip override is active."},
       model:{name:"WTC Stock Trader",version:"0.1-dev",philosophy:"Business quality controls conviction; price controls entry timing. Unproven is a sizing warning, not an automatic veto."}
     },{headers:{"Cache-Control":"no-store"}});
