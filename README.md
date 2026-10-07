@@ -17,3 +17,6 @@ A practical rules-based "should I buy this dip?" tool. It is not a generic stock
 Business quality controls conviction and size. Price controls entry timing. "Unproven" is a warning, not an automatic veto.
 
 Production ticker-pulse is intentionally untouched while this branch is developed.
+
+
+Environment refresh deploy marker 1
