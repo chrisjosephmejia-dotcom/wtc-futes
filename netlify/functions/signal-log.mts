@@ -63,7 +63,7 @@ export default async (_req:Request,_context:Context) => {
       openPoints:openMark?.points ?? null,
     },
     trades:rows,
-    note:`${STRATEGY_VERSION}. Hard risk exits now take priority: exit at -25 MNQ points (-$50 gross) or +300 MNQ points (+$600 gross), evaluated at each engine check. Otherwise ordinary raw WAIT does not exit an open position; long exits at score <= 0, short exits at score >= 0, and a full opposite signal reverses immediately. Gross and Robinhood Gold fee-adjusted P&L are theoretical for 1 MNQ; slippage and actual execution differences are excluded.`
+    note:`${STRATEGY_VERSION}. Hard risk exits now take priority: exit at -25 MNQ points (-$50 gross) or +300 MNQ points (+$600 gross), evaluated at each engine check. After a hard exit, the same-direction raw signal is locked out until it clears or changes, preventing an immediate re-entry. Otherwise ordinary raw WAIT does not exit an open position; long exits at score <= 0, short exits at score >= 0, and a full opposite signal reverses immediately. Gross and Robinhood Gold fee-adjusted P&L are theoretical for 1 MNQ; slippage and actual execution differences are excluded.`
   },{headers:{"Cache-Control":"no-store"}});
 };
 
