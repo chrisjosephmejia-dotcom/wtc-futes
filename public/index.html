@@ -43,21 +43,116 @@
 <div class="footer">The Vertex is not an RSI trigger. Readiness combines intraday location, RSI, VWAP stretch, scheduled event risk, daily trend/extension, volatility, current move, momentum, capped prediction-market context, and the actual turn confirmation. Timing only; verify strikes, expiration, liquidity and execution in your broker.</div>
 </main>
 <script>
-const $=id=>document.getElementById(id);let ticker=new URLSearchParams(location.search).get('ticker')?.toUpperCase()||'SPY';let timer;
-const fmt=(n,d=2)=>Number.isFinite(Number(n))?Number(n).toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d}):'—';const signed=(n,d=2)=>Number.isFinite(Number(n))?(Number(n)>=0?'+':'')+fmt(n,d):'—';
+const $=id=>document.getElementById(id);let ticker=new URLSearchParams(location.search).get('ticker')?.toUpperCase()||'SPY';
+const fmt=(n,d=2)=>(n!==null&&n!==undefined&&n!==''&&Number.isFinite(Number(n)))?Number(n).toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d}):'—';const signed=(n,d=2)=>(n!==null&&n!==undefined&&n!==''&&Number.isFinite(Number(n)))?(Number(n)>=0?'+':'')+fmt(n,d):'—';
 function fmtDate(s){if(!s)return'—';return new Intl.DateTimeFormat('en-US',{weekday:'short',month:'short',day:'numeric',timeZone:'UTC'}).format(new Date(s+'T12:00:00Z'))}
-function setTicker(v){ticker=(v||'SPY').trim().toUpperCase();$('tickerInput').value=ticker;$('ticker').textContent=ticker;const u=new URL(location.href);u.searchParams.set('ticker',ticker);history.replaceState({},'',u);refresh()}
+
 function stateChip(id,label,state){const el=$(id);el.textContent=label+' '+state;el.className='chip '+(state==='BULLISH'||state==='CONFIRMED'?'good':state==='BEARISH'?'bad':'')}
 function updateOsc(s){const cc=+s.readiness.cc||0,csp=+s.readiness.csp||0,bias=+s.readiness.bias||cc-csp;$('ccScore').textContent=cc;$('cspScore').textContent=csp;$('biasText').textContent='BIAS '+(bias>0?'+':'')+bias;const top=Math.max(7,Math.min(93,50-bias*.42)),m=$('oscMarker');m.style.top=top+'%';m.className='oscMarker '+(bias>=25?'ccZone':bias<=-25?'cspZone':'')}
 function renderEvents(s){const el=$('eventList'),events=s.eventRisk?.events||[];el.innerHTML='';if(!events.length){el.innerHTML='<div class="small">No tracked macro events in the next 28 days.</div>';return}for(const e of events){const d=document.createElement('div');d.className='event';d.innerHTML='<div class="eventDate">'+fmtDate(e.date)+'</div><div><div class="eventName">'+e.name+'</div><div class="eventDesc">'+e.description+'</div></div><div class="risk '+e.impact+'">'+e.impact+'</div>';el.appendChild(d)}}
 function renderScore(s){const t=$('scoreTable');t.innerHTML='<div class="scoreRow head"><div>Factor</div><div>Reading</div><div>CC +</div><div>CSP +</div></div>';for(const f of s.factors||[]){const r=document.createElement('div');r.className='scoreRow';const c=x=>x>0?'plus':x<0?'minus':'';r.innerHTML='<div class="scoreName">'+f.name+'</div><div class="scoreDetail">'+f.detail+'</div><div class="'+c(f.cc)+'">'+(f.cc>0?'+':'')+f.cc+'</div><div class="'+c(f.csp)+'">'+(f.csp>0?'+':'')+f.csp+'</div>';t.appendChild(r)}}
 function renderPoly(s){const p=s.polymarket||{};$('polyTilt').textContent=p.available?p.tilt:'UNAVAILABLE';$('polyPoints').textContent=p.available?((p.points>0?'+':'')+p.points+' / ±'+p.cap+' cap'):'No usable market';const el=$('polyList');el.innerHTML='';for(const m of p.markets||[]){const d=document.createElement('div');d.className='poly';d.innerHTML='<div class="risk '+(m.direction==='bullish'?'medium':'high')+'">'+m.direction+'</div><div class="polyQ">'+m.question+'</div><div class="polyProb">'+Math.round(m.probability*100)+'%</div>';el.appendChild(d)}if(!p.available)el.innerHTML='<div class="small">Prediction-market data is unavailable; its score contribution is zero.</div>'}
-async function refresh(){clearTimeout(timer);$('feedStatus').innerHTML='<span class="pulse"></span>Refreshing…';try{const[qr,sr]=await Promise.all([fetch('/api/equity-quote?ticker='+encodeURIComponent(ticker),{cache:'no-store'}),fetch('/api/vertex-signal?ticker='+encodeURIComponent(ticker),{cache:'no-store'})]);const q=await qr.json(),s=await sr.json();if(!qr.ok||!q.ok)throw new Error(q.error||'Quote unavailable');if(!sr.ok||!s.ok)throw new Error(s.error||'Vertex engine unavailable');
-$('ticker').textContent=q.ticker;$('mark').textContent='$'+fmt(q.mark??q.mid??q.last);$('bid').textContent='$'+fmt(q.bid);$('ask').textContent='$'+fmt(q.ask);$('stamp').textContent='Tastytrade • '+new Date(q.updatedAt||q.receivedAt||Date.now()).toLocaleTimeString()+' • refresh 15s';
-$('expiryDate').textContent=fmtDate(s.weeklyExpiry.date);$('expiryMeta').textContent=s.weeklyExpiry.calendarDays+' calendar days · '+s.weeklyExpiry.sessions+' sessions';$('fridayBias').textContent=s.outlook.fridayBias;$('fridayBias').style.color=s.outlook.fridayBias==='BULLISH'?'var(--green)':s.outlook.fridayBias==='BEARISH'?'var(--red)':'var(--amber)';$('downProb').textContent=s.outlook.downProbability+'% DOWN';$('upProb').textContent=s.outlook.upProbability+'% UP';$('probDot').style.left=s.outlook.upProbability+'%';$('fridayRange').textContent='$'+fmt(s.outlook.estimatedLow)+' – $'+fmt(s.outlook.estimatedHigh);$('rangePct').textContent='±'+fmt(s.outlook.rangePct)+'% realized-vol proxy';const eb=s.eventRisk.eventsBeforeExpiry||[],hc=eb.filter(x=>x.impact==='high').length;$('catalystCount').textContent=eb.length+' TOTAL · '+hc+' HIGH';$('catalystMeta').textContent=hc?'High-impact events can reduce an otherwise valid vertex.':'No high-impact tracked macro event before expiry.';$('outlookWhy').textContent=s.daily.trend.toLowerCase()+' daily trend · '+[s.timeframes.m30,s.timeframes.m15,s.timeframes.m5].filter(x=>x.state==='BULLISH').length+'/3 bullish intraday gauges · '+signed(s.daily.move5,1)+'% five-session momentum.';
+
+let generation=0,quoteTimer=null,vertexTimer=null,quoteController=null,vertexController=null;
+let quoteState='pending',vertexState='pending';
+const quoteFields=['mark','bid','ask'];
+const vertexFields=['expiryDate','expiryMeta','fridayBias','downProb','upProb','fridayRange','rangePct','catalystCount','catalystMeta','outlookWhy','ccScore','cspScore','biasText','rangeLoc','vwapDist','rsi5','mom5','atr','rv','regTrend','move5','move20','dailyRsi','range20','range52','ema20Dist','ema200Dist'];
+function clearFields(fields){for(const id of fields){$(id).textContent='—'}}
+function resetDisplay(){
+ clearFields([...quoteFields,...vertexFields]);
+ $('stamp').textContent='Connecting to Tastytrade…';
+ $('decision').textContent='WAIT — LOADING DATA';$('decision').className='decisionText wait';
+ $('reason').textContent='Waiting for verified market data and a new Vertex calculation.';
+ $('setupTag').textContent='NO ACTIVE SIGNAL';
+ $('eventList').innerHTML='';$('polyList').innerHTML='';
+ $('scoreTable').innerHTML='<div class="scoreRow head"><div>Factor</div><div>Reading</div><div>CC +</div><div>CSP +</div></div>';
+ for(const id of ['upTurn','downTurn','m30','m15','m5','dailyTrend'])$(id).textContent='—';
+ $('oscMarker').style.top='50%';$('probDot').style.left='50%';
+}
+function feedBadge(){
+ const el=$('feedStatus');
+ if(quoteState==='ok'&&vertexState==='ok'){el.innerHTML='<span class="pulse"></span>Feed live';el.className='pill good'}
+ else if(quoteState==='pending'||vertexState==='pending'){
+  el.textContent=quoteState==='ok'?'Quote live · analyzing…':vertexState==='ok'?'Vertex ready · quote pending…':'Connecting…';
+  el.className='pill';
+ }else if(quoteState==='ok'||vertexState==='ok'){
+  el.textContent=quoteState==='ok'?'Quote live · vertex issue':'Vertex ready · quote issue';el.className='pill bad';
+ }else{el.textContent='Feed issue';el.className='pill bad'}
+}
+async function getJson(path,ms,signal){
+ const timeoutController=new AbortController();
+ const onAbort=()=>timeoutController.abort();
+ signal.addEventListener('abort',onAbort,{once:true});
+ const timeout=setTimeout(()=>timeoutController.abort(),ms);
+ try{
+  const r=await fetch(path,{cache:'no-store',signal:timeoutController.signal});
+  const data=await r.json().catch(()=>({}));
+  if(!r.ok||data.ok===false)throw new Error(data.error||data.auth?.reason||('HTTP '+r.status));
+  return data;
+ }catch(e){
+  if(e.name==='AbortError'&&!signal.aborted)throw new Error('Timed out after '+Math.round(ms/1000)+' seconds');
+  throw e;
+ }finally{clearTimeout(timeout);signal.removeEventListener('abort',onAbort)}
+}
+function renderQuote(q){
+ $('ticker').textContent=q.ticker;$('mark').textContent='$'+fmt(q.mark??q.mid??q.last);$('bid').textContent='$'+fmt(q.bid);$('ask').textContent='$'+fmt(q.ask);$('stamp').textContent='Tastytrade quote • '+new Date(q.updatedAt||q.receivedAt||Date.now()).toLocaleTimeString()+' • 15s refresh';
+}
+function renderVertex(s){
+ $('expiryDate').textContent=fmtDate(s.weeklyExpiry.date);$('expiryMeta').textContent=s.weeklyExpiry.calendarDays+' calendar days · '+s.weeklyExpiry.sessions+' sessions';$('fridayBias').textContent=s.outlook.fridayBias;$('fridayBias').style.color=s.outlook.fridayBias==='BULLISH'?'var(--green)':s.outlook.fridayBias==='BEARISH'?'var(--red)':'var(--amber)';$('downProb').textContent=s.outlook.downProbability+'% DOWN';$('upProb').textContent=s.outlook.upProbability+'% UP';$('probDot').style.left=s.outlook.upProbability+'%';$('fridayRange').textContent='$'+fmt(s.outlook.estimatedLow)+' – $'+fmt(s.outlook.estimatedHigh);$('rangePct').textContent='±'+fmt(s.outlook.rangePct)+'% realized-vol proxy';const eb=s.eventRisk.eventsBeforeExpiry||[],hc=eb.filter(x=>x.impact==='high').length;$('catalystCount').textContent=eb.length+' TOTAL · '+hc+' HIGH';$('catalystMeta').textContent=hc?'High-impact events can reduce an otherwise valid vertex.':'No high-impact tracked macro event before expiry.';$('outlookWhy').textContent=s.daily.trend.toLowerCase()+' daily trend · '+[s.timeframes.m30,s.timeframes.m15,s.timeframes.m5].filter(x=>x.state==='BULLISH').length+'/3 bullish intraday gauges · '+signed(s.daily.move5,1)+'% five-session momentum.';
 $('decision').textContent=s.decision;$('decision').className='decisionText '+(s.decision.startsWith('CC')?'cc':s.decision.startsWith('CSP')?'csp':'wait');$('reason').textContent=s.reason;$('setupTag').textContent=s.formation==='UPSIDE'?'SETUP FORMING · WAIT FOR DOWNSIDE TURN':s.formation==='DOWNSIDE'?'SETUP FORMING · WAIT FOR UPSIDE TURN':s.formation==='CONFIRMED_CC'?'CC VERTEX CONFIRMED':s.formation==='CONFIRMED_CSP'?'CSP VERTEX CONFIRMED':'RULES-BASED · WAITING FOR EDGE';updateOsc(s);
 $('rangeLoc').textContent=fmt(s.intraday.sessionLocation,0)+'%';$('vwapDist').textContent=signed(s.intraday.vwapPct)+'%';$('rsi5').textContent=fmt(s.intraday.rsi5,0);$('mom5').textContent=signed(s.intraday.momentum5)+'%';$('atr').textContent=fmt(s.daily.atrPct)+'%';$('rv').textContent=fmt(s.daily.realizedVol,0)+'%';stateChip('upTurn','UPSIDE TURN',s.turns.upside?'CONFIRMED':'NOT YET');stateChip('downTurn','DOWNSIDE TURN',s.turns.downside?'CONFIRMED':'NOT YET');stateChip('m30','30M',s.timeframes.m30.state);stateChip('m15','15M',s.timeframes.m15.state);stateChip('m5','5M',s.timeframes.m5.state);stateChip('dailyTrend','DAILY',s.daily.trend);
-$('regTrend').textContent=s.daily.trend;$('move5').textContent=signed(s.daily.move5)+'%';$('move20').textContent=signed(s.daily.move20)+'%';$('dailyRsi').textContent=fmt(s.daily.rsi,0);$('range20').textContent=fmt(s.daily.range20,0)+'%';$('range52').textContent=fmt(s.daily.range52,0)+'%';$('ema20Dist').textContent=signed((s.intraday.price/s.daily.ema20-1)*100)+'%';$('ema200Dist').textContent=signed((s.intraday.price/s.daily.ema200-1)*100)+'%';renderEvents(s);renderScore(s);renderPoly(s);$('feedStatus').innerHTML='<span class="pulse"></span>Tastytrade live';$('feedStatus').className='pill good';
-}catch(e){$('decision').textContent='WAIT — DATA CHECK';$('decision').className='decisionText wait';$('reason').textContent='Engine error: '+e.message;$('feedStatus').textContent='Feed issue';$('feedStatus').className='pill bad'}finally{timer=setTimeout(refresh,15000)}}
+$('regTrend').textContent=s.daily.trend;$('move5').textContent=signed(s.daily.move5)+'%';$('move20').textContent=signed(s.daily.move20)+'%';$('dailyRsi').textContent=fmt(s.daily.rsi,0);$('range20').textContent=fmt(s.daily.range20,0)+'%';$('range52').textContent=fmt(s.daily.range52,0)+'%';$('ema20Dist').textContent=signed((s.intraday.price/s.daily.ema20-1)*100)+'%';$('ema200Dist').textContent=signed((s.intraday.price/s.daily.ema200-1)*100)+'%';renderEvents(s);renderScore(s);renderPoly(s);
+}
+async function loadQuote(id){
+ if(id!==generation)return;
+ quoteController=new AbortController();
+ try{
+  const q=await getJson('/api/equity-quote?ticker='+encodeURIComponent(ticker),9000,quoteController.signal);
+  if(id!==generation)return;
+  renderQuote(q);quoteState='ok';
+ }catch(e){
+  if(id!==generation)return;
+  quoteState='error';clearFields(quoteFields);
+  $('stamp').textContent='Quote unavailable: '+(e?.message||'Connection failed')+' · retrying in 15s';
+ }finally{
+  if(id===generation){feedBadge();quoteTimer=setTimeout(()=>loadQuote(id),15000)}
+ }
+}
+async function loadVertex(id){
+ if(id!==generation)return;
+ vertexController=new AbortController();
+ try{
+  const s=await getJson('/api/vertex-signal?ticker='+encodeURIComponent(ticker),19000,vertexController.signal);
+  if(id!==generation)return;
+  renderVertex(s);vertexState='ok';
+  if(quoteState==='error'&&Number.isFinite(Number(s.intraday?.price))){
+   $('mark').textContent='≈$'+fmt(s.intraday.price);
+   $('stamp').textContent='Last Tastytrade candle (not a current bid/ask) · quote feed unavailable';
+  }
+ }catch(e){
+  if(id!==generation)return;
+  vertexState='error';clearFields(vertexFields);
+  $('decision').textContent='WAIT — DATA CHECK';$('decision').className='decisionText wait';
+  $('reason').textContent='Vertex unavailable: '+(e?.message||'Connection failed')+'. No fresh trading signal. Retry in 30s.';
+  $('setupTag').textContent='NO ACTIVE SIGNAL';
+  $('oscMarker').style.top='50%';$('probDot').style.left='50%';
+ }finally{
+  if(id===generation){feedBadge();vertexTimer=setTimeout(()=>loadVertex(id),30000)}
+ }
+}
+function setTicker(v){
+ const next=(v||'SPY').trim().toUpperCase();
+ if(!/^[A-Z][A-Z0-9./-]{0,9}$/.test(next)){
+  $('feedStatus').textContent='Invalid ticker';$('feedStatus').className='pill bad';return;
+ }
+ generation++;const id=generation;
+ clearTimeout(quoteTimer);clearTimeout(vertexTimer);
+ quoteController?.abort();vertexController?.abort();
+ ticker=next;$('tickerInput').value=ticker;$('ticker').textContent=ticker;
+ const u=new URL(location.href);u.searchParams.set('ticker',ticker);history.replaceState({},'',u);
+ quoteState='pending';vertexState='pending';resetDisplay();feedBadge();
+ loadQuote(id);loadVertex(id);
+}
+
 $('loadBtn').addEventListener('click',()=>setTicker($('tickerInput').value));$('tickerInput').addEventListener('keydown',e=>{if(e.key==='Enter')setTicker(e.target.value)});setTicker(ticker);
 </script></body></html>
