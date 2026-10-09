@@ -4,6 +4,7 @@ on:
     branches: [wtc-options-seller]
     paths:
       - .github/workflows/wtc-feed-smoke.yml
+      - netlify/functions/vertex-signal.mts
   workflow_dispatch:
 jobs:
   check-production-feed:
