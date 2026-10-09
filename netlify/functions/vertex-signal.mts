@@ -9,7 +9,21 @@ function resample(bs:Bar[],mins:number){const step=mins*60,out:Bar[]=[];let cur:
 function pct(a:number,b:number){return b?((a/b)-1)*100:0}
 function clamp(n:number,a=0,b=100){return Math.max(a,Math.min(b,n))}
 function ctParts(ts:number){const p=new Intl.DateTimeFormat("en-US",{timeZone:"America/Chicago",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false}).formatToParts(new Date(ts*1000));const o:any={};p.forEach(x=>o[x.type]=x.value);return {date:`${o.year}-${o.month}-${o.day}`,hour:Number(o.hour),minute:Number(o.minute)}}
-function regularSession(bs:Bar[]){if(!bs.length)return[];const lastDate=ctParts(bs[bs.length-1].t).date;return bs.filter(b=>{const p=ctParts(b.t);const m=p.hour*60+p.minute;return p.date===lastDate&&m>=510&&m<=900})}
+function regularSession(bs:Bar[]){
+ if(!bs.length)return[];
+ // Premarket/after-hours bars can be newer than the last cash-session bar.
+ // Pick the latest date with a usable regular session; do not mistake premarket for the active session.
+ const sessions=new Map<string,Bar[]>();
+ for(const b of bs){
+  const p=ctParts(b.t),m=p.hour*60+p.minute;
+  if(m<510||m>=900)continue;
+  const group=sessions.get(p.date)||[];
+  group.push(b);sessions.set(p.date,group);
+ }
+ const dates=[...sessions.keys()].sort().reverse();
+ const date=dates.find(d=>(sessions.get(d)?.length||0)>=20);
+ return date?sessions.get(date)!:[];
+}
 function trendState(bs:Bar[]){const c=bs.map(b=>b.c),e9=ema(c,9),e21=ema(c,21),rr=rsi(c,14);return {state:e9>e21&&rr>=52?"BULLISH":e9<e21&&rr<=48?"BEARISH":"NEUTRAL",fast:e9,slow:e21,rsi:rr}}
 function realizedVol(d:Bar[]){const x=d.slice(-21);if(x.length<3)return NaN;const rs=[];for(let i=1;i<x.length;i++)rs.push(Math.log(x[i].c/x[i-1].c));const mean=rs.reduce((a,b)=>a+b,0)/rs.length;const v=rs.reduce((a,b)=>a+(b-mean)**2,0)/(rs.length-1);return Math.sqrt(v)*Math.sqrt(252)*100}
 
@@ -73,12 +87,22 @@ export default async(req:Request,_ctx:Context)=>{
   if(downsideTurn&&cc>=60){decision="CC VERTEX";reason="Upside intraday extreme is stretched and a downside momentum turn is confirmed.";formation="CONFIRMED_CC"}
   if(upsideTurn&&csp>=60){decision="CSP VERTEX";reason="Downside intraday extreme is stretched and an upside momentum turn is confirmed.";formation="CONFIRMED_CSP"}
 
-  const now=ctParts(Date.now()/1000),m=now.hour*60+now.minute,open=m>=510&&m<=900;
-  if(!open){decision="WAIT — MARKET CLOSED";reason="Regular U.S. cash session is closed; wait for fresh intraday structure.";formation="NONE"}
+  const now=ctParts(Date.now()/1000),m=now.hour*60+now.minute;
+  const weekday=new Date(now.date+"T12:00:00Z").getUTCDay();
+  const open=weekday>=1&&weekday<=5&&m>=510&&m<900;
+  const sessionDate=ctParts(last.t).date;
+  const stale=Date.now()/1000-last.t>180;
+  if(!open){
+   decision="WAIT — MARKET CLOSED";reason="Regular U.S. cash session is closed. Last completed session: "+sessionDate+".";formation="NONE";
+  }else if(sessionDate!==now.date||session.length<20){
+   decision="WAIT — SESSION WARMUP";reason="Waiting for at least 20 current-session one-minute bars. Prior session data cannot trigger a trade.";formation="NONE";
+  }else if(stale){
+   decision="WAIT — STALE DATA";reason="Latest one-minute bar is more than 3 minutes old. No fresh Vertex trade signal.";formation="NONE";
+  }
   const bias=clamp(cc-csp,-100,100);
 
   return Response.json({ok:true,ticker,decision,reason,formation,readiness:{cc,csp,bias},turns:{upside:upsideTurn,downside:downsideTurn},
-    intraday:{price:last.c,sessionLow:lo,sessionHigh:hi,sessionLocation:loc,vwap,vwapPct,rsi5,momentum5:mom5,momentum1:mom1,stretchThresholdPct:stretch,formingStretchPct:formingStretch},
+    intraday:{price:last.c,sessionDate,lastBarAt:new Date(last.t*1000).toISOString(),sessionLow:lo,sessionHigh:hi,sessionLocation:loc,vwap,vwapPct,rsi5,momentum5:mom5,momentum1:mom1,stretchThresholdPct:stretch,formingStretchPct:formingStretch},
     timeframes:{m30:t30,m15:t15,m5:t5},
     daily:{atrPct,trend,rsi:drsi,move5,move20,range20:pos20,range52:pos52,realizedVol:rv,ema20:dema20,ema50:dema50,ema200:dema200},
     weeklyExpiry:context.weeklyExpiry,
