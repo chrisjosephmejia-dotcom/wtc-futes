@@ -17,13 +17,13 @@ async function readJson(r:Response){return r.json().catch(()=>({}))}
 async function tastyToken(){
  const clientSecret=Netlify.env.get("TASTY_CLIENT_SECRET")?.trim(),refreshToken=Netlify.env.get("TASTY_REFRESH_TOKEN")?.trim();
  if(!clientSecret||!refreshToken)throw new Error("Missing tastytrade credentials");
- const r=await fetch(`${BASE}/oauth/token`,{method:"POST",headers:{"User-Agent":UA,"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify({grant_type:"refresh_token",refresh_token:refreshToken,client_secret:clientSecret})});
+ const r=await fetch(`${BASE}/oauth/token`,{method:"POST",headers:{"User-Agent":UA,"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify({grant_type:"refresh_token",refresh_token:refreshToken,client_secret:clientSecret}),signal:AbortSignal.timeout(6500)});
  const b:any=await readJson(r);if(!r.ok||!b?.access_token)throw new Error("Tastytrade OAuth failed");return b.access_token as string;
 }
 async function listedWeeklyExpiry(ticker:string,today:string){
  try{
   const token=await tastyToken();
-  const r=await fetch(`${BASE}/option-chains/${encodeURIComponent(ticker)}/nested`,{headers:{Authorization:`Bearer ${token}`,"User-Agent":UA,Accept:"application/json"}});
+  const r=await fetch(`${BASE}/option-chains/${encodeURIComponent(ticker)}/nested`,{headers:{Authorization:`Bearer ${token}`,"User-Agent":UA,Accept:"application/json"},signal:AbortSignal.timeout(5000)});
   const b:any=await readJson(r);if(!r.ok)throw new Error("option chain");
   const exps:any[]=(b?.data?.items||[]).flatMap((x:any)=>Array.isArray(x?.expirations)?x.expirations:[]);
   const dates=exps.map((e:any)=>({date:String(e?.["expiration-date"]||e?.expirationDate||""),type:String(e?.["expiration-type"]||e?.expirationType||"")})).filter((x:any)=>/^\d{4}-\d{2}-\d{2}$/.test(x.date)&&x.date>today);
@@ -37,7 +37,7 @@ async function listedWeeklyExpiry(ticker:string,today:string){
 }
 async function blsEvents(today:string,horizon:string):Promise<RiskEvent[]>{
  try{
-  const r=await fetch("https://www.bls.gov/schedule/news_release/bls.ics",{headers:{"User-Agent":UA}});if(!r.ok)return[];
+  const r=await fetch("https://www.bls.gov/schedule/news_release/bls.ics",{headers:{"User-Agent":UA},signal:AbortSignal.timeout(3500)});if(!r.ok)return[];
   const txt=await r.text(),blocks=txt.split("BEGIN:VEVENT").slice(1),out:RiskEvent[]=[];
   for(const b of blocks){
    const ds=b.match(/DTSTART[^:]*:([^\r\n]+)/)?.[1]||"",date=parseIcsDate(ds),summary=(b.match(/SUMMARY:([^\r\n]+)/)?.[1]||"").replace(/\\,/g,",").trim();if(!date||date<today||date>horizon)continue;
@@ -57,7 +57,7 @@ function opexEvents(today:string,horizon:string):RiskEvent[]{const start=dateUTC
 function parseArr(v:any){if(Array.isArray(v))return v;try{return JSON.parse(v||"[]")}catch{return[]}}
 async function polymarketOverlay(year:number){
  try{
-  const slug=`spx-hit-dec-${year}`,r=await fetch(`https://gamma-api.polymarket.com/events?slug=${slug}`,{headers:{"User-Agent":UA}});if(!r.ok)throw new Error("gamma");
+  const slug=`spx-hit-dec-${year}`,r=await fetch(`https://gamma-api.polymarket.com/events?slug=${slug}`,{headers:{"User-Agent":UA},signal:AbortSignal.timeout(3500)});if(!r.ok)throw new Error("gamma");
   const arr:any[]=await r.json(),ev=arr?.[0],markets:any[]=ev?.markets||[],picks:PolyMarket[]=[];
   for(const m of markets){
    if(m?.closed===true||m?.active===false)continue;
