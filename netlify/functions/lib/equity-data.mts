@@ -6,19 +6,34 @@ const TX=1, RM=2, SB=4, SE=8, SS=16;
 const num=(v:any)=>Number.isFinite(Number(v))?Number(v):null;
 async function json(r:Response){return r.json().catch(()=>({}));}
 
-async function accessToken(){
-  const clientSecret=Netlify.env.get("TASTY_CLIENT_SECRET")?.trim();
-  const refreshToken=Netlify.env.get("TASTY_REFRESH_TOKEN")?.trim();
-  if(!clientSecret||!refreshToken) throw new Error("Missing tastytrade credentials");
-  const r=await fetch(`${BASE}/oauth/token`,{method:"POST",headers:{"User-Agent":UA,"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify({grant_type:"refresh_token",refresh_token:refreshToken,client_secret:clientSecret})});
-  const b:any=await json(r); if(!r.ok||!b?.access_token) throw new Error(`OAuth failed (${r.status})`); return b.access_token as string;
+let tokenCache: { token: string; until: number } | null = null;
+let authPending: Promise<string> | null = null;
+async function accessToken(): Promise<string> {
+  if (tokenCache && tokenCache.until > Date.now()) return tokenCache.token;
+  if (authPending) return authPending;
+  authPending = (async () => {
+    const clientSecret=Netlify.env.get("TASTY_CLIENT_SECRET")?.trim();
+    const refreshToken=Netlify.env.get("TASTY_REFRESH_TOKEN")?.trim();
+    if(!clientSecret||!refreshToken) throw new Error("Missing tastytrade credentials");
+    const r=await fetch(`${BASE}/oauth/token`, {
+      method:"POST",
+      headers:{"User-Agent":UA,"Content-Type":"application/json","Accept":"application/json"},
+      body:JSON.stringify({grant_type:"refresh_token",refresh_token:refreshToken,client_secret:clientSecret}),
+      signal:AbortSignal.timeout(7500),
+    });
+    const b:any=await json(r);
+    if(!r.ok||!b?.access_token) throw new Error(`Tastytrade OAuth failed (${r.status})`);
+    tokenCache={token:String(b.access_token),until:Date.now()+13*60*1000};
+    return tokenCache.token;
+  })();
+  try{return await authPending}finally{authPending=null}
 }
 async function equity(token:string,symbol:string){
-  const r=await fetch(`${BASE}/instruments/equities/${encodeURIComponent(symbol)}`,{headers:{Authorization:`Bearer ${token}`,"User-Agent":UA,Accept:"application/json"}});
+  const r=await fetch(`${BASE}/instruments/equities/${encodeURIComponent(symbol)}`,{headers:{Authorization:`Bearer ${token}`,"User-Agent":UA,Accept:"application/json"},signal:AbortSignal.timeout(7500)});
   const b:any=await json(r); const d=b?.data; if(!r.ok||!d?.["streamer-symbol"]) throw new Error(`Equity lookup failed (${r.status})`); return d;
 }
 async function quoteToken(token:string){
-  const r=await fetch(`${BASE}/api-quote-tokens`,{headers:{Authorization:`Bearer ${token}`,"User-Agent":UA,Accept:"application/json"}});
+  const r=await fetch(`${BASE}/api-quote-tokens`,{headers:{Authorization:`Bearer ${token}`,"User-Agent":UA,Accept:"application/json"},signal:AbortSignal.timeout(7500)});
   const b:any=await json(r),d=b?.data; if(!r.ok||!d?.token||!d?.["dxlink-url"]) throw new Error(`Quote token failed (${r.status})`); return d;
 }
 type Candle={index:number;time:number;open:number|null;high:number|null;low:number|null;close:number|null;volume:number|null};
