@@ -3,34 +3,34 @@ import type { Context, Config } from "@netlify/functions";
 const BASE = "https://api.tastyworks.com";
 const USER_AGENT = "wtc-premium-vertex/1.0";
 
-async function getAccessToken() {
-  const clientSecret = (Netlify.env.get("TASTY_CLIENT_SECRET") || "").trim();
-  const refreshToken = (Netlify.env.get("TASTY_REFRESH_TOKEN") || "").trim();
+let tokenCache: { value: string; until: number } | null = null;
+let tokenRequest: Promise<string> | null = null;
 
-  if (!clientSecret || !refreshToken) {
-    throw new Error("Tastytrade credentials are not configured");
-  }
-
-  const res = await fetch(`${BASE}/oauth/token`, {
-    method: "POST",
-    headers: {
-      "User-Agent": USER_AGENT,
-      "Content-Type": "application/json",
-      "Accept": "application/json",
-    },
-    body: JSON.stringify({
-      grant_type: "refresh_token",
-      refresh_token: refreshToken,
-      client_secret: clientSecret,
-    }),
-  });
-
-  const body: any = await res.json().catch(() => ({}));
-  if (!res.ok || !body?.access_token) {
-    throw new Error(`Tastytrade OAuth failed (${res.status})`);
-  }
-
-  return body.access_token as string;
+async function getAccessToken(): Promise<string> {
+  if (tokenCache && tokenCache.until > Date.now()) return tokenCache.value;
+  if (tokenRequest) return tokenRequest;
+  tokenRequest = (async () => {
+    const clientSecret = (Netlify.env.get("TASTY_CLIENT_SECRET") || "").trim();
+    const refreshToken = (Netlify.env.get("TASTY_REFRESH_TOKEN") || "").trim();
+    if (!clientSecret || !refreshToken) throw new Error("Tastytrade credentials missing from Netlify");
+    const res = await fetch(`${BASE}/oauth/token`, {
+      method: "POST",
+      headers: { "User-Agent": USER_AGENT, "Content-Type": "application/json", "Accept": "application/json" },
+      body: JSON.stringify({grant_type:"refresh_token",refresh_token:refreshToken,client_secret:clientSecret}),
+      signal: AbortSignal.timeout(8000),
+    });
+    const body: any = await res.json().catch(() => ({}));
+    if (!res.ok || !body?.access_token) {
+      throw new Error(res.status === 400 || res.status === 401
+        ? `Tastytrade authentication rejected (${res.status}); verify the OAuth grant and client secret`
+        : `Tastytrade authentication failed (HTTP ${res.status})`);
+    }
+    const token = String(body.access_token);
+    const expires = Number(body.expires_in);
+    tokenCache = { value: token, until: Date.now() + Math.max(60, Math.min(Number.isFinite(expires) && expires > 0 ? expires : 900, 900) - 90) * 1000 };
+    return token;
+  })();
+  try { return await tokenRequest; } finally { tokenRequest = null; }
 }
 
 export default async (req: Request, _context: Context) => {
@@ -47,7 +47,7 @@ export default async (req: Request, _context: Context) => {
 
     const accessToken = await getAccessToken();
     const quoteUrl = new URL(`${BASE}/market-data/by-type`);
-    quoteUrl.searchParams.append("equity[]", ticker);
+    quoteUrl.searchParams.set("equity", ticker);
 
     const quoteRes = await fetch(quoteUrl, {
       headers: {
@@ -55,6 +55,7 @@ export default async (req: Request, _context: Context) => {
         "User-Agent": USER_AGENT,
         "Accept": "application/json",
       },
+      signal: AbortSignal.timeout(9000),
     });
 
     const quoteBody: any = await quoteRes.json().catch(() => ({}));
@@ -65,7 +66,7 @@ export default async (req: Request, _context: Context) => {
         ok: false,
         ticker,
         httpStatus: quoteRes.status,
-        error: quoteBody?.error?.message || quoteBody?.message || "quote_unavailable",
+        error: quoteRes.status === 403 ? "Tastytrade market-data permission denied (403); check account eligibility" : quoteRes.status === 429 ? "Tastytrade quote rate limit (429); retry shortly" : quoteBody?.error?.message || quoteBody?.message || `Quote unavailable (HTTP ${quoteRes.status})`,
       }, {
         status: quoteRes.ok ? 502 : quoteRes.status,
         headers: { "Cache-Control": "no-store" },
@@ -108,7 +109,7 @@ export default async (req: Request, _context: Context) => {
   } catch (error: any) {
     return Response.json({
       ok: false,
-      error: error?.message || "unexpected_error",
+      error: error?.name === "TimeoutError" ? "Tastytrade quote request timed out" : error?.message || "unexpected_error",
     }, {
       status: 500,
       headers: { "Cache-Control": "no-store" },
