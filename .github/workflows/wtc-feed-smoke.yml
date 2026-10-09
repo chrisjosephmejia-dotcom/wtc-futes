@@ -1,0 +1,37 @@
+name: WTC Options Seller Feed Smoke Test
+on:
+  push:
+    branches: [wtc-options-seller]
+    paths:
+      - .github/workflows/wtc-feed-smoke.yml
+  workflow_dispatch:
+jobs:
+  check-production-feed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Check live Netlify APIs (no credentials printed)
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          const base = 'https://wtc-options-seller.netlify.app';
+          const tests = [
+            ['quote', '/api/equity-quote?ticker=SPY'],
+            ['vertex', '/api/vertex-signal?ticker=SPY'],
+            ['auth_diagnostic', '/api/tasty-status'],
+          ];
+          const results = await Promise.all(tests.map(async ([name, path]) => {
+            try {
+              const response = await fetch(base + path, {signal:AbortSignal.timeout(44000),headers:{'Cache-Control':'no-cache'}});
+              const d = await response.json().catch(() => ({}));
+              let details;
+              if (name === 'quote') details = {ok:d.ok,source:d.source,error:d.error,ticker:d.ticker,mark:d.mark,updatedAt:d.updatedAt};
+              else if (name === 'vertex') details = {ok:d.ok,error:d.error,decision:d.decision,source:d.source};
+              else details = {ok:d.ok,auth:d.auth,instrumentOk:d.instrument?.ok,marketDataOk:d.marketData?.ok,marketDataStatus:d.marketData?.httpStatus,marketDataMessage:d.marketData?.message};
+              return {name,http:response.status,details};
+            } catch(e) { return {name,error:e?.message || String(e)}; }
+          }));
+          for (const r of results) console.log(JSON.stringify(r));
+          const critical = results.filter(r=>r.name!=='auth_diagnostic');
+          if (critical.some(r=>r.http!==200 || r.details?.ok!==true)) process.exitCode=1;
+          JS
