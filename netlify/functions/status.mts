@@ -1,6 +1,6 @@
 import type { Context, Config } from "@netlify/functions";
 import { store } from "./lib/storage.mjs";
-import { computeSignal } from "./lib/signal-nq.mjs";
+import { computeSignal, getCmeClockState } from "./lib/signal-nq.mjs";
 import { resolvePositionState, STRATEGY_VERSION } from "./lib/position-state.mjs";
 
 export default async (_req: Request, _context: Context) => {
@@ -18,7 +18,24 @@ export default async (_req: Request, _context: Context) => {
       status.strategyVersion = STRATEGY_VERSION;
       await s.setJSON("status", status);
     } catch (error:any) {
-      status = { signal:"WAIT", rawSignal:"WAIT", strategyVersion:STRATEGY_VERSION, reason:"ENGINE ERROR", error:error?.message || String(error), checkedAt:new Date().toISOString() };
+      const clock=getCmeClockState();
+      status = {
+        signal:"WAIT",
+        rawSignal:"WAIT",
+        strategyVersion:STRATEGY_VERSION,
+        reason:"ENGINE ERROR",
+        error:error?.message || String(error),
+        checkedAt:new Date().toISOString(),
+        market:{
+          session:clock.session,
+          inEntry:clock.inEntry,
+          firstFive:clock.firstFive,
+          sessionKey:clock.sessionKey,
+          feedActive:false,
+          lastBarLabel:null
+        },
+        clock:{label:clock.label,reason:clock.reason}
+      };
     }
   }
   return Response.json(status, { headers:{"Cache-Control":"no-store"} });
