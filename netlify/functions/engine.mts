@@ -118,6 +118,15 @@ export default async (_req:Request) => {
       reason:"ENGINE ERROR",
       error:error?.message||String(error),
       checkedAt:new Date().toISOString(),
+      market:{
+        session:clock.session,
+        inEntry:clock.inEntry,
+        firstFive:clock.firstFive,
+        sessionKey:clock.sessionKey,
+        feedActive:false,
+        lastBarLabel:null
+      },
+      clock:{label:clock.label,reason:clock.reason},
       lastPush:previous.lastPush||null,
       lastEmail:previous.lastEmail||null,
       pushSubscribers:previous.pushSubscribers??null
