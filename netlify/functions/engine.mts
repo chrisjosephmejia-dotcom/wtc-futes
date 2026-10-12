@@ -59,6 +59,9 @@ export default async (_req:Request) => {
       checkedAt:new Date().toISOString(),
     };
     try { await updateSignalLog(flatCurrent); } catch(error:any) { console.error("signal log init/close failed",error); }
+    if(actionable(previous.signal)){
+      try { await appendDecisionSnapshot(flatCurrent); } catch(error:any) { console.error("decision log session-close update failed",error); }
+    }
 
     if (actionable(previous.signal) && Number.isFinite(Number(lastStatus?.price))) {
       const alerts=await sendTransitionAlerts(flatCurrent,previous.signal);
@@ -123,10 +126,11 @@ export default async (_req:Request) => {
     const lastStatus:any=await s.get("status",{type:"json"}) || {};
     const held=actionable(previous.signal);
     const sideLabel=previous.signal==="BUY MNQ"?"LONG":previous.signal==="SELL MNQ"?"SHORT":"FLAT";
-    await s.setJSON("status",{
+    const errorStatus:any={
       ...lastStatus,
       signal:held?previous.signal:"WAIT",
       rawSignal:"WAIT",
+      rawReason:"ENGINE DATA ERROR",
       strategyVersion:STRATEGY_VERSION,
       positionEvent:held?"HOLD":"FLAT",
       reason:held?`HOLD ${sideLabel} · ENGINE DATA ERROR`:"ENGINE ERROR",
@@ -144,7 +148,9 @@ export default async (_req:Request) => {
       lastPush:previous.lastPush||lastStatus?.lastPush||null,
       lastEmail:previous.lastEmail||lastStatus?.lastEmail||null,
       pushSubscribers:previous.pushSubscribers??lastStatus?.pushSubscribers??null
-    });
+    };
+    await s.setJSON("status",errorStatus);
+    try { await appendDecisionSnapshot(errorStatus); } catch(logError:any) { console.error("decision log engine-error update failed",logError); }
   }
 };
 
