@@ -81,8 +81,10 @@ export default async (_req:Request) => {
     const ledger:any=repaired.ledger;
     if(repaired.repaired) await s.setJSON("signal-log",ledger);
     const openTrade=Array.isArray(ledger?.trades)?ledger.trades.find((t:any)=>t?.status === "OPEN")||null:null;
-    if(repaired.restoredSignal && !actionable(previous.signal)){
-      previous={...previous,signal:repaired.restoredSignal,rawSignal:repaired.restoredSignal,riskLockDirection:null,incidentRecovery:"STALE_FEED_2026-10-11"};
+    const ledgerSignal=actionable(openTrade?.direction)?openTrade.direction:null;
+    const recoverySignal=repaired.restoredSignal || ledgerSignal;
+    if(recoverySignal && !actionable(previous.signal)){
+      previous={...previous,signal:recoverySignal,rawSignal:recoverySignal,riskLockDirection:null,incidentRecovery:"LEDGER_OPEN_POSITION"};
       await s.setJSON("state",previous);
     }
     const previousRiskLock=previous.riskLockDirection||null;
