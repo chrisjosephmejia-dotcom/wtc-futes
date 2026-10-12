@@ -52,7 +52,7 @@ export function resolvePositionState(raw:any,previousSignal:any,openTrade:any=nu
   const previous=actionable(previousSignal)?previousSignal:"WAIT";
   const marketSession=raw?.market?.session !== false;
   const feedActive=raw?.market?.feedActive !== false;
-  const openPoints=openPositionPoints(raw,previous,openTrade);
+  const openPoints=feedActive ? openPositionPoints(raw,previous,openTrade) : null;
   const dailyState=tradeDailyState(raw,openTrade);
   const takeProfitPoints=takeProfitPointsFor(raw,previous,openTrade);
   const lockActive=lifecycleLockActive(raw,riskLockDirection);
@@ -62,10 +62,14 @@ export function resolvePositionState(raw:any,previousSignal:any,openTrade:any=nu
   let riskTrigger:any=null;
 
   if(previous === "BUY MNQ"){
-    if(!marketSession || !feedActive || !Number.isFinite(score)){
+    if(!marketSession){
       signal="WAIT";
       positionEvent="EXIT";
-      reason=`EXIT LONG · DATA/SESSION SAFETY · ${rawReason}`;
+      reason=`EXIT LONG · SESSION CLOSED · ${rawReason}`;
+    } else if(!feedActive || !Number.isFinite(score)){
+      signal="BUY MNQ";
+      positionEvent="HOLD";
+      reason=`HOLD LONG · DATA FEED PAUSED · ${rawReason}`;
     } else if(openPoints !== null && openPoints <= -HARD_STOP_POINTS){
       signal="WAIT";
       positionEvent="EXIT";
@@ -90,10 +94,14 @@ export function resolvePositionState(raw:any,previousSignal:any,openTrade:any=nu
       reason=rawSignal === "BUY MNQ" ? rawReason : `HOLD LONG · RAW ${rawSignal} · SCORE ${signedScore(score)} > 0`;
     }
   } else if(previous === "SELL MNQ"){
-    if(!marketSession || !feedActive || !Number.isFinite(score)){
+    if(!marketSession){
       signal="WAIT";
       positionEvent="EXIT";
-      reason=`EXIT SHORT · DATA/SESSION SAFETY · ${rawReason}`;
+      reason=`EXIT SHORT · SESSION CLOSED · ${rawReason}`;
+    } else if(!feedActive || !Number.isFinite(score)){
+      signal="SELL MNQ";
+      positionEvent="HOLD";
+      reason=`HOLD SHORT · DATA FEED PAUSED · ${rawReason}`;
     } else if(openPoints !== null && openPoints <= -HARD_STOP_POINTS){
       signal="WAIT";
       positionEvent="EXIT";
