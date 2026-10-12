@@ -1,6 +1,6 @@
 import type { Context, Config } from "@netlify/functions";
 import { store } from "./lib/storage.mjs";
-import { MNQ_DOLLARS_PER_POINT, ROBINHOOD_ROUND_TRIP_FEE, V3_START_TRADE_NUMBER, theoreticalMark } from "./lib/signal-log.mjs";
+import { MNQ_DOLLARS_PER_POINT, ROBINHOOD_ROUND_TRIP_FEE, V3_START_TRADE_NUMBER, theoreticalMark, repairKnownLedgerIncidents } from "./lib/signal-log.mjs";
 import { STRATEGY_VERSION } from "./lib/position-state.mjs";
 
 function round(n:number,digits=2){
@@ -10,7 +10,10 @@ function round(n:number,digits=2){
 
 export default async (_req:Request,_context:Context) => {
   const s=store("mnq-engine");
-  const saved:any=await s.get("signal-log",{type:"json"}) || {trades:[],strategyVersion:STRATEGY_VERSION};
+  const rawSaved:any=await s.get("signal-log",{type:"json"}) || {trades:[],strategyVersion:STRATEGY_VERSION};
+  const repaired=repairKnownLedgerIncidents(rawSaved);
+  const saved:any=repaired.ledger;
+  if(repaired.repaired) await s.setJSON("signal-log",saved);
   const status:any=await s.get("status",{type:"json"}) || {};
   const trades:any[]=Array.isArray(saved.trades)?saved.trades:[];
   const closed=trades.filter(t=>t?.status === "CLOSED" && t?.eligibleForStats !== false && Number.isFinite(Number(t?.theoreticalPnl)));
