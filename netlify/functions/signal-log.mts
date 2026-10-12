@@ -16,7 +16,7 @@ export default async (_req:Request,_context:Context) => {
   if(repaired.repaired) await s.setJSON("signal-log",saved);
   const status:any=await s.get("status",{type:"json"}) || {};
   const trades:any[]=Array.isArray(saved.trades)?saved.trades:[];
-  const closed=trades.filter(t=>t?.status === "CLOSED" && t?.eligibleForStats !== false && Number.isFinite(Number(t?.theoreticalPnl)));
+  const closed=trades.filter(t=>t?.status === "CLOSED" && t?.eligibleForStats !== false && t?.theoreticalPnl !== null && t?.theoreticalPnl !== undefined && Number.isFinite(Number(t?.theoreticalPnl)));
   const open=trades.find(t=>t?.status === "OPEN") || null;
   const openMark=open?theoreticalMark(open,status?.price):null;
   const closedPnl=round(closed.reduce((sum,t)=>sum+Number(t.theoreticalPnl||0),0),2);
