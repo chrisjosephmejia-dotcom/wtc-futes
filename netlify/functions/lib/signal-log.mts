@@ -238,7 +238,7 @@ export async function appendDecisionSnapshot(current:any){
   const checkedAt=current?.checkedAt || new Date().toISOString();
   const day=checkedAt.slice(0,10);
   const key=`decision-log/${day}`;
-  const saved:any=await s.get(key,{type:"json"}) || {version:2,date:day,entries:[]};
+  const saved:any=await s.get(key,{type:"json"}) || {version:3,date:day,entries:[]};
   const entries:any[]=Array.isArray(saved.entries)?saved.entries:[];
   const minute=checkedAt.slice(0,16);
   if(entries.length && String(entries[entries.length-1]?.checkedAt||"").slice(0,16) === minute) return saved;
@@ -265,8 +265,29 @@ export async function appendDecisionSnapshot(current:any){
     inEntry:current?.market?.inEntry ?? null,
     extensionBlocked:current?.extension?.blocked ?? null,
     riskCap:current?.riskCap || null,
+    engineError:current?.error || null,
+    source:current?.source || null,
+    open:Number.isFinite(Number(current?.open))?Number(current.open):null,
+    openingRangeLow:Number.isFinite(Number(current?.openingRange?.low))?Number(current.openingRange.low):null,
+    openingRangeHigh:Number.isFinite(Number(current?.openingRange?.high))?Number(current.openingRange.high):null,
+    thresholdBuy:Number.isFinite(Number(current?.threshold?.buy))?Number(current.threshold.buy):null,
+    thresholdSell:Number.isFinite(Number(current?.threshold?.sell))?Number(current.threshold.sell):null,
+    extensionPct:Number.isFinite(Number(current?.extension?.pct))?Number(current.extension.pct):null,
+    extensionLimitPct:Number.isFinite(Number(current?.extension?.limitPct))?Number(current.extension.limitPct):null,
+    dailyRsi:Number.isFinite(Number(current?.daily?.rsi))?Number(current.daily.rsi):null,
+    dailyEma20:Number.isFinite(Number(current?.daily?.ema20))?Number(current.daily.ema20):null,
+    dailyEma50:Number.isFinite(Number(current?.daily?.ema50))?Number(current.daily.ema50):null,
+    frame30Detail:f?.["30m"] || null,
+    frame15Detail:f?.["15m"] || null,
+    frame5Detail:f?.["5m"] || null,
+    frame1Detail:f?.["1m"] || null,
+    lastBar:current?.market?.lastBar || null,
+    lastBarLabel:current?.market?.lastBarLabel || null,
+    ageSec:Number.isFinite(Number(current?.market?.ageSec))?Number(current.market.ageSec):null,
+    minuteBars:Number.isFinite(Number(current?.instrument?.minuteBars))?Number(current.instrument.minuteBars):null,
+    dailyBars:Number.isFinite(Number(current?.instrument?.dailyBars))?Number(current.instrument.dailyBars):null,
   });
-  const result={...saved,version:2,strategyVersion:STRATEGY_VERSION,date:day,updatedAt:new Date().toISOString(),entries};
+  const result={...saved,version:3,strategyVersion:STRATEGY_VERSION,date:day,updatedAt:new Date().toISOString(),entries};
   await s.setJSON(key,result);
   return result;
 }
