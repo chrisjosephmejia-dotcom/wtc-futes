@@ -280,15 +280,29 @@ export async function getNqBars() {
   ]);
   const streamerSymbol = future["streamer-symbol"] as string;
   const now = Date.now();
-  const [minute,daily] = await Promise.all([
+  const dailyPromise = fetchHistory(
+    quoteAuth["dxlink-url"], quoteAuth.token, streamerSymbol, 1, "d",
+    now - 210*24*60*60*1000, 55,
+  ).then((data)=>({ok:true as const,data,error:null as string|null}))
+   .catch((error:any)=>({ok:false as const,data:null,error:error?.message||String(error)}));
+
+  const [minute,dailyResult] = await Promise.all([
     fetchHistory(quoteAuth["dxlink-url"], quoteAuth.token, streamerSymbol, 1, "m", now - 7*24*60*60*1000, 1000),
-    fetchHistory(quoteAuth["dxlink-url"], quoteAuth.token, streamerSymbol, 1, "d", now - 210*24*60*60*1000, 55),
+    dailyPromise,
   ]);
 
   const minuteBars = toBars(minute.candles);
-  const dailyBars = toBars(daily.candles);
   if (!minute.snapshotComplete || minuteBars.length < 1000) throw new Error(`NQ 1m history incomplete (${minuteBars.length} bars)`);
-  if (!daily.snapshotComplete || dailyBars.length < 30) throw new Error(`NQ daily history incomplete (${dailyBars.length} bars)`);
+
+  let dailyBars:Bar[] = [];
+  let dailyError:string|null = dailyResult.error;
+  if (dailyResult.ok && dailyResult.data) {
+    dailyBars = toBars(dailyResult.data.candles);
+    if (!dailyResult.data.snapshotComplete || dailyBars.length < 30) {
+      dailyError = `NQ daily history incomplete (${dailyBars.length} bars)`;
+      dailyBars = [];
+    }
+  }
 
   return {
     symbol:future.symbol as string,
@@ -297,6 +311,7 @@ export async function getNqBars() {
     expirationDate:future["expiration-date"] || null,
     minuteBars,
     dailyBars,
+    dailyHealth:{ok:dailyBars.length>=30,error:dailyError},
     source:"tastytrade DXLink / CME",
   };
 }
