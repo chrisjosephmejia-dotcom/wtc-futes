@@ -11,7 +11,7 @@ const MNQ_DOLLARS_PER_POINT = 2;
 const ROBINHOOD_FEE_PER_SIDE = 0.86;
 const ROBINHOOD_ROUND_TRIP_FEE = ROBINHOOD_FEE_PER_SIDE * 2;
 const V3_START_TRADE_NUMBER = 47;
-const LEDGER_VERSION = 7;
+const LEDGER_VERSION = 8;
 const STALE_FEED_INCIDENT = {
   primaryTradeNumber:57,
   voidTradeNumbers:new Set([58,59,60,61,62]),
@@ -62,10 +62,14 @@ function incidentOriginal(trade:any){
 }
 
 export function repairKnownLedgerIncidents(saved:any){
-  if(Number(saved?.version || 0) >= LEDGER_VERSION){
-    return {ledger:saved,repaired:false,restoredSignal:null};
-  }
   const trades=normalizeTradeHistory(Array.isArray(saved?.trades)?saved.trades:[]);
+  if(Number(saved?.version || 0) >= LEDGER_VERSION){
+    const primary=trades.find((t:any)=>Number(t?.tradeNumber)===STALE_FEED_INCIDENT.primaryTradeNumber);
+    const restoredSignal=primary?.status === "OPEN" && primary?.auditStatus === "RECONSTRUCTED" && actionable(primary?.direction)
+      ? primary.direction
+      : null;
+    return {ledger:{...saved,trades},repaired:false,restoredSignal};
+  }
   let repaired=false;
   let restoredSignal:any=null;
 
