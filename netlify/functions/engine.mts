@@ -4,7 +4,7 @@ import { computeSignal, getCmeClockState } from "./lib/signal-nq.mjs";
 import { resolvePositionState, actionable, lifecycleLockActive, STRATEGY_VERSION } from "./lib/position-state.mjs";
 import { sendAll } from "./lib/push.mjs";
 import { sendSignalEmail } from "./lib/email.mjs";
-import { updateSignalLog, appendDecisionSnapshot } from "./lib/signal-log.mjs";
+import { updateSignalLog, appendDecisionSnapshot, repairKnownLedgerIncidents } from "./lib/signal-log.mjs";
 
 function transitionTitle(currentSignal:any, previousSignal:any){
   if(currentSignal === "BUY MNQ") return previousSignal === "SELL MNQ" ? "MNQ REVERSE → BUY" : "MNQ BUY";
@@ -75,9 +75,16 @@ export default async (_req:Request) => {
 
   try {
     const raw:any=await computeSignal();
-    const previous:any=await s.get("state",{type:"json"}) || {};
-    const ledger:any=await s.get("signal-log",{type:"json"}) || {};
+    let previous:any=await s.get("state",{type:"json"}) || {};
+    const rawLedger:any=await s.get("signal-log",{type:"json"}) || {};
+    const repaired=repairKnownLedgerIncidents(rawLedger);
+    const ledger:any=repaired.ledger;
+    if(repaired.repaired) await s.setJSON("signal-log",ledger);
     const openTrade=Array.isArray(ledger?.trades)?ledger.trades.find((t:any)=>t?.status === "OPEN")||null:null;
+    if(repaired.restoredSignal && !actionable(previous.signal)){
+      previous={...previous,signal:repaired.restoredSignal,rawSignal:repaired.restoredSignal,riskLockDirection:null,incidentRecovery:"STALE_FEED_2026-10-11"};
+      await s.setJSON("state",previous);
+    }
     const previousRiskLock=previous.riskLockDirection||null;
     const current:any=resolvePositionState(raw,previous.signal,openTrade,previousRiskLock);
     const nextRiskLockDirection=current?.riskCap?.trigger
