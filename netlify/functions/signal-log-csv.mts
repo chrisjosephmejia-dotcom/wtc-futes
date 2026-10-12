@@ -1,5 +1,6 @@
 import type { Context, Config } from "@netlify/functions";
 import { store } from "./lib/storage.mjs";
+import { repairKnownLedgerIncidents } from "./lib/signal-log.mjs";
 
 function csvCell(value:any){
   if(value === null || value === undefined) return "";
@@ -9,7 +10,10 @@ function csvCell(value:any){
 
 export default async (_req:Request,_context:Context) => {
   const s=store("mnq-engine");
-  const saved:any=await s.get("signal-log",{type:"json"}) || {trades:[]};
+  const rawSaved:any=await s.get("signal-log",{type:"json"}) || {trades:[]};
+  const repaired=repairKnownLedgerIncidents(rawSaved);
+  const saved:any=repaired.ledger;
+  if(repaired.repaired) await s.setJSON("signal-log",saved);
   const trades:any[]=Array.isArray(saved.trades)?saved.trades:[];
   const rows=[...trades].reverse();
   const headers=[
