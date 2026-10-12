@@ -31,22 +31,29 @@ export default async (_req: Request, _context: Context) => {
       await s.setJSON("status", status);
     } catch (error:any) {
       const clock=getCmeClockState();
+      const held=actionable(prior?.signal);
+      const sideLabel=prior?.signal==="BUY MNQ"?"LONG":prior?.signal==="SELL MNQ"?"SHORT":"FLAT";
       status = {
-        signal:"WAIT",
+        ...(status||{}),
+        signal:held?prior.signal:"WAIT",
         rawSignal:"WAIT",
         strategyVersion:STRATEGY_VERSION,
-        reason:"ENGINE ERROR",
+        positionEvent:held?"HOLD":"FLAT",
+        reason:held?`HOLD ${sideLabel} · ENGINE DATA ERROR`:"ENGINE ERROR",
         error:error?.message || String(error),
         checkedAt:new Date().toISOString(),
         market:{
+          ...(status?.market||{}),
           session:clock.session,
           inEntry:clock.inEntry,
           firstFive:clock.firstFive,
           sessionKey:clock.sessionKey,
-          feedActive:false,
-          lastBarLabel:null
+          feedActive:false
         },
-        clock:{label:clock.label,reason:clock.reason}
+        clock:{label:clock.label,reason:clock.reason},
+        lastPush:prior?.lastPush||status?.lastPush||null,
+        lastEmail:prior?.lastEmail||status?.lastEmail||null,
+        pushSubscribers:prior?.pushSubscribers??status?.pushSubscribers??null
       };
     }
   }
