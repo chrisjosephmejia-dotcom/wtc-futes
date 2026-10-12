@@ -11,6 +11,12 @@ const MNQ_DOLLARS_PER_POINT = 2;
 const ROBINHOOD_FEE_PER_SIDE = 0.86;
 const ROBINHOOD_ROUND_TRIP_FEE = ROBINHOOD_FEE_PER_SIDE * 2;
 const V3_START_TRADE_NUMBER = 47;
+const LEDGER_VERSION = 6;
+const STALE_FEED_INCIDENT = {
+  primaryTradeNumber:57,
+  voidTradeNumbers:new Set([58,59,60,61,62]),
+  reason:"2026-10-11 stale 17:10 CT NQ history snapshot caused false exits/re-entries",
+};
 const RISK_MODEL = {
   hardStopPoints:HARD_STOP_POINTS,
   hardStopGrossDollars:HARD_STOP_POINTS*MNQ_DOLLARS_PER_POINT,
@@ -35,6 +41,76 @@ function alignment(current:any){
 function mnqContract(nqSymbol:any){
   const s=String(nqSymbol || "");
   return s.startsWith("/NQ") ? s.replace("/NQ","/MNQ") : "MNQ";
+}
+
+function incidentOriginal(trade:any){
+  return {
+    status:trade?.status ?? null,
+    closedAt:trade?.closedAt ?? null,
+    exitPrice:trade?.exitPrice ?? null,
+    exitScore:trade?.exitScore ?? null,
+    exitSignal:trade?.exitSignal ?? null,
+    exitRawSignal:trade?.exitRawSignal ?? null,
+    exitReason:trade?.exitReason ?? null,
+    exitRawReason:trade?.exitRawReason ?? null,
+    points:trade?.points ?? null,
+    theoreticalPnl:trade?.theoreticalPnl ?? null,
+    roundTripFees:trade?.roundTripFees ?? null,
+    netPnlBeforeSlippage:trade?.netPnlBeforeSlippage ?? null,
+    durationMinutes:trade?.durationMinutes ?? null,
+  };
+}
+
+export function repairKnownLedgerIncidents(saved:any){
+  if(Number(saved?.version || 0) >= LEDGER_VERSION){
+    return {ledger:saved,repaired:false,restoredSignal:null};
+  }
+  const trades=normalizeTradeHistory(Array.isArray(saved?.trades)?saved.trades:[]);
+  let repaired=false;
+  let restoredSignal:any=null;
+
+  const primary=trades.find((t:any)=>Number(t?.tradeNumber)===STALE_FEED_INCIDENT.primaryTradeNumber);
+  if(primary && String(primary?.exitReason||"").includes("FEED PAUSED")){
+    if(!primary.auditOriginal) primary.auditOriginal=incidentOriginal(primary);
+    Object.assign(primary,{
+      status:"OPEN",
+      closedAt:null,
+      exitPrice:null,
+      exitScore:null,
+      exitSignal:null,
+      exitRawSignal:null,
+      exitReason:null,
+      exitRawReason:null,
+      points:null,
+      theoreticalPnl:null,
+      roundTripFees:null,
+      netPnlBeforeSlippage:null,
+      durationMinutes:null,
+      eligibleForStats:true,
+      auditStatus:"RECONSTRUCTED",
+      reconstructionReason:STALE_FEED_INCIDENT.reason,
+    });
+    restoredSignal=primary.direction;
+    repaired=true;
+  }
+
+  for(const trade of trades){
+    if(!STALE_FEED_INCIDENT.voidTradeNumbers.has(Number(trade?.tradeNumber))) continue;
+    if(!trade.auditOriginal) trade.auditOriginal=incidentOriginal(trade);
+    Object.assign(trade,{
+      status:"VOID",
+      eligibleForStats:false,
+      auditStatus:"VOID_STALE_FEED_BUG",
+      voidReason:STALE_FEED_INCIDENT.reason,
+    });
+    repaired=true;
+  }
+
+  return {
+    ledger:{...saved,version:LEDGER_VERSION,trades,incidentRepairAt:new Date().toISOString()},
+    repaired,
+    restoredSignal,
+  };
 }
 
 function normalizeTradeHistory(trades:any[]){
@@ -77,11 +153,12 @@ function closeTrade(trade:any,current:any){
 async function loadCurrentLedger(){
   const s=store("mnq-engine");
   const existing:any=await s.get("signal-log",{type:"json"}) || {};
-  const trades=normalizeTradeHistory(Array.isArray(existing?.trades)?existing.trades:[]);
+  const repaired=repairKnownLedgerIncidents(existing);
+  const trades=normalizeTradeHistory(Array.isArray(repaired.ledger?.trades)?repaired.ledger.trades:[]);
   return {
-    ...existing,
+    ...repaired.ledger,
     trades,
-    createdAt:existing.createdAt || new Date().toISOString(),
+    createdAt:repaired.ledger.createdAt || new Date().toISOString(),
   };
 }
 
@@ -91,7 +168,7 @@ export async function updateSignalLog(current:any){
   let trades:any[]=Array.isArray(saved.trades)?saved.trades:[];
   let openIndex=trades.findIndex(t=>t?.status === "OPEN");
   const isActionable=actionable(current?.signal);
-  let changed=saved?.version < 5 || saved?.strategyVersion !== STRATEGY_VERSION;
+  let changed=saved?.version < LEDGER_VERSION || saved?.strategyVersion !== STRATEGY_VERSION;
 
   if(openIndex >= 0){
     const open=trades[openIndex];
@@ -135,7 +212,7 @@ export async function updateSignalLog(current:any){
 
   const now=new Date().toISOString();
   const result={
-    version:5,
+    version:LEDGER_VERSION,
     strategyVersion:STRATEGY_VERSION,
     v3StartTradeNumber:V3_START_TRADE_NUMBER,
     riskModel:RISK_MODEL,
