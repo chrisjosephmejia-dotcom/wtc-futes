@@ -73,20 +73,21 @@ export default async (_req:Request) => {
     return;
   }
 
+  let previous:any=await s.get("state",{type:"json"}) || {};
+  let openTrade:any=null;
   try {
-    const raw:any=await computeSignal();
-    let previous:any=await s.get("state",{type:"json"}) || {};
     const rawLedger:any=await s.get("signal-log",{type:"json"}) || {};
     const repaired=repairKnownLedgerIncidents(rawLedger);
     const ledger:any=repaired.ledger;
     if(repaired.repaired) await s.setJSON("signal-log",ledger);
-    const openTrade=Array.isArray(ledger?.trades)?ledger.trades.find((t:any)=>t?.status === "OPEN")||null:null;
+    openTrade=Array.isArray(ledger?.trades)?ledger.trades.find((t:any)=>t?.status === "OPEN")||null:null;
     const ledgerSignal=actionable(openTrade?.direction)?openTrade.direction:null;
     const recoverySignal=repaired.restoredSignal || ledgerSignal;
     if(recoverySignal && !actionable(previous.signal)){
       previous={...previous,signal:recoverySignal,rawSignal:recoverySignal,riskLockDirection:null,incidentRecovery:"LEDGER_OPEN_POSITION"};
       await s.setJSON("state",previous);
     }
+    const raw:any=await computeSignal();
     const previousRiskLock=previous.riskLockDirection||null;
     const current:any=resolvePositionState(raw,previous.signal,openTrade,previousRiskLock);
     const nextRiskLockDirection=current?.riskCap?.trigger
@@ -119,26 +120,30 @@ export default async (_req:Request) => {
     await s.setJSON("status",{...current,riskLockDirection:nextRiskLockDirection,lastPush,lastEmail,pushSubscribers:listed.blobs.length});
   } catch(error:any) {
     console.error("engine error",error);
-    const previous:any=await s.get("state",{type:"json"}) || {};
+    const lastStatus:any=await s.get("status",{type:"json"}) || {};
+    const held=actionable(previous.signal);
+    const sideLabel=previous.signal==="BUY MNQ"?"LONG":previous.signal==="SELL MNQ"?"SHORT":"FLAT";
     await s.setJSON("status",{
-      signal:"WAIT",
+      ...lastStatus,
+      signal:held?previous.signal:"WAIT",
       rawSignal:"WAIT",
       strategyVersion:STRATEGY_VERSION,
-      reason:"ENGINE ERROR",
+      positionEvent:held?"HOLD":"FLAT",
+      reason:held?`HOLD ${sideLabel} · ENGINE DATA ERROR`:"ENGINE ERROR",
       error:error?.message||String(error),
       checkedAt:new Date().toISOString(),
       market:{
+        ...(lastStatus?.market||{}),
         session:clock.session,
         inEntry:clock.inEntry,
         firstFive:clock.firstFive,
         sessionKey:clock.sessionKey,
-        feedActive:false,
-        lastBarLabel:null
+        feedActive:false
       },
       clock:{label:clock.label,reason:clock.reason},
-      lastPush:previous.lastPush||null,
-      lastEmail:previous.lastEmail||null,
-      pushSubscribers:previous.pushSubscribers??null
+      lastPush:previous.lastPush||lastStatus?.lastPush||null,
+      lastEmail:previous.lastEmail||lastStatus?.lastEmail||null,
+      pushSubscribers:previous.pushSubscribers??lastStatus?.pushSubscribers??null
     });
   }
 };
