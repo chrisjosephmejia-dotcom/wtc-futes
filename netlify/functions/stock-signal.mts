@@ -38,16 +38,51 @@ export default async(req:Request,_ctx:Context)=>{
     else if(inside(price,z3)){decision="STRONG DIP • THESIS RE-CHECK";tier="THESIS_CHECK";reason="Price reached the strong-dip zone. Cheap is not enough here; fresh thesis confirmation is required before a major add."}
     else if(price<z3.low){decision="CAUTION • THESIS RE-CHECK";tier="CAUTION";reason="Price has fallen below the planned strong-dip band. Re-check the thesis before adding; a deeper decline is not automatically a better buy."}
     if(price>z1.high&&extended){decision="WAIT • DO NOT CHASE";tier="WAIT";reason="Price is extended above the first dip zone and daily momentum is hot."}
+
+    // Broad, unleveraged index ETFs use a separate accumulation ladder.
+    // A 52-week high anchors thresholds so they cannot drift with a falling 20-day peak.
+    // Each level is a cumulative capital target, not a new order on every refresh.
+    const indexEtfs=new Set(["QQQ","QQQM","SPY","VOO","IVV","SPLG","VTI","ITOT","SCHB"]);
+    const isIndex=indexEtfs.has(ticker);
+    const indexLadder=[
+      {dipPct:1,buyPct:2,label:"BUY TINY"},
+      {dipPct:2,buyPct:3,label:"BUY SMALL"},
+      {dipPct:3,buyPct:5,label:"BUY"},
+      {dipPct:5,buyPct:10,label:"BUY MORE"},
+      {dipPct:8,buyPct:15,label:"BUY MORE"},
+      {dipPct:12,buyPct:20,label:"AGGRESSIVE BUY"},
+      {dipPct:20,buyPct:20,label:"HEAVY BUY"},
+      {dipPct:30,buyPct:25,label:"MAXIMUM BUY"}
+    ];
+    const indexAnchor=high;
+    const indexDrawdownPct=Math.max(0,(1-price/indexAnchor)*100);
+    let cumulative=0;
+    const indexSteps=indexLadder.map(level=>{
+      cumulative+=level.buyPct;
+      return {...level,thresholdPrice:indexAnchor*(1-level.dipPct/100),cumulativePct:cumulative,reached:indexDrawdownPct+1e-9>=level.dipPct};
+    });
+    const indexReached=indexSteps.filter(level=>level.reached);
+    const indexCumulativePct=indexReached.length?indexReached[indexReached.length-1].cumulativePct:0;
+    if(isIndex){
+      const latest=indexReached[indexReached.length-1];
+      decision=latest?"BUY • "+latest.dipPct+"% INDEX DIP":"WAIT • NO INDEX DIP";
+      tier=latest?"INDEX_BUY":"WAIT";
+      reason=latest
+        ?indexReached.length+" index dip levels reached; target "+indexCumulativePct+"% of reserved dip capital cumulatively. Subtract amounts already bought; this app never places orders."
+        :"Price has not fallen 1% from the 52-week high. Keep normal recurring contributions separate.";
+    }
     const qualityNote=daily.length<200?"LIMITED HISTORY • SIZE SMALLER":"TECHNICAL HISTORY AVAILABLE";
-    const thesisRequired=tier==="THESIS_CHECK"||tier==="CAUTION";
+    const thesisRequired=!isIndex&&(tier==="THESIS_CHECK"||tier==="CAUTION");
     const score=Math.round(clamp(50-dd*1.1+(longTrend==="BULLISH"?12:longTrend==="BEARISH"?-12:0)+(oversold?8:0),0,100));
     return Response.json({
       ok:true,ticker,decision,tier,reason,score,source:d.source,updatedAt:new Date().toISOString(),
-      price,
+      price,strategy:isIndex?"INDEX_ACCUMULATION":"STOCK_THESIS",
       regime:{longTrend,dailyRsi:drsi,atr:a,atrPct,drawdownFromHighPct:dd,move20Pct:move20,move60Pct:move60,ema20:e20,ema50:e50,ema200:Number.isFinite(e200)?e200:null,rangeHigh:high,rangeLow:low,historySessions:daily.length,qualityNote},
-      zones:{anchorHigh,first:{...z1,label:"BUY SMALL",drawdownPct:d1},deeper:{...z2,label:"BUY MORE",drawdownPct:d2},strong:{...z3,label:"STRONG DIP",drawdownPct:d3}},
-      thesis:{required:thesisRequired,status:thesisRequired?"REQUIRED":"NOT REQUIRED",note:thesisRequired?"Fresh business/news/filing thesis layer is the next build step.":"No strong-dip override is active."},
-      model:{name:"WTC Stock Trader",version:"0.1-dev",philosophy:"Business quality controls conviction; price controls entry timing. Unproven is a sizing warning, not an automatic veto."}
+      zones:isIndex
+        ?{indexAnchor,indexDrawdownPct,indexCumulativePct,indexSteps}
+        :{anchorHigh,first:{...z1,label:"BUY SMALL",drawdownPct:d1},deeper:{...z2,label:"BUY MORE",drawdownPct:d2},strong:{...z3,label:"STRONG DIP",drawdownPct:d3}},
+      thesis:{required:thesisRequired,status:thesisRequired?"REQUIRED":"NOT REQUIRED",note:isIndex?"Index accumulation continues in bearish regimes. Long-term EMAs are informational, not a purchase veto.":thesisRequired?"Fresh business/news/filing thesis layer is the next build step.":"No strong-dip override is active."},
+      model:{name:"WTC Stock Trader",version:"0.2-index-ladder",philosophy:isIndex?"Broad index accumulation: progressively larger purchases on deeper dips, funded only from the designated reserve.":"Business quality controls conviction; price controls entry timing. Unproven is a sizing warning, not an automatic veto."}
     },{headers:{"Cache-Control":"no-store"}});
   }catch(e:any){return Response.json({ok:false,error:e?.message||String(e)},{status:503,headers:{"Cache-Control":"no-store"}})}
 }

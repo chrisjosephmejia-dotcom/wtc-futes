@@ -5,8 +5,8 @@
 <title>WTC Stock Trader</title>
 <style>
 :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color-scheme:dark;--bg:#08101c;--panel:#0d1726;--panel2:#0a1320;--line:#21314a;--muted:#8392a8;--text:#f4f7fb;--blue:#63d4ff;--green:#50e3a4;--amber:#ffd45d;--red:#ff7885}
-*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 18% 0,#14243b 0,#08101c 45%);color:var(--text);min-height:100vh}.wrap{max-width:1120px;margin:auto;padding:28px 18px 60px}.top{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:flex-start}.brand{font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--blue);text-transform:uppercase}h1{font-size:32px;margin:5px 0}.sub,.small{color:#95a4b8;font-size:13px;line-height:1.5}.pill{border:1px solid #2b3a53;background:#0d1726;border-radius:999px;padding:8px 12px;font-size:12px}.controls{display:flex;gap:10px;margin:24px 0 16px}.controls input{width:170px;border:1px solid #2b3a53;background:#0f1929;color:#fff;border-radius:11px;padding:12px;font-size:16px;text-transform:uppercase}.controls button{border:0;border-radius:11px;padding:12px 17px;font-weight:700;cursor:pointer}.decision,.quote,.section{border:1px solid var(--line);background:linear-gradient(180deg,#101a2a,#0b1422);border-radius:18px}.quote{padding:20px;margin-bottom:14px;display:flex;justify-content:space-between;gap:16px;align-items:end;flex-wrap:wrap}.price{font-size:42px;font-weight:800}.change{font-size:16px;font-weight:700}.decision{padding:24px;margin-bottom:16px}.eyebrow,.label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.09em}.decisionText{font-size:38px;font-weight:800;margin:8px 0 10px}.reason{color:#b9c5d5;max-width:780px;line-height:1.55}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:11px}.card{border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:14px}.value{font-size:18px;font-weight:700;margin-top:5px}.section{padding:18px;margin-top:16px}.sectionTitle{font-size:16px;font-weight:700;margin-bottom:12px}.ladder{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.zone{border:1px solid var(--line);border-radius:14px;padding:16px;background:#09131f}.zone strong{display:block;font-size:20px;font-weight:750;margin:6px 0}.zone small{color:#91a1b7}.zone.active{outline:2px solid var(--green);box-shadow:0 0 22px rgba(80,227,164,.12)}.zone.strong.active{outline-color:var(--amber)}.thesis{display:flex;justify-content:space-between;gap:15px;align-items:center;flex-wrap:wrap;border:1px solid var(--line);border-radius:14px;padding:15px;background:#09131f}.status{font-weight:800}.good{color:var(--green)}.warn{color:var(--amber)}.bad{color:var(--red)}.footer{margin-top:18px;color:#718198;font-size:12px;line-height:1.55}
-@media(max-width:800px){.grid{grid-template-columns:repeat(2,1fr)}.ladder{grid-template-columns:1fr}.decisionText{font-size:31px}}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 18% 0,#14243b 0,#08101c 45%);color:var(--text);min-height:100vh}.wrap{max-width:1120px;margin:auto;padding:28px 18px 60px}.top{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:flex-start}.brand{font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--blue);text-transform:uppercase}h1{font-size:32px;margin:5px 0}.sub,.small{color:#95a4b8;font-size:13px;line-height:1.5}.pill{border:1px solid #2b3a53;background:#0d1726;border-radius:999px;padding:8px 12px;font-size:12px}.controls{display:flex;gap:10px;margin:24px 0 16px}.controls input{width:170px;border:1px solid #2b3a53;background:#0f1929;color:#fff;border-radius:11px;padding:12px;font-size:16px;text-transform:uppercase}.controls button{border:0;border-radius:11px;padding:12px 17px;font-weight:700;cursor:pointer}.decision,.quote,.section{border:1px solid var(--line);background:linear-gradient(180deg,#101a2a,#0b1422);border-radius:18px}.quote{padding:20px;margin-bottom:14px;display:flex;justify-content:space-between;gap:16px;align-items:end;flex-wrap:wrap}.price{font-size:42px;font-weight:800}.change{font-size:16px;font-weight:700}.decision{padding:24px;margin-bottom:16px}.eyebrow,.label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.09em}.decisionText{font-size:38px;font-weight:800;margin:8px 0 10px}.reason{color:#b9c5d5;max-width:780px;line-height:1.55}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:11px}.card{border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:14px}.value{font-size:18px;font-weight:700;margin-top:5px}.section{padding:18px;margin-top:16px}.sectionTitle{font-size:16px;font-weight:700;margin-bottom:12px}.ladder{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.zone{border:1px solid var(--line);border-radius:14px;padding:16px;background:#09131f}.zone strong{display:block;font-size:20px;font-weight:750;margin:6px 0}.zone small{color:#91a1b7}.zone.active{outline:2px solid var(--green);box-shadow:0 0 22px rgba(80,227,164,.12)}.zone.strong.active{outline-color:var(--amber)}.ladder.index{grid-template-columns:repeat(4,minmax(0,1fr))}.ladder.index .zone{padding:13px}.ladder.index .zone strong{font-size:16px}.ladder.index .zone small{display:block;margin-top:8px;line-height:1.5}.tracker{display:none;margin-top:13px;border-top:1px solid var(--line);padding-top:12px}.tracker button{border:1px solid var(--line);border-radius:10px;padding:10px 13px;background:#152944;color:var(--text);cursor:pointer;margin:9px 8px 0 0}.tracker button:disabled{opacity:.45;cursor:default}.thesis{display:flex;justify-content:space-between;gap:15px;align-items:center;flex-wrap:wrap;border:1px solid var(--line);border-radius:14px;padding:15px;background:#09131f}.status{font-weight:800}.good{color:var(--green)}.warn{color:var(--amber)}.bad{color:var(--red)}.footer{margin-top:18px;color:#718198;font-size:12px;line-height:1.55}
+@media(max-width:800px){.grid{grid-template-columns:repeat(2,1fr)}.ladder{grid-template-columns:1fr}.ladder.index{grid-template-columns:repeat(2,minmax(0,1fr))}.decisionText{font-size:31px}}
 </style>
 </head>
 <body>
@@ -25,12 +25,12 @@
 <div class="card"><div class="label">EMA 50</div><div class="value" id="e50">—</div></div>
 <div class="card"><div class="label">EMA 200</div><div class="value" id="e200">—</div></div>
 </section>
-<section class="section"><div class="sectionTitle">Dip ladder</div><div class="ladder">
+<section class="section"><div class="sectionTitle" id="ladderTitle">Dip ladder</div><div class="ladder" id="dipLadder">
 <div class="zone" id="z1"><div class="eyebrow">Stage 1</div><strong>BUY SMALL</strong><div id="z1p">—</div><small id="z1d">—</small></div>
 <div class="zone" id="z2"><div class="eyebrow">Stage 2</div><strong>BUY MORE</strong><div id="z2p">—</div><small id="z2d">—</small></div>
 <div class="zone strong" id="z3"><div class="eyebrow">Stage 3</div><strong>STRONG DIP</strong><div id="z3p">—</div><small id="z3d">—</small></div>
-</div></section>
-<section class="section"><div class="sectionTitle">Business / thesis gate</div><div class="thesis"><div><div class="eyebrow">Current state</div><div class="status" id="thesis">—</div></div><div class="small" id="quality">—</div></div><div class="footer">V0.1 development build. The first pass deliberately separates price timing from business conviction. The next layer will add the fresh thesis re-check so a severe drop cannot become an automatic buy just because the price looks cheap.</div></section>
+</div><div class="tracker" id="tracker"><div class="small" id="trackerSummary"></div><button id="markBoughtBtn" type="button">Mark levels bought</button><button id="resetTrackerBtn" type="button">Reset my buy tracker</button><div class="small">Manual tracking on this browser only; no brokerage orders are placed. Confirm purchases in your account.</div></div></section>
+<section class="section"><div class="sectionTitle" id="thesisTitle">Business / thesis gate</div><div class="thesis"><div><div class="eyebrow">Current state</div><div class="status" id="thesis">—</div></div><div class="small" id="quality">—</div></div><div class="footer" id="footerNote">Individual-stock dip buys require business conviction; broad index ETFs use a separate staged accumulation ladder. Levels are targets for your reserved dip capital, not automatic orders.</div></section>
 </main>
 <script>
 const q=(id)=>document.getElementById(id);
@@ -38,7 +38,50 @@ const money=(x)=>x!==null&&x!==undefined&&x!==""&&Number.isFinite(Number(x)) ? "
 const pct=(x)=>x!==null&&x!==undefined&&x!==""&&Number.isFinite(Number(x)) ? (Number(x)>=0?"+":"")+Number(x).toFixed(1)+"%" : "—";
 const zoneText=(z)=>money(z.low)+" – "+money(z.high);
 const active=(p,z)=>Number.isFinite(Number(p))&&p>=z.low&&p<=z.high;
-let requestId=0;
+const originalStockLadder=q("dipLadder").innerHTML;
+let requestId=0,latestIndexPlan=null;
+function indexKey(ticker){return "wtc-index-dips-v1-"+ticker}
+function getIndexState(s){
+  const fallback={anchor:s.zones.indexAnchor,purchasedPct:0};
+  try{
+    const saved=JSON.parse(localStorage.getItem(indexKey(s.ticker))||"null");
+    if(!saved||!Number.isFinite(Number(saved.anchor))||s.zones.indexAnchor>Number(saved.anchor)*1.00001)return fallback;
+    return {anchor:Number(saved.anchor),purchasedPct:Math.max(0,Math.min(100,Number(saved.purchasedPct)||0))};
+  }catch(_){return fallback}
+}
+function renderIndex(s){
+  latestIndexPlan=s;
+  q("ladderTitle").textContent="Index dip ladder · 52-week high "+money(s.zones.indexAnchor);
+  q("dipLadder").classList.add("index");
+  q("dipLadder").innerHTML=s.zones.indexSteps.map((step,i)=>
+    '<div class="zone '+(step.reached?'active':'')+'"><div class="eyebrow">Level '+(i+1)+' · −'+step.dipPct+'%</div><strong>'+step.label+'</strong><div>'+money(step.thresholdPrice)+' or lower</div><small>Buy '+step.buyPct+'% · '+step.cumulativePct+'% cumulative</small></div>'
+  ).join("");
+  q("tracker").style.display="block";
+  const state=getIndexState(s);
+  const target=s.zones.indexCumulativePct;
+  const due=Math.max(0,target-state.purchasedPct);
+  q("decision").textContent=due>0?"BUY "+due+"% • INDEX DIP":target>0?"WAIT • LEVELS COVERED":"WAIT • DIP DEVELOPING";
+  q("reason").textContent=due>0
+    ?"Index is "+s.zones.indexDrawdownPct.toFixed(1)+"% below the 52-week high. Incremental target: "+due+"% of the reserved dip capital; cumulative target "+target+"%. No trades are executed here."
+    :target>0?"The "+target+"% cumulative target has been marked bought on this browser. Wait for the next deeper threshold; do not duplicate earlier purchases."
+    :"No 1% index dip level has triggered. Recurring investments can continue separately.";
+  q("trackerSummary").textContent="Cumulative target "+target+"% · marked bought "+state.purchasedPct+"% · remaining to mark "+due+"% of dip reserve";
+  q("markBoughtBtn").disabled=due<=0;
+  q("markBoughtBtn").textContent=due>0?"Mark "+due+"% bought":"No new levels to mark";
+  q("thesisTitle").textContent="Index accumulation rule";
+}
+q("markBoughtBtn").onclick=()=>{
+  if(!latestIndexPlan)return;
+  const s=latestIndexPlan,target=s.zones.indexCumulativePct,state=getIndexState(s);
+  if(target<=state.purchasedPct)return;
+  try{localStorage.setItem(indexKey(s.ticker),JSON.stringify({anchor:s.zones.indexAnchor,purchasedPct:target}))}catch(_){}
+  renderIndex(s);
+};
+q("resetTrackerBtn").onclick=()=>{
+  if(!latestIndexPlan)return;
+  try{localStorage.removeItem(indexKey(latestIndexPlan.ticker))}catch(_){}
+  renderIndex(latestIndexPlan);
+};
 
 async function load(){
   const myId=++requestId;
@@ -90,17 +133,26 @@ async function load(){
     q("e50").textContent=money(s.regime.ema50);
     q("e200").textContent=money(s.regime.ema200);
 
-    q("z1p").textContent=zoneText(s.zones.first);
-    q("z2p").textContent=zoneText(s.zones.deeper);
-    q("z3p").textContent=zoneText(s.zones.strong);
-    q("z1d").textContent="~"+Number(s.zones.first.drawdownPct).toFixed(1)+"% below 20-session high";
-    q("z2d").textContent="~"+Number(s.zones.deeper.drawdownPct).toFixed(1)+"% below 20-session high";
-    q("z3d").textContent="~"+Number(s.zones.strong.drawdownPct).toFixed(1)+"% below 20-session high";
-
-    ["z1","z2","z3"].forEach((id)=>q(id).classList.remove("active"));
-    if(active(p,s.zones.first))q("z1").classList.add("active");
-    if(active(p,s.zones.deeper))q("z2").classList.add("active");
-    if(active(p,s.zones.strong))q("z3").classList.add("active");
+    if(s.strategy==="INDEX_ACCUMULATION"){
+      renderIndex(s);
+    }else{
+      latestIndexPlan=null;
+      q("dipLadder").classList.remove("index");
+      q("dipLadder").innerHTML=originalStockLadder;
+      q("ladderTitle").textContent="Dip ladder";
+      q("thesisTitle").textContent="Business / thesis gate";
+      q("tracker").style.display="none";
+      q("z1p").textContent=zoneText(s.zones.first);
+      q("z2p").textContent=zoneText(s.zones.deeper);
+      q("z3p").textContent=zoneText(s.zones.strong);
+      q("z1d").textContent="~"+Number(s.zones.first.drawdownPct).toFixed(1)+"% below 20-session high";
+      q("z2d").textContent="~"+Number(s.zones.deeper.drawdownPct).toFixed(1)+"% below 20-session high";
+      q("z3d").textContent="~"+Number(s.zones.strong.drawdownPct).toFixed(1)+"% below 20-session high";
+      ["z1","z2","z3"].forEach(id=>q(id).classList.remove("active"));
+      if(active(p,s.zones.first))q("z1").classList.add("active");
+      if(active(p,s.zones.deeper))q("z2").classList.add("active");
+      if(active(p,s.zones.strong))q("z3").classList.add("active");
+    }
 
     q("thesis").textContent=s.thesis.status;
     q("thesis").className="status "+(s.thesis.required?"warn":"good");
