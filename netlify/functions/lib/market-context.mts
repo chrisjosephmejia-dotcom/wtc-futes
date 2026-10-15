@@ -8,6 +8,13 @@ function isoDate(d:Date){return d.toISOString().slice(0,10)}
 function centralToday(){const parts=new Intl.DateTimeFormat("en-US",{timeZone:"America/Chicago",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());const o:any={};parts.forEach(p=>o[p.type]=p.value);return `${o.year}-${o.month}-${o.day}`}
 function dateUTC(s:string){return new Date(s+"T12:00:00Z")}
 function nextFriday(from:string){const d=dateUTC(from);const wd=d.getUTCDay();let add=(5-wd+7)%7;if(add===0)add=7;d.setUTCDate(d.getUTCDate()+add);return isoDate(d)}
+function targetFriday(from:string){
+ const d=dateUTC(from),wd=d.getUTCDay();
+ const thisUpcoming=nextFriday(from);
+ // WTC weekly-premium rule: Monday/Tuesday manage the coming Friday.
+ // Starting Wednesday, roll the model horizon to the following Friday.
+ return (wd===3||wd===4)?nextFriday(thisUpcoming):thisUpcoming;
+}
 function sessionsUntil(from:string,to:string){let n=0,d=dateUTC(from),end=dateUTC(to);d.setUTCDate(d.getUTCDate()+1);while(d<=end){const w=d.getUTCDay();if(w>=1&&w<=5)n++;d.setUTCDate(d.getUTCDate()+1)}return n}
 function calendarDays(from:string,to:string){return Math.max(0,Math.round((dateUTC(to).getTime()-dateUTC(from).getTime())/DAY))}
 function thirdFriday(year:number,month:number){const d=new Date(Date.UTC(year,month-1,1,12));let first=(5-d.getUTCDay()+7)%7;d.setUTCDate(1+first+14);return isoDate(d)}
@@ -21,18 +28,21 @@ async function tastyToken(){
  const b:any=await readJson(r);if(!r.ok||!b?.access_token)throw new Error("Tastytrade OAuth failed");return b.access_token as string;
 }
 async function listedWeeklyExpiry(ticker:string,today:string){
+ const target=targetFriday(today);
  try{
   const token=await tastyToken();
   const r=await fetch(`${BASE}/option-chains/${encodeURIComponent(ticker)}/nested`,{headers:{Authorization:`Bearer ${token}`,"User-Agent":UA,Accept:"application/json"},signal:AbortSignal.timeout(5000)});
   const b:any=await readJson(r);if(!r.ok)throw new Error("option chain");
   const exps:any[]=(b?.data?.items||[]).flatMap((x:any)=>Array.isArray(x?.expirations)?x.expirations:[]);
-  const dates=exps.map((e:any)=>({date:String(e?.["expiration-date"]||e?.expirationDate||""),type:String(e?.["expiration-type"]||e?.expirationType||"")})).filter((x:any)=>/^\d{4}-\d{2}-\d{2}$/.test(x.date)&&x.date>today);
+  const dates=exps.map((e:any)=>({date:String(e?.["expiration-date"]||e?.expirationDate||""),type:String(e?.["expiration-type"]||e?.expirationType||"")})).filter((x:any)=>/^\d{4}-\d{2}-\d{2}$/.test(x.date)&&x.date>=target);
   dates.sort((a:any,b:any)=>a.date.localeCompare(b.date));
   const fridays=dates.filter((x:any)=>dateUTC(x.date).getUTCDay()===5);
-  const chosen=fridays[0]||dates[0];if(!chosen)throw new Error("no listed expiry");
-  return {date:chosen.date,label:dateUTC(chosen.date).getUTCDay()===5?"Listed Friday expiry":"Nearest listed expiry",source:"tastytrade option chain",expirationType:chosen.type||null};
+  const chosen=fridays[0];if(!chosen)throw new Error("no listed Friday expiry");
+  const rolled=dateUTC(today).getUTCDay()===3||dateUTC(today).getUTCDay()===4;
+  return {date:chosen.date,label:rolled?"Following Friday · Wednesday rollover":"Listed Friday expiry",source:"tastytrade option chain",expirationType:chosen.type||null};
  }catch{
-  return {date:nextFriday(today),label:"Upcoming Friday",source:"calendar fallback",expirationType:null};
+  const wd=dateUTC(today).getUTCDay(),rolled=wd===3||wd===4;
+  return {date:target,label:rolled?"Following Friday · Wednesday rollover":"Upcoming Friday",source:"calendar fallback",expirationType:null};
  }
 }
 async function blsEvents(today:string,horizon:string):Promise<RiskEvent[]>{
