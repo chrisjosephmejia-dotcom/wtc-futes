@@ -47,16 +47,16 @@ a{color:#89c7ef}a:hover{color:#d0efff}
 <h3>Nasdaq Centurion</h3><p class="lede">Credit, volatility, breadth, trend, and utilities build a six-point weighted risk score.</p>
 <div class="signal" id="cent-target">SIGNAL PENDING</div><div class="sub" id="cent-time">Adjusted histories and state replay required</div>
 <div class="divider"></div>
-<div class="kv"><span>Credit · HYG/LQD ROC20 positive</span><strong>1 point</strong></div>
-<div class="kv"><span>Volatility · VIX below VIX3M</span><strong>1 point</strong></div>
-<div class="kv"><span>Breadth · QQEW/QQQ over EMA100</span><strong>1 point</strong></div>
-<div class="kv"><span>Trend · QQQ over EMA150</span><strong>1 point</strong></div>
-<div class="kv"><span>Utilities · XLU/SPY below EMA50</span><strong>2 points</strong></div>
-<div class="kv"><span>EMA5 smoothed risk score</span><strong id="cent-score">—</strong></div>
+<div class="kv"><span>Credit · HYG/LQD ROC20 positive</span><strong id="cent-credit">1 pt · —</strong></div>
+<div class="kv"><span>Volatility · VIX below VIX3M</span><strong id="cent-volatility">1 pt · —</strong></div>
+<div class="kv"><span>Breadth · QQEW/QQQ over EMA100</span><strong id="cent-breadth">1 pt · —</strong></div>
+<div class="kv"><span>Trend · QQQ over EMA150</span><strong id="cent-trend">1 pt · —</strong></div>
+<div class="kv"><span>Utilities · XLU/SPY below EMA50</span><strong id="cent-utilities">2 pts · —</strong></div>
+<div class="kv"><span>Raw weighted score</span><strong id="cent-raw">—</strong></div><div class="kv"><span>EMA5 smoothed risk score</span><strong id="cent-score">—</strong></div><div class="kv"><span>Current regime / action</span><strong id="cent-action">—</strong></div>
 <div class="kv"><span>Possible targets</span><strong>QLD · T-BILL ETF</strong></div>
 <details class="method"><summary>VIEW FROZEN RULES</summary><ul><li>Score = passing factor weight / 6, smoothed with a 5-day EMA.</li><li>Risk-on entry when smoothed score ≥75%, after cooldown.</li><li>Ordinary risk-off exit after two consecutive sessions ≤50%, subject to 3-session minimum hold.</li><li>Emergency exit immediately if credit and volatility both fail.</li><li>After an exit wait five completed sessions before reentry.</li></ul></details>
 </article></section>
-<aside class="notice" id="data-notice"><strong>Data integrity comes first.</strong> Nasdaq Hybrid uses verified end-of-day historical closes and the frozen King weekly rule. Nasdaq Centurion remains under review until its September reference score is reconciled. Both engines are read-only and place no brokerage orders. Leveraged ETFs involve substantial risk.</aside>
+<aside class="notice" id="data-notice"><strong>Frozen rules, completed closes.</strong> Nasdaq Hybrid combines QQQ 80/270 EMAs with King weekly 4% reversal. Nasdaq Centurion uses five weighted daily factors and a 5-day smoothed state machine. Historical validation and current factor results are published separately from live brokerage execution. Both systems are read-only; leveraged ETFs involve substantial risk.</aside>
 <footer><span>Strategy Signals · Public quantitative research · Not investment advice</span><span id="updated">No validated signal timestamp</span></footer>
 </main><script>
 const show=(id,value)=>{document.getElementById(id).textContent=value};
@@ -82,16 +82,28 @@ async function load(){
   }
   if(s.centurion?.verified){
    const c=s.centurion;
-   show('cent-target','TARGET: '+c.target);
+   const result=c.target==='TREASURY_BILL_ETF'?'T-BILL ETF':c.target;
+   show('cent-target','TARGET: '+result);
    document.getElementById('cent-target').classList.add('verified');
-   show('cent-time','Confirmed '+c.asOf);
-   show('cent-score',(c.smoothedScore*100).toFixed(1)+'%');
-  }else{
-   show('cent-target','UNDER REVIEW');
-   show('cent-time','A reference score mismatch must be resolved before activation');
-   if(Number.isFinite(s.centurion?.latestSmoothedScore)){
-    show('cent-score',(s.centurion.latestSmoothedScore*100).toFixed(1)+'% · unverified');
+   show('cent-time','Confirmed '+c.asOf+' close · Next regular-session target');
+   show('cent-raw',(c.rawScore*100).toFixed(2)+'%');
+   show('cent-score',(c.smoothedScore*100).toFixed(2)+'%');
+   show('cent-action',c.regime+' · '+c.action);
+   for(const [name,weight] of [['credit',1],['volatility',1],['breadth',1],['trend',1],['utilities',2]]){
+    const passed=c.factors?.[name]===true;
+    show('cent-'+name,(weight===1?'1 pt':'2 pts')+' · '+(passed?'PASS':'FAIL'));
    }
+   if(s.hybrid?.verified){
+    feed.lastChild.textContent='BOTH SYSTEMS ACTIVE · '+s.asOf;
+    show('updated','Last verified close (both): '+s.asOf);
+   }else{
+    feed.lastChild.textContent='CENTURION ACTIVE · '+c.asOf;
+    feed.classList.remove('warning');
+    show('updated','Last verified Centurion close: '+c.asOf);
+   }
+  }else{
+   show('cent-target','SIGNAL PENDING');
+   show('cent-time',s.centurion?.reason||'Factor data or historical validation missing');
   }
  }catch{
   show('hybrid-time','Data service temporarily unavailable · No current recommendation');
