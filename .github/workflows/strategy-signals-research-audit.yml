@@ -4,6 +4,8 @@ on:
     branches: [wtc-strategy-signals]
     paths:
       - ".github/workflows/strategy-signals-research-audit.yml"
+      - "netlify/functions/model-audit.mjs"
+      - "lib/engine.mjs"
 
 permissions:
   contents: write
@@ -15,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Wait for Netlify to publish the matching branch
-        run: sleep 25
+        run: sleep 35
       - name: Fetch sanitized public research diagnostic
         shell: bash
         run: |
