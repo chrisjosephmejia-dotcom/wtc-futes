@@ -381,6 +381,7 @@
     "HYG": {
       "count": 1707,
       "end": "2026-10-16",
+      "excludedOpenSession": 0,
       "invalid": 0,
       "last120Missing": 0,
       "start": "2020-01-02"
@@ -388,6 +389,7 @@
     "LQD": {
       "count": 1707,
       "end": "2026-10-16",
+      "excludedOpenSession": 0,
       "invalid": 0,
       "last120Missing": 0,
       "start": "2020-01-02"
@@ -395,6 +397,7 @@
     "QQEW": {
       "count": 1707,
       "end": "2026-10-16",
+      "excludedOpenSession": 0,
       "invalid": 0,
       "last120Missing": 0,
       "start": "2020-01-02"
@@ -402,6 +405,7 @@
     "QQQ": {
       "count": 1707,
       "end": "2026-10-16",
+      "excludedOpenSession": 0,
       "invalid": 0,
       "last120Missing": 0,
       "start": "2020-01-02"
@@ -409,6 +413,7 @@
     "SPY": {
       "count": 1707,
       "end": "2026-10-16",
+      "excludedOpenSession": 0,
       "invalid": 0,
       "last120Missing": 0,
       "start": "2020-01-02"
@@ -416,6 +421,7 @@
     "XLU": {
       "count": 1707,
       "end": "2026-10-16",
+      "excludedOpenSession": 0,
       "invalid": 0,
       "last120Missing": 0,
       "start": "2020-01-02"
@@ -423,6 +429,7 @@
     "^VIX": {
       "count": 1709,
       "end": "2026-10-16",
+      "excludedOpenSession": 1,
       "invalid": 63,
       "last120Missing": 0,
       "start": "2020-01-02"
@@ -430,6 +437,7 @@
     "^VIX3M": {
       "count": 1707,
       "end": "2026-10-16",
+      "excludedOpenSession": 0,
       "invalid": 0,
       "last120Missing": 0,
       "start": "2020-01-02"
