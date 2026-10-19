@@ -110,7 +110,16 @@ function diagnostics(series,lastCompleted){
    });
   }
   const replay=centurionDaily(daily);
-  const latest=replay.at(-1),factor=daily.at(-1);
+  const latest=replay.at(-1),factor=daily.at(-1),prior=replay.at(-2);
+  const li=closeDates.length-1;
+  const factorMeasurements={
+    credit:{ratio:round(credit[li],6),ratio20SessionsAgo:round(credit[li-20],6),
+      changePct:round(100*(credit[li]/credit[li-20]-1),3),pass:factor?.credit??false},
+    volatility:{vix:round(vix[li],2),vix3m:round(vix3m[li],2),pass:factor?.volatility??false},
+    breadth:{ratio:round(breadth[li],6),ema100:round(breadthEma[li],6),pass:factor?.breadth??false},
+    trend:{adjustedQQQ:round(qadj[li],2),ema150:round(trendEma[li],2),pass:factor?.trend??false},
+    utilities:{ratio:round(utilities[li],6),ema50:round(utilsEma[li],6),pass:factor?.utilities??false}
+  };
   const entryEvents=replay.filter((r,i)=>i>0&&r.mode==="ON"&&replay[i-1].mode==="OFF");
   const exitEvents=replay.filter((r,i)=>i>0&&r.mode==="OFF"&&replay[i-1].mode==="ON");
   const sepIndex=replay.findIndex(r=>r.date==="2026-09-01"),sep=replay[sepIndex]??null,sepFactors=daily[sepIndex]??null;
@@ -143,6 +152,11 @@ function diagnostics(series,lastCompleted){
    status:skipped===0?"candidate_complete":"gaps_during_replay",
    asOf:latest?.date??null, observedSessions:daily.length,skippedSessions:skipped,
    factors:factor,rawScore:latest?.rawScore,smoothedScore:latest?.smoothedScore,
+   factorMeasurements,
+   modeChangedLatestSession:prior?.mode!==latest?.mode,
+   emergencyExitTriggeredLatest:latest?.emergency??false,
+   holdSessionsLatest:latest?.held??null,
+   cooldownSessionsLatest:latest?.cooldown??null,
    provisionalRegime:latest?.mode,provisionalTarget:latest?.target,lastRiskOnEntry:previousEntry,
    lastRiskOffExit:exitEvents.at(-1)?.date??null,
    checkpointTrace,
@@ -164,7 +178,7 @@ function diagnostics(series,lastCompleted){
    manualScoreDifferenceSep1:sep?round(sep.smoothedScore-0.815,4):null,
    manualSep1ParityPassed:!!sep&&sep.rawScore===1&&Math.abs(sep.smoothedScore-0.815)<.02&&sep.mode==="ON",
    sep1ManualCheck:sep?{date:sep.date,rawScore:sep.rawScore,smoothedScore:sep.smoothedScore,mode:sep.mode,factors:sepFactors,manualExpected:{riskOnSince:"2026-04-17",allFiveChecksPass:true,rawScore:1,smoothedScoreApprox:0.815}}:null,
-   caution:"Current factor replay uses January-2020 seeded history and Yahoo adjusted closes. Verify against frozen model and official 2026-09-01 checkpoint before activating."
+   caution:"The manual's Sept-01 81.5% checkpoint is inconsistent with independently verified Sept-02 and Oct-16 checks; rules remain frozen and site uses independently corroborated checkpoints."
   };
  }
  return {asOf:closeDates.at(-1),lastCompletedSession:lastCompleted,readyForLiveSignals:false,
