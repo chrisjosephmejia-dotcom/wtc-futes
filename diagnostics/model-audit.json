@@ -209,6 +209,64 @@
       "utilities": false,
       "volatility": true
     },
+    "independentCheckpointPassed": true,
+    "independentChecks": {
+      "apr17EffectiveEntry": true,
+      "noSkippedReplaySessions": true,
+      "oct16FactorParity": true,
+      "oct16ScoreParity": true,
+      "sep2AllFivePass": true,
+      "sep2SmoothedNear100": true
+    },
+    "independentReference": {
+      "inconsistentManualNote": {
+        "date": "2026-09-01",
+        "reason": "Contradicts independent Sep-02 near-100 reading and extended all-pass streak",
+        "rulesUnchanged": true,
+        "statedSmoothed": 0.815
+      },
+      "oct16": {
+        "date": "2026-10-16",
+        "expected": {
+          "breadth": false,
+          "credit": false,
+          "mode": "ON",
+          "rawScore": 0.3333333333333333,
+          "smoothedScoreApprox": 0.6,
+          "trend": true,
+          "utilities": false,
+          "volatility": true
+        },
+        "reconstructed": {
+          "factors": {
+            "breadth": false,
+            "credit": false,
+            "date": "2026-10-16",
+            "trend": true,
+            "utilities": false,
+            "volatility": true
+          },
+          "mode": "ON",
+          "rawScore": 0.333333,
+          "smoothedScore": 0.599998
+        },
+        "source": "Official Friday Centurion monitoring"
+      },
+      "sep2": {
+        "date": "2026-09-02",
+        "expected": {
+          "allFivePass": true,
+          "mode": "ON",
+          "smoothedScoreApprox": 0.99999
+        },
+        "reconstructed": {
+          "mode": "ON",
+          "rawScore": 1,
+          "smoothedScore": 0.999986
+        },
+        "source": "Prior completed-session Centurion monitoring"
+      }
+    },
     "lastRiskOffExit": "2026-02-06",
     "lastRiskOnEntry": "2026-04-16",
     "manualScoreDifferenceSep1": 0.185,
