@@ -20,14 +20,14 @@ async function requestQuoteCredentials() {
     method: "POST",
     headers: { "content-type": "application/json", accept: "application/json", "user-agent": "strategy-signals/1.0" },
     body: JSON.stringify({ grant_type: "refresh_token", refresh_token: refreshToken, client_secret: clientSecret }),
-    signal: AbortSignal.timeout(10000),
+    signal: AbortSignal.timeout(6000),
   });
   if (!auth.ok) throw new Error("oauth_failed");
   const token = (await auth.json()).access_token;
   if (typeof token !== "string" || !token) throw new Error("oauth_invalid_response");
   const quote = await fetch("https://api.tastyworks.com/api-quote-tokens", {
     headers: { authorization: "Bearer " + token, "user-agent": "strategy-signals/1.0" },
-    signal: AbortSignal.timeout(10000),
+    signal: AbortSignal.timeout(6000),
   });
   if (!quote.ok) throw new Error("quote_entitlement_failed");
   const response = (await quote.json()).data;
@@ -58,7 +58,7 @@ function readSnapshot(url, quoteToken, fromTime) {
     let count = 0, snapshotComplete = false, snapshotSnipped = false, started = false, invalid = 0, diagnostic = null, finished = false;
     let feedFrames = 0, candleFrames = 0, aggregationPeriod = null, firstReceivedTime = null, lastReceivedTime = null;
     const flagCounts = { begin:0, end:0, snip:0, remove:0, txPending:0 };
-    const timer = setTimeout(() => finish(false, "snapshot_timeout"), 35000);
+    const timer = setTimeout(() => finish(false, "snapshot_timeout"), 9000);
     const keepalive = setInterval(() => {
       if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "KEEPALIVE", channel: 0 }));
     }, 15000);
@@ -95,6 +95,7 @@ function readSnapshot(url, quoteToken, fromTime) {
         coverageFrom2020: !!first && first.time <= Date.parse("2020-02-01T00:00:00Z"),
         sufficientForEma270: ordered.length >= 270,
         status: reason ?? (ok ? "snapshot_complete" : "snapshot_incomplete"),
+        diagnosticTimeoutMs:9000,
       });
     }
     const send = msg => { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg)); };
@@ -184,5 +185,5 @@ export default async function handler(request) {
 
 export const config = {
   path: ["/api/history-check", "/.netlify/functions/history-check"],
-  rateLimit: { action:"rate_limit", aggregateBy:["ip","domain"], windowSize:300, windowLimit:2 },
+  rateLimit: { action:"rate_limit", aggregateBy:["ip","domain"], windowSize:300, windowLimit:4 },
 };
