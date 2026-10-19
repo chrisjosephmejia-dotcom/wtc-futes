@@ -1,0 +1,145 @@
+{
+  "asOf": "2026-10-16",
+  "centurion": {
+    "asOf": "2026-10-16",
+    "caution": "Current factor replay uses January-2020 seeded history and Yahoo adjusted closes. Verify against frozen model and official 2026-09-01 checkpoint before activating.",
+    "factors": {
+      "breadth": false,
+      "credit": false,
+      "date": "2026-10-16",
+      "trend": true,
+      "utilities": false,
+      "volatility": true
+    },
+    "lastRiskOffExit": "2026-02-06",
+    "lastRiskOnEntry": "2026-04-16",
+    "observedSessions": 1557,
+    "provisionalRegime": "ON",
+    "provisionalTarget": "QLD",
+    "rawScore": 0.333333,
+    "sep1ManualCheck": {
+      "date": "2026-09-01",
+      "factors": {
+        "breadth": true,
+        "credit": true,
+        "date": "2026-09-01",
+        "trend": true,
+        "utilities": true,
+        "volatility": true
+      },
+      "manualExpected": {
+        "allFiveChecksPass": true,
+        "rawScore": 1,
+        "riskOnSince": "2026-04-17",
+        "smoothedScoreApprox": 0.815
+      },
+      "mode": "ON",
+      "rawScore": 1,
+      "smoothedScore": 0.999979
+    },
+    "skippedSessions": 0,
+    "smoothedScore": 0.599998,
+    "status": "candidate_complete"
+  },
+  "hybrid": {
+    "asOf": "2026-10-16",
+    "ema270": 662.1626,
+    "ema80": 719.2593,
+    "emaRegime": "BULLISH",
+    "kingCurrentBearLow": 709.8,
+    "kingCurrentBullHigh": 751.27,
+    "kingRegime": "BEARISH",
+    "kingSwitches": [
+      {
+        "close": 709.7999877929688,
+        "date": "2026-10-16",
+        "mode": "BEARISH"
+      }
+    ],
+    "kingWeeklyObservations": 11,
+    "lastFourWeeklyCloses": [
+      {
+        "close": 744.5,
+        "date": "2026-09-25"
+      },
+      {
+        "close": 749.58,
+        "date": "2026-10-02"
+      },
+      {
+        "close": 751.27,
+        "date": "2026-10-09"
+      },
+      {
+        "close": 709.8,
+        "date": "2026-10-16"
+      }
+    ],
+    "provisionalTarget": "QQQ",
+    "qqqClose": 709.8,
+    "status": "candidate_complete"
+  },
+  "lastCompletedSession": "2026-10-16",
+  "note": "Research diagnostic only; candidate values are not verified published recommendations.",
+  "observationCount": 1707,
+  "readyForLiveSignals": false,
+  "sources": {
+    "HYG": {
+      "count": 1707,
+      "end": "2026-10-16",
+      "invalid": 0,
+      "last120Missing": 0,
+      "start": "2020-01-02"
+    },
+    "LQD": {
+      "count": 1707,
+      "end": "2026-10-16",
+      "invalid": 0,
+      "last120Missing": 0,
+      "start": "2020-01-02"
+    },
+    "QQEW": {
+      "count": 1707,
+      "end": "2026-10-16",
+      "invalid": 0,
+      "last120Missing": 0,
+      "start": "2020-01-02"
+    },
+    "QQQ": {
+      "count": 1707,
+      "end": "2026-10-16",
+      "invalid": 0,
+      "last120Missing": 0,
+      "start": "2020-01-02"
+    },
+    "SPY": {
+      "count": 1707,
+      "end": "2026-10-16",
+      "invalid": 0,
+      "last120Missing": 0,
+      "start": "2020-01-02"
+    },
+    "XLU": {
+      "count": 1707,
+      "end": "2026-10-16",
+      "invalid": 0,
+      "last120Missing": 0,
+      "start": "2020-01-02"
+    },
+    "^VIX": {
+      "count": 1709,
+      "end": "2026-10-16",
+      "invalid": 63,
+      "last120Missing": 0,
+      "start": "2020-01-02"
+    },
+    "^VIX3M": {
+      "count": 1707,
+      "end": "2026-10-16",
+      "invalid": 0,
+      "last120Missing": 0,
+      "start": "2020-01-02"
+    }
+  },
+  "status": "research_ready"
+}
