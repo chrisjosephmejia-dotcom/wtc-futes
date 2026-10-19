@@ -45,7 +45,7 @@
     .sectionHead{display:flex;justify-content:space-between;gap:16px;align-items:center;margin:28px 0 16px;padding-top:18px;border-top:1px solid #162635}
     .sectionTitle{font-size:12px;text-transform:uppercase;letter-spacing:.2em;font-weight:800;color:#aab9c8}
     .sectionNote{font-size:12px;color:#677b8e}
-    .apps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+    .apps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px}
     .app{
       position:relative;
       min-height:430px;
@@ -71,11 +71,13 @@
     .options .open{color:var(--green)}
     .odte .open{color:#c77dff}
     .stocks .open{color:#4edcff}
+    .signals .open{color:#9bcdf6}
     .arrow{font-size:22px;font-weight:400}
     .roadmap{margin-top:22px;border:1px solid #172838;background:rgba(8,18,28,.72);border-radius:16px;padding:16px 18px;color:#788b9d;font-size:12px;line-height:1.55}
     .roadmap strong{color:#aebdca}
     footer{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-top:52px;padding-top:18px;border-top:1px solid #142432;color:#5f7284;font-size:11px}
-    @media(max-width:1180px){.apps{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:1360px){.apps{grid-template-columns:repeat(3,minmax(0,1fr))}}
+    @media(max-width:900px){.apps{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media(max-width:760px){
       .wrap{padding:24px 16px 40px}
       .hero{padding:46px 0 32px}
@@ -89,7 +91,7 @@
   <main class="wrap">
     <div class="topbar">
       <div class="brand">Wheelhouse Trading Co.</div>
-      <div class="status"><span class="dot"></span>4 SYSTEMS LIVE</div>
+      <div class="status"><span class="dot"></span>5 SYSTEMS LIVE</div>
     </div>
 
     <section class="hero">
@@ -171,9 +173,24 @@
         </div>
         <div class="open"><span>OPEN 0DTE</span><span class="arrow">→</span></div>
       </a>
+      <a class="app signals" href="https://wtc-strategy-signals.netlify.app/" aria-label="Open Strategy Signals">
+        <div class="appTop">
+          <div class="live"><span class="dot"></span>LIVE · READ ONLY</div>
+          <div class="appCode">WTC / STRATEGY</div>
+        </div>
+        <h2>Strategy Signals</h2>
+        <p>End-of-day allocation signals from Nasdaq Hybrid (80/270 EMA + King) and Nasdaq Centurion (five-factor risk model).</p>
+        <div class="meta">
+          <span>NASDAQ HYBRID</span>
+          <span>CENTURION</span>
+          <span>DAILY SIGNALS</span>
+          <span>READ ONLY</span>
+        </div>
+        <div class="open"><span>OPEN STRATEGY SIGNALS</span><span class="arrow">→</span></div>
+      </a>
     </section>
 
-    <div class="roadmap"><strong>ONE WTC architecture:</strong> specialized apps stay independently hosted while ONE WTC remains the front door. Stock Trader is now connected in development alongside Futes, Options Seller, and XSP 0DTE.</div>
+    <div class="roadmap"><strong>ONE WTC architecture:</strong> specialized apps stay independently hosted while ONE WTC remains the front door. Strategy Signals adds two read-only allocation models alongside Futes, Options Seller, Stock Trader, and XSP 0DTE.</div>
 
     <footer>
       <span>ONE WTC · Wheelhouse Trading Co.</span>
