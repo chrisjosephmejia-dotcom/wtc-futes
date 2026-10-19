@@ -1,4 +1,6 @@
-node_modules
-.netlify
+.netlify/
+node_modules/
 .env
-.DS_Store
+.env.*
+!.env.example
+*.log
