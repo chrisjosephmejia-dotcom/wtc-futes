@@ -1,0 +1,43 @@
+{
+  "asOf": "2026-10-16",
+  "centurion": {
+    "asOf": "2026-10-16",
+    "latestSmoothedScore": 0.599998,
+    "manualSeptemberScore": 0.815,
+    "provisionalMode": "ON",
+    "provisionalTarget": "QLD",
+    "reason": "September 1 reference checkpoint differs from historical reconstruction",
+    "reconstructedSeptemberScore": 0.999979,
+    "verified": false
+  },
+  "dataCoverage": {
+    "end": "2026-10-16",
+    "sessions": 1707,
+    "start": "2020-01-02"
+  },
+  "hybrid": {
+    "asOf": "2026-10-16",
+    "ema270": 662.1626,
+    "ema80": 719.2593,
+    "emaRegime": "BULLISH",
+    "execution": "Next regular session after confirmed close",
+    "kingLastCompletedWeek": "2026-10-16",
+    "kingRegime": "BEARISH",
+    "kingSwitches": [
+      {
+        "close": 709.7999877929688,
+        "date": "2026-10-16",
+        "mode": "BEARISH"
+      }
+    ],
+    "qqqClose": 709.8,
+    "target": "QQQ",
+    "verified": true
+  },
+  "primaryDataSource": "Yahoo Finance historical daily closes",
+  "readOnly": true,
+  "secondaryCrosscheck": "2026-08-07 King anchor and 2026-10-16 Robinhood regular-session quote",
+  "status": "hybrid_active_centurion_review",
+  "verified": true,
+  "warning": "Research-only public signals, not trade execution. Provider data corrections may revise historical values."
+}
