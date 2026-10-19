@@ -33,7 +33,7 @@ async function requestQuoteCredentials() {
   const response = (await quote.json()).data;
   if (!response?.token || !response?.["dxlink-url"]) throw new Error("quote_invalid_response");
   const url = new URL(response["dxlink-url"]);
-  if (url.protocol !== "wss:" || !/^(?:[a-z0-9-]+\\.)*dxfeed\\.com$/i.test(url.hostname))
+  if (url.protocol !== "wss:" || !(url.hostname === "dxfeed.com" || url.hostname.endsWith(".dxfeed.com")))
     throw new Error("unexpected_dxlink_host");
   return { url: url.toString(), quoteToken: response.token };
 }
