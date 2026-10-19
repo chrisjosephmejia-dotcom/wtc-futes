@@ -18,22 +18,25 @@ function lastCompletedUSSession(){
  const d=new Date(today+"T00:00:00Z");d.setUTCDate(d.getUTCDate()-offset);
  return d.toISOString().slice(0,10);
 }
-async function chart(symbol){
+async function chart(symbol,completedThrough){
  const url="https://query1.finance.yahoo.com/v8/finance/chart/"+encodeURIComponent(symbol)+"?period1="+epoch+"&period2="+(Math.floor(Date.now()/1000)+86400)+"&interval=1d&events=div%2Csplits";
  const r=await fetch(url,{headers:{"user-agent":"Mozilla/5.0 StrategySignals/1.0","accept":"application/json"},signal:AbortSignal.timeout(7000)});
  if(!r.ok)throw Error("http_"+r.status);
  const data=(await r.json())?.chart?.result?.[0];
  if(!Array.isArray(data?.timestamp)||!Array.isArray(data?.indicators?.quote?.[0]?.close))throw Error("invalid_data");
  const raw=data.indicators.quote[0].close,adjusted=data.indicators.adjclose?.[0]?.adjclose;
- const m=new Map();let invalid=0;
+ // A provider may publish today's partial index candle ahead of completed ETF
+ // sessions. Exclude all candles newer than the last *completed* US session.
+ const m=new Map();let invalid=0,excludedOpenSession=0;
  for(let i=0;i<data.timestamp.length;i++){
   const date=utcDate(data.timestamp[i]),price=raw[i],adj=adjusted?.[i];
+  if(date>completedThrough){excludedOpenSession++;continue}
   if(!Number.isFinite(price)||price<=0||!Number.isFinite(adj)||adj<=0){invalid++;continue}
   m.set(date,{raw:price,adj});
  }
  const dates=[...m.keys()].sort();
  const last=dates.at(-1),first=dates[0];
- return {symbol,count:dates.length,missingOrBad:invalid,start:first,end:last,lastRaw:m.get(last)?.raw,lastAdj:m.get(last)?.adj,
+ return {symbol,count:dates.length,missingOrBad:invalid,excludedOpenSession,start:first,end:last,lastRaw:m.get(last)?.raw,lastAdj:m.get(last)?.adj,
   splitEvents:Object.keys(data.events?.splits??{}).length,series:m};
 }
 function weeklyCloses(qqq){
@@ -67,7 +70,7 @@ function diagnostics(series,lastCompleted){
  for(const s of symbols){
   const sym=series[s];if(!sym){gaps[s]="missing_source";continue}
   const last120=closeDates.slice(-120),missed=last120.filter(d=>!sym.series.has(d)).length;
-  gaps[s]={count:sym.count,start:sym.start,end:sym.end,last120Missing:missed,invalid:sym.missingOrBad};
+  gaps[s]={count:sym.count,start:sym.start,end:sym.end,last120Missing:missed,invalid:sym.missingOrBad,excludedOpenSession:sym.excludedOpenSession};
  }
  const week=weeklyCloses(q).filter(x=>{
    const end=new Date(x.date+"T00:00:00Z");
@@ -188,17 +191,17 @@ function diagnostics(series,lastCompleted){
 }
 export default async function handler(req){
  if(req.method!=="GET")return respond({status:"method_not_allowed"},405);
+ const lastSession=lastCompletedUSSession();
  const fetched=await Promise.all(symbols.map(async symbol=>{
-  try{return {symbol,value:await chart(symbol)}}catch(e){return {symbol,error:String(e?.message??"request_failed").slice(0,60)}}
+  try{return {symbol,value:await chart(symbol,lastSession)}}catch(e){return {symbol,error:String(e?.message??"request_failed").slice(0,60)}}
  }));
  const errors=fetched.filter(x=>x.error);
  const summaries=Object.fromEntries(fetched.filter(x=>x.value).map(x=>[x.symbol,x.value]));
- const lastSession=lastCompletedUSSession();
  if(errors.length)return respond({status:"source_fetch_incomplete",lastCompletedSession:lastSession,
-  errors,received:Object.fromEntries(Object.entries(summaries).map(([k,s])=>[k,{count:s.count,start:s.start,end:s.end}]))});
+  errors,received:Object.fromEntries(Object.entries(summaries).map(([k,s])=>[k,{count:s.count,start:s.start,end:s.end,excludedOpenSession:s.excludedOpenSession}]))});
  try {return respond({status:"research_ready",...diagnostics(summaries,lastSession)})}
  catch(e){return respond({status:"source_validation_failed",lastCompletedSession:lastSession,reason:e?.message??"diagnostics_failed",
-   sourceSummaries:Object.fromEntries(Object.entries(summaries).map(([k,s])=>[k,{count:s.count,start:s.start,end:s.end}]))})}
+   sourceSummaries:Object.fromEntries(Object.entries(summaries).map(([k,s])=>[k,{count:s.count,start:s.start,end:s.end,excludedOpenSession:s.excludedOpenSession}]))})}
 }
 export const config={path:["/api/model-audit","/.netlify/functions/model-audit"],
  rateLimit:{action:"rate_limit",aggregateBy:["ip","domain"],windowSize:300,windowLimit:3}};
