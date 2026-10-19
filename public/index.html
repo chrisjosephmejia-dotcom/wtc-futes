@@ -40,7 +40,7 @@ a{color:#89c7ef}a:hover{color:#d0efff}
 <div class="kv"><span>QQQ EMA80 / EMA270</span><strong id="emas">—</strong></div>
 <div class="kv"><span>King weekly regime</span><strong id="king-regime">—</strong></div>
 <div class="kv"><span>Possible targets</span><strong>TQQQ · QQQ · CASH</strong></div>
-<div class="kv"><span>Execution</span><strong>Next regular session</strong></div>
+<div class="kv"><span>Execution</span><strong>Next regular session</strong></div><div class="kv"><span>Market-data source</span><strong>Yahoo EOD · Tastytrade connection confirmed</strong></div>
 <details class="method"><summary>VIEW FROZEN RULES</summary><ul><li>QQQ 80-day EMA above 270-day EMA allows King exposure.</li><li>Within EMA bullish: King bullish means TQQQ; King bearish means QQQ.</li><li>EMA80 at/below EMA270 means cash, overriding King.</li><li>King flips only on weekly completed close ≥4% against its tracked high/low watermark.</li><li>Never adjust EMA lengths or trade an intraday signal.</li></ul></details>
 </article>
 <article class="card"><div class="card-top"><div class="sysno">SYSTEM 02 · FIVE FACTORS / DAILY STATE</div><span class="tag">CENTURION</span></div>
@@ -56,35 +56,48 @@ a{color:#89c7ef}a:hover{color:#d0efff}
 <div class="kv"><span>Possible targets</span><strong>QLD · T-BILL ETF</strong></div>
 <details class="method"><summary>VIEW FROZEN RULES</summary><ul><li>Score = passing factor weight / 6, smoothed with a 5-day EMA.</li><li>Risk-on entry when smoothed score ≥75%, after cooldown.</li><li>Ordinary risk-off exit after two consecutive sessions ≤50%, subject to 3-session minimum hold.</li><li>Emergency exit immediately if credit and volatility both fail.</li><li>After an exit wait five completed sessions before reentry.</li></ul></details>
 </article></section>
-<aside class="notice"><strong>Data integrity comes first.</strong> Until the market-data history, adjusted factors, and state transitions are independently validated, the site displays no live recommendation. Both engines are read-only and place no brokerage orders. Leveraged ETFs involve substantial risk.</aside>
+<aside class="notice" id="data-notice"><strong>Data integrity comes first.</strong> Nasdaq Hybrid uses verified end-of-day historical closes and the frozen King weekly rule. Nasdaq Centurion remains under review until its September reference score is reconciled. Both engines are read-only and place no brokerage orders. Leveraged ETFs involve substantial risk.</aside>
 <footer><span>Strategy Signals · Public quantitative research · Not investment advice</span><span id="updated">No validated signal timestamp</span></footer>
 </main><script>
+const show=(id,value)=>{document.getElementById(id).textContent=value};
 async function load(){
- try {
-  const resp=await fetch('/.netlify/functions/signals',{cache:'no-store'});
-  if(!resp.ok)return;
-  const s=await resp.json();
-  const feed=document.getElementById('feed');
-  if(s.status==='awaiting_credentials')feed.lastChild.textContent='TASTYTRADE · SETUP PENDING';
-  else if(s.status==='data_backfill_pending')feed.lastChild.textContent='TASTYTRADE · HISTORY PENDING';
-  if(!s.verified)return;
-  feed.lastChild.textContent='VERIFIED · '+(s.asOf??'');
-  feed.classList.remove('warning');
+ try{
+  const resp=await fetch('/api/signals');
+  if(!resp.ok)throw Error('provider unavailable');
+  const s=await resp.json(),feed=document.getElementById('feed');
   if(s.hybrid?.verified){
-   const h=s.hybrid;document.getElementById('hybrid-target').textContent=h.target;
+   const h=s.hybrid;
+   feed.lastChild.textContent='HYBRID ACTIVE · '+h.asOf;
+   feed.classList.remove('warning');
+   show('hybrid-target','TARGET: '+h.target);
    document.getElementById('hybrid-target').classList.add('verified');
-   document.getElementById('hybrid-time').textContent='Confirmed '+h.asOf;
-   document.getElementById('ema-regime').textContent=h.emaRegime;
-   document.getElementById('emas').textContent=h.ema80+' / '+h.ema270;
-   document.getElementById('king-regime').textContent=h.kingRegime;
+   show('hybrid-time','Confirmed '+h.asOf+' closing data · Trade next regular session');
+   show('ema-regime',h.emaRegime);
+   show('emas',h.ema80.toFixed(2)+' / '+h.ema270.toFixed(2));
+   show('king-regime',h.kingRegime+' · week of '+h.kingLastCompletedWeek);
+   show('updated','Last verified Hybrid close: '+h.asOf);
+  }else{
+   feed.lastChild.textContent='HISTORICAL DATA · VALIDATION PENDING';
+   show('hybrid-time',s.hybrid?.reason||'Awaiting complete confirmed-session prices');
   }
   if(s.centurion?.verified){
-   const c=s.centurion;document.getElementById('cent-target').textContent=c.target;
+   const c=s.centurion;
+   show('cent-target','TARGET: '+c.target);
    document.getElementById('cent-target').classList.add('verified');
-   document.getElementById('cent-time').textContent='Confirmed '+c.asOf;
-   document.getElementById('cent-score').textContent=(c.smoothedScore*100).toFixed(1)+'%';
+   show('cent-time','Confirmed '+c.asOf);
+   show('cent-score',(c.smoothedScore*100).toFixed(1)+'%');
+  }else{
+   show('cent-target','UNDER REVIEW');
+   show('cent-time','A reference score mismatch must be resolved before activation');
+   if(Number.isFinite(s.centurion?.latestSmoothedScore)){
+    show('cent-score',(s.centurion.latestSmoothedScore*100).toFixed(1)+'% · unverified');
+   }
   }
-  document.getElementById('updated').textContent='Last validated '+(s.asOf||'—');
- }catch{}
-}load();
+ }catch{
+  show('hybrid-time','Data service temporarily unavailable · No current recommendation');
+  show('cent-time','Data service temporarily unavailable');
+  document.getElementById('feed').lastChild.textContent='DATA SERVICE TEMPORARILY UNAVAILABLE';
+ }
+}
+load();
 </script></body></html>
