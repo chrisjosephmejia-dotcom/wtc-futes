@@ -2,7 +2,7 @@
   "asOf": "2026-10-16",
   "centurion": {
     "asOf": "2026-10-16",
-    "caution": "Current factor replay uses January-2020 seeded history and Yahoo adjusted closes. Verify against frozen model and official 2026-09-01 checkpoint before activating.",
+    "caution": "The manual's Sept-01 81.5% checkpoint is inconsistent with independently verified Sept-02 and Oct-16 checks; rules remain frozen and site uses independently corroborated checkpoints.",
     "checkpointTrace": [
       {
         "date": "2026-08-14",
@@ -201,6 +201,36 @@
         "smoothedScore": 0.999994
       }
     ],
+    "cooldownSessionsLatest": 0,
+    "emergencyExitTriggeredLatest": false,
+    "factorMeasurements": {
+      "breadth": {
+        "ema100": 0.220811,
+        "pass": false,
+        "ratio": 0.217892
+      },
+      "credit": {
+        "changePct": -0.883,
+        "pass": false,
+        "ratio": 0.743327,
+        "ratio20SessionsAgo": 0.749947
+      },
+      "trend": {
+        "adjustedQQQ": 709.8,
+        "ema150": 696.3,
+        "pass": true
+      },
+      "utilities": {
+        "ema50": 0.05469,
+        "pass": false,
+        "ratio": 0.055303
+      },
+      "volatility": {
+        "pass": true,
+        "vix": 19.99,
+        "vix3m": 20.5
+      }
+    },
     "factors": {
       "breadth": false,
       "credit": false,
@@ -209,6 +239,7 @@
       "utilities": false,
       "volatility": true
     },
+    "holdSessionsLatest": 127,
     "independentCheckpointPassed": true,
     "independentChecks": {
       "apr17EffectiveEntry": true,
@@ -271,6 +302,7 @@
     "lastRiskOnEntry": "2026-04-16",
     "manualScoreDifferenceSep1": 0.185,
     "manualSep1ParityPassed": false,
+    "modeChangedLatestSession": false,
     "observedSessions": 1557,
     "provisionalRegime": "ON",
     "provisionalTarget": "QLD",

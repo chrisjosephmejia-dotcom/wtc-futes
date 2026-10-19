@@ -1,14 +1,60 @@
 {
   "asOf": "2026-10-16",
   "centurion": {
+    "action": "NO REGIME CHANGE",
     "asOf": "2026-10-16",
-    "latestSmoothedScore": 0.599998,
-    "manualSeptemberScore": 0.815,
-    "provisionalMode": "ON",
-    "provisionalTarget": "QLD",
-    "reason": "September 1 reference checkpoint differs from historical reconstruction",
-    "reconstructedSeptemberScore": 0.999979,
-    "verified": false
+    "emergencyExitTriggered": false,
+    "execution": "Completed closing session determines next regular-session target",
+    "factorMeasurements": {
+      "breadth": {
+        "ema100": 0.220811,
+        "pass": false,
+        "ratio": 0.217892
+      },
+      "credit": {
+        "changePct": -0.883,
+        "pass": false,
+        "ratio": 0.743327,
+        "ratio20SessionsAgo": 0.749947
+      },
+      "trend": {
+        "adjustedQQQ": 709.8,
+        "ema150": 696.3,
+        "pass": true
+      },
+      "utilities": {
+        "ema50": 0.05469,
+        "pass": false,
+        "ratio": 0.055303
+      },
+      "volatility": {
+        "pass": true,
+        "vix": 19.99,
+        "vix3m": 20.5
+      }
+    },
+    "factors": {
+      "breadth": false,
+      "credit": false,
+      "date": "2026-10-16",
+      "trend": true,
+      "utilities": false,
+      "volatility": true
+    },
+    "historicalValidation": {
+      "aprilRiskOnEntry": true,
+      "note": "Prior Sept-01 recorded 81.5% is inconsistent with the independently checked Sept-02 near-100% score. Frozen strategy rules unchanged.",
+      "oct16ScoresAndFactors": true,
+      "sep2Near100": true
+    },
+    "lastRiskOffSignalDate": "2026-02-06",
+    "lastRiskOnSignalDate": "2026-04-16",
+    "modeChangedLatestSession": false,
+    "rawScore": 0.333333,
+    "regime": "RISK-ON",
+    "smoothedScore": 0.599998,
+    "target": "QLD",
+    "verified": true
   },
   "dataCoverage": {
     "end": "2026-10-16",
@@ -37,7 +83,7 @@
   "primaryDataSource": "Yahoo Finance historical daily closes",
   "readOnly": true,
   "secondaryCrosscheck": "2026-08-07 King anchor and 2026-10-16 Robinhood regular-session quote",
-  "status": "hybrid_active_centurion_review",
+  "status": "both_systems_active",
   "verified": true,
   "warning": "Research-only public signals, not trade execution. Provider data corrections may revise historical values."
 }
