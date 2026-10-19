@@ -19,7 +19,7 @@ h1{font-size:clamp(37px,5vw,55px);font-weight:770;letter-spacing:-1.6px;margin:1
 .card h3{font-size:27px;letter-spacing:-.6px;margin:27px 0 7px}.lede{color:#8eabc3;font-size:14px;line-height:1.65;min-height:48px;margin:0}
 .signal{font-size:clamp(21px,2.5vw,30px);font-weight:800;color:#ffcb88;margin-top:27px;margin-bottom:5px;letter-spacing:-.5px}.signal.verified{color:#59e5b3}
 .sub{font-size:12px;color:#839fb9;margin-bottom:26px;min-height:18px}.divider{height:1px;background:#274055;margin:24px 0 11px}
-.kv{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding:12px 0;border-bottom:1px solid #183044;font-size:13px;color:#95aec6}.kv strong{color:#deebf5;font-weight:650;text-align:right;max-width:58%}
+.kv{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding:12px 0;border-bottom:1px solid #183044;font-size:13px;color:#95aec6}.kv strong{color:#deebf5;font-weight:650;text-align:right;max-width:58%}.signal-positive{color:#55e6a5}.signal-negative{color:#ff6977}
 .method{margin-top:23px;border:1px solid #25435a;border-radius:11px;padding:0 16px}.method summary{cursor:pointer;padding:15px 0;color:#a6d0ed;font-size:12px;font-weight:800}
 .method p,.method li{color:#9eb6cd;font-size:12px;line-height:1.8}.method ul{padding-left:19px;margin:7px 0 17px}
 .notice{padding:21px 24px;margin-top:23px;background:#0a1a27;border:1px solid #244055;border-radius:13px;color:#a6bfd2;line-height:1.7;font-size:13px}
@@ -60,6 +60,14 @@ a{color:#89c7ef}a:hover{color:#d0efff}
 <footer><span>Strategy Signals · Public quantitative research · Not investment advice</span><span id="updated">No validated signal timestamp</span></footer>
 </main><script>
 const show=(id,value)=>{document.getElementById(id).textContent=value};
+const showColoredStatus=(id,status,before='',after='')=>{
+ const el=document.getElementById(id);
+ const word=document.createElement('span');
+ word.textContent=status;
+ if(status==='BULLISH'||status==='PASS')word.className='signal-positive';
+ else if(status==='BEARISH'||status==='FAIL')word.className='signal-negative';
+ el.replaceChildren(document.createTextNode(before),word,document.createTextNode(after));
+};
 async function load(){
  try{
   const resp=await fetch('/api/signals');
@@ -72,9 +80,9 @@ async function load(){
    show('hybrid-target','TARGET: '+h.target);
    document.getElementById('hybrid-target').classList.add('verified');
    show('hybrid-time','Confirmed '+h.asOf+' closing data · Trade next regular session');
-   show('ema-regime',h.emaRegime);
+   showColoredStatus('ema-regime',h.emaRegime);
    show('emas',h.ema80.toFixed(2)+' / '+h.ema270.toFixed(2));
-   show('king-regime',h.kingRegime+' · week of '+h.kingLastCompletedWeek);
+   showColoredStatus('king-regime',h.kingRegime,'',' · week of '+h.kingLastCompletedWeek);
    show('updated','Last verified Hybrid close: '+h.asOf);
   }else{
    feed.lastChild.textContent='HISTORICAL DATA · VALIDATION PENDING';
@@ -91,7 +99,7 @@ async function load(){
    show('cent-action',c.regime+' · '+c.action);
    for(const [name,weight] of [['credit',1],['volatility',1],['breadth',1],['trend',1],['utilities',2]]){
     const passed=c.factors?.[name]===true;
-    show('cent-'+name,(weight===1?'1 pt':'2 pts')+' · '+(passed?'PASS':'FAIL'));
+    showColoredStatus('cent-'+name,passed?'PASS':'FAIL',(weight===1?'1 pt':'2 pts')+' · ');
    }
    if(s.hybrid?.verified){
     feed.lastChild.textContent='BOTH SYSTEMS ACTIVE · '+s.asOf;
