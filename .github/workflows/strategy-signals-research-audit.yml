@@ -36,7 +36,7 @@ jobs:
               except Exception as e:
                   data={"status":"request_failed","reason":type(e).__name__}
               p=pathlib.Path("diagnostics/"+endpoint+".json")
-              p.write_text(json.dumps(data,indent=2,sort_keys=True)+"\\n")
+              p.write_text(json.dumps(data,indent=2,sort_keys=True)+"\n")
               print(endpoint, "status:",data.get("status"),"snapshot written:",p)
           PY
       - name: Commit diagnostic report to this research branch only
