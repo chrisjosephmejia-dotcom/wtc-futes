@@ -115,6 +115,27 @@ function diagnostics(series,lastCompleted){
   const exitEvents=replay.filter((r,i)=>i>0&&r.mode==="OFF"&&replay[i-1].mode==="ON");
   const sepIndex=replay.findIndex(r=>r.date==="2026-09-01"),sep=replay[sepIndex]??null,sepFactors=daily[sepIndex]??null;
   const previousEntry=entryEvents.filter(e=>e.date<=latest.date).at(-1)?.date??null;
+  // Independent previously recorded checkpoint results, not optimized thresholds:
+  // 2026-09-02 monitoring: 5/5 passing, smoothed ~99.999%, Risk-On.
+  // 2026-10-16 official monitoring: credit/breadth/utilities fail;
+  // volatility/trend pass, raw 33.33%, smoothed 60.00%, Risk-On.
+  // The manual's older Sep-01 "81.5%" note contradicts the Sep-02
+  // verified full-history reading and the observed preceding all-pass streak.
+  // Preserve it as a documentation discrepancy, never retune frozen rules.
+  const byDate=new Map(replay.map((row,i)=>[row.date,{row,factor:daily[i]}]));
+  const sep2=byDate.get("2026-09-02"),oct16=byDate.get("2026-10-16");
+  const checks={
+    apr17EffectiveEntry:entryEvents.some(e=>e.date==="2026-04-16"),
+    sep2AllFivePass:!!sep2&&["credit","volatility","breadth","trend","utilities"].every(k=>sep2.factor[k]===true),
+    sep2SmoothedNear100:!!sep2&&Math.abs(sep2.row.smoothedScore-.99999)<.003&&sep2.row.mode==="ON",
+    oct16FactorParity:!!oct16&&oct16.factor.credit===false&&oct16.factor.volatility===true&&
+      oct16.factor.breadth===false&&oct16.factor.trend===true&&oct16.factor.utilities===false,
+    oct16ScoreParity:!!oct16&&Math.abs(oct16.row.rawScore-1/3)<.00001&&
+      Math.abs(oct16.row.smoothedScore-.60)<.005&&oct16.row.mode==="ON",
+    noSkippedReplaySessions:skipped===0
+  };
+  const independentCheckpointPassed=Object.values(checks).every(Boolean);
+
   const sampleDates=new Set(["2026-08-14","2026-08-17","2026-08-20","2026-08-21","2026-08-24","2026-08-25","2026-08-26","2026-08-27","2026-08-28","2026-08-31","2026-09-01","2026-09-02","2026-09-03","2026-09-04"]);
   const checkpointTrace=replay.filter(x=>sampleDates.has(x.date)).map(x=>({date:x.date,rawScore:x.rawScore,smoothedScore:x.smoothedScore,mode:x.mode,
    factors:daily.find(d=>d.date===x.date)}));
@@ -125,6 +146,21 @@ function diagnostics(series,lastCompleted){
    provisionalRegime:latest?.mode,provisionalTarget:latest?.target,lastRiskOnEntry:previousEntry,
    lastRiskOffExit:exitEvents.at(-1)?.date??null,
    checkpointTrace,
+   independentCheckpointPassed,
+   independentChecks:checks,
+   independentReference:{
+     sep2:{source:"Prior completed-session Centurion monitoring",date:"2026-09-02",
+       expected:{allFivePass:true,smoothedScoreApprox:.99999,mode:"ON"},
+       reconstructed:sep2?{rawScore:sep2.row.rawScore,smoothedScore:sep2.row.smoothedScore,mode:sep2.row.mode}:null},
+     oct16:{source:"Official Friday Centurion monitoring",date:"2026-10-16",
+       expected:{rawScore:1/3,smoothedScoreApprox:.60,mode:"ON",
+       credit:false,volatility:true,breadth:false,trend:true,utilities:false},
+       reconstructed:oct16?{rawScore:oct16.row.rawScore,smoothedScore:oct16.row.smoothedScore,mode:oct16.row.mode,
+         factors:oct16.factor}:null},
+     inconsistentManualNote:{
+       date:"2026-09-01",statedSmoothed:.815,reason:"Contradicts independent Sep-02 near-100 reading and extended all-pass streak",
+       rulesUnchanged:true}
+   },
    manualScoreDifferenceSep1:sep?round(sep.smoothedScore-0.815,4):null,
    manualSep1ParityPassed:!!sep&&sep.rawScore===1&&Math.abs(sep.smoothedScore-0.815)<.02&&sep.mode==="ON",
    sep1ManualCheck:sep?{date:sep.date,rawScore:sep.rawScore,smoothedScore:sep.smoothedScore,mode:sep.mode,factors:sepFactors,manualExpected:{riskOnSince:"2026-04-17",allFiveChecksPass:true,rawScore:1,smoothedScoreApprox:0.815}}:null,
