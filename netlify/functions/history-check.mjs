@@ -55,8 +55,10 @@ function readSnapshot(url, quoteToken, fromTime) {
     const ws = new WebSocket(url);
     const fields = ["eventSymbol","eventFlags","time","open","high","low","close","volume"];
     const readings = new Map();
-    let count = 0, snapshotComplete = false, started = false, invalid = 0, diagnostic = null, finished = false;
-    const timer = setTimeout(() => finish(false, "snapshot_timeout"), 24000);
+    let count = 0, snapshotComplete = false, snapshotSnipped = false, started = false, invalid = 0, diagnostic = null, finished = false;
+    let feedFrames = 0, candleFrames = 0, aggregationPeriod = null, firstReceivedTime = null, lastReceivedTime = null;
+    const flagCounts = { begin:0, end:0, snip:0, remove:0, txPending:0 };
+    const timer = setTimeout(() => finish(false, "snapshot_timeout"), 35000);
     const keepalive = setInterval(() => {
       if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "KEEPALIVE", channel: 0 }));
     }, 15000);
@@ -66,9 +68,24 @@ function readSnapshot(url, quoteToken, fromTime) {
       try { ws.close(1000, "probe complete"); } catch {}
       const ordered = [...readings.values()].sort((a,b) => a.time - b.time);
       const first = ordered[0], last = ordered.at(-1);
+      const candlesByYear = {}, candlesByMonth2026 = {};
+      for (const candle of ordered) {
+        const date = new Date(candle.time).toISOString().slice(0,10), year = date.slice(0,4);
+        candlesByYear[year] = (candlesByYear[year] ?? 0) + 1;
+        if (year === "2026") candlesByMonth2026[date.slice(0,7)] = (candlesByMonth2026[date.slice(0,7)] ?? 0) + 1;
+      }
       resolve({
         snapshotComplete,
         snapshotStarted: started,
+        snapshotSnipped,
+        feedFrames,
+        candleFrames,
+        aggregationPeriod,
+        flags: flagCounts,
+        candlesByYear,
+        candlesByMonth2026,
+        firstReceivedUTC: firstReceivedTime ? new Date(firstReceivedTime).toISOString().slice(0,10) : null,
+        lastReceivedUTC: lastReceivedTime ? new Date(lastReceivedTime).toISOString().slice(0,10) : null,
         records: count,
         distinctCandles: ordered.length,
         malformedCandles: invalid,
@@ -100,25 +117,35 @@ function readSnapshot(url, quoteToken, fromTime) {
           acceptEventFields: { Candle: fields },
         });
       } else if (msg.type === "FEED_CONFIG" && msg.channel === 3) {
+        aggregationPeriod = Number(msg.aggregationPeriod) || null;
         send({
           type: "FEED_SUBSCRIPTION", channel:3, reset:true,
           add: [{ type:"Candle", symbol:"QQQ{=d}", fromTime }],
         });
       } else if (msg.type === "FEED_DATA" && msg.channel === 3) {
-        for (const row of extractRows(msg)) {
+        feedFrames++;
+        const rows = extractRows(msg); if (rows.length) candleFrames++;
+        for (const row of rows) {
           const flags = Number(row[1]) || 0;
           const rawTime = Number(row[2]);
           const time = rawTime < 1e11 ? rawTime * 1000 : rawTime;
           const close = Number(row[6]);
           count++;
-          if (flags & 4) started = true;
+          if (flags & 4) { started = true; flagCounts.begin++; }
+          if (flags & 8) flagCounts.end++;
+          if (flags & 16) flagCounts.snip++;
+          if (flags & 2) flagCounts.remove++;
+          if (flags & 1) flagCounts.txPending++;
           if (Number.isFinite(time) && time >= Date.parse("1995-01-01T00:00:00Z") &&
               time < Date.now() + 86400000 && Number.isFinite(close) && close > 0) {
             readings.set(time, {time, close});
+            if (firstReceivedTime === null) firstReceivedTime = time;
+            lastReceivedTime = time;
           } else invalid++;
-          if (flags & (8 | 16)) snapshotComplete = true;
+          if (flags & 8) snapshotComplete = true;
+          if (flags & 16) snapshotSnipped = true;
         }
-        if (snapshotComplete) finish(true);
+        if (snapshotComplete || snapshotSnipped) finish(snapshotComplete && !snapshotSnipped, snapshotSnipped ? "snapshot_snipped" : undefined);
       } else if (msg.type === "ERROR" || msg.type === "CHANNEL_CLOSED") {
         diagnostic = "dxlink_feed_error";
         finish(false, diagnostic);
@@ -135,13 +162,16 @@ export default async function handler(request) {
     // Public diagnostic is intentionally restricted to one hard-coded symbol and interval.
     // No user-controlled paths, URLs, symbols, provider requests or data are accepted.
     const credentials = await requestQuoteCredentials();
-    const fromTime = Date.parse("2020-01-02T00:00:00Z");
+    const requestedWindow = new URL(request.url).searchParams.get("window") ?? "2020";
+    if (!["2020","2025","2026"].includes(requestedWindow)) return respond({status:"invalid_window"},400);
+    const fromTime = Date.parse(requestedWindow + "-01-02T00:00:00Z");
     const result = await readSnapshot(credentials.url, credentials.quoteToken, fromTime);
     return respond({
       provider:"Tastytrade / DXLink", symbol:"QQQ", interval:"1d", readOnly:true,
       ...result,
-      verified:result.snapshotComplete && result.coverageFrom2020 && result.sufficientForEma270 && result.malformedCandles === 0,
-      disclaimer:"This verifies data coverage only, not the trading signal, close adjustment or factor methodology.",
+      requestedWindow,
+      verified:requestedWindow === "2020" && result.snapshotComplete && !result.snapshotSnipped && result.coverageFrom2020 && result.sufficientForEma270 && result.malformedCandles === 0,
+      disclaimer:"Coverage diagnostics only. Shorter windows are comparison tests, not valid 2020-seeded EMAs. No live signals are calculated here.",
     });
   } catch (error) {
     const known = new Set([
