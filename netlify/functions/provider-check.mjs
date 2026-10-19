@@ -26,3 +26,10 @@ export default async request=>{
     return respond({status:'connection_error',note:'Provider could not be reached'},503);
   }
 };
+
+// Rate-limit public health checks so repeated calls cannot exhaust OAuth or DXLink quotas.
+// The client never sees a bearer token, refresh token, or client secret.
+export const config = {
+  path: ["/api/provider-check", "/.netlify/functions/provider-check"],
+  rateLimit: { windowLimit: 3, windowSize: 60, aggregateBy: ["ip", "domain"] }
+};
