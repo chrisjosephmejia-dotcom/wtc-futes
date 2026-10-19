@@ -3,6 +3,204 @@
   "centurion": {
     "asOf": "2026-10-16",
     "caution": "Current factor replay uses January-2020 seeded history and Yahoo adjusted closes. Verify against frozen model and official 2026-09-01 checkpoint before activating.",
+    "checkpointTrace": [
+      {
+        "date": "2026-08-14",
+        "factors": {
+          "breadth": true,
+          "credit": true,
+          "date": "2026-08-14",
+          "trend": true,
+          "utilities": true,
+          "volatility": true
+        },
+        "mode": "ON",
+        "rawScore": 1,
+        "smoothedScore": 0.997227
+      },
+      {
+        "date": "2026-08-17",
+        "factors": {
+          "breadth": true,
+          "credit": true,
+          "date": "2026-08-17",
+          "trend": true,
+          "utilities": true,
+          "volatility": true
+        },
+        "mode": "ON",
+        "rawScore": 1,
+        "smoothedScore": 0.998152
+      },
+      {
+        "date": "2026-08-20",
+        "factors": {
+          "breadth": true,
+          "credit": true,
+          "date": "2026-08-20",
+          "trend": true,
+          "utilities": true,
+          "volatility": true
+        },
+        "mode": "ON",
+        "rawScore": 1,
+        "smoothedScore": 0.999452
+      },
+      {
+        "date": "2026-08-21",
+        "factors": {
+          "breadth": true,
+          "credit": true,
+          "date": "2026-08-21",
+          "trend": true,
+          "utilities": true,
+          "volatility": true
+        },
+        "mode": "ON",
+        "rawScore": 1,
+        "smoothedScore": 0.999635
+      },
+      {
+        "date": "2026-08-24",
+        "factors": {
+          "breadth": true,
+          "credit": true,
+          "date": "2026-08-24",
+          "trend": true,
+          "utilities": true,
+          "volatility": true
+        },
+        "mode": "ON",
+        "rawScore": 1,
+        "smoothedScore": 0.999757
+      },
+      {
+        "date": "2026-08-25",
+        "factors": {
+          "breadth": true,
+          "credit": true,
+          "date": "2026-08-25",
+          "trend": true,
+          "utilities": true,
+          "volatility": true
+        },
+        "mode": "ON",
+        "rawScore": 1,
+        "smoothedScore": 0.999838
+      },
+      {
+        "date": "2026-08-26",
+        "factors": {
+          "breadth": true,
+          "credit": true,
+          "date": "2026-08-26",
+          "trend": true,
+          "utilities": true,
+          "volatility": true
+        },
+        "mode": "ON",
+        "rawScore": 1,
+        "smoothedScore": 0.999892
+      },
+      {
+        "date": "2026-08-27",
+        "factors": {
+          "breadth": true,
+          "credit": true,
+          "date": "2026-08-27",
+          "trend": true,
+          "utilities": true,
+          "volatility": true
+        },
+        "mode": "ON",
+        "rawScore": 1,
+        "smoothedScore": 0.999928
+      },
+      {
+        "date": "2026-08-28",
+        "factors": {
+          "breadth": true,
+          "credit": true,
+          "date": "2026-08-28",
+          "trend": true,
+          "utilities": true,
+          "volatility": true
+        },
+        "mode": "ON",
+        "rawScore": 1,
+        "smoothedScore": 0.999952
+      },
+      {
+        "date": "2026-08-31",
+        "factors": {
+          "breadth": true,
+          "credit": true,
+          "date": "2026-08-31",
+          "trend": true,
+          "utilities": true,
+          "volatility": true
+        },
+        "mode": "ON",
+        "rawScore": 1,
+        "smoothedScore": 0.999968
+      },
+      {
+        "date": "2026-09-01",
+        "factors": {
+          "breadth": true,
+          "credit": true,
+          "date": "2026-09-01",
+          "trend": true,
+          "utilities": true,
+          "volatility": true
+        },
+        "mode": "ON",
+        "rawScore": 1,
+        "smoothedScore": 0.999979
+      },
+      {
+        "date": "2026-09-02",
+        "factors": {
+          "breadth": true,
+          "credit": true,
+          "date": "2026-09-02",
+          "trend": true,
+          "utilities": true,
+          "volatility": true
+        },
+        "mode": "ON",
+        "rawScore": 1,
+        "smoothedScore": 0.999986
+      },
+      {
+        "date": "2026-09-03",
+        "factors": {
+          "breadth": true,
+          "credit": true,
+          "date": "2026-09-03",
+          "trend": true,
+          "utilities": true,
+          "volatility": true
+        },
+        "mode": "ON",
+        "rawScore": 1,
+        "smoothedScore": 0.999991
+      },
+      {
+        "date": "2026-09-04",
+        "factors": {
+          "breadth": true,
+          "credit": true,
+          "date": "2026-09-04",
+          "trend": true,
+          "utilities": true,
+          "volatility": true
+        },
+        "mode": "ON",
+        "rawScore": 1,
+        "smoothedScore": 0.999994
+      }
+    ],
     "factors": {
       "breadth": false,
       "credit": false,
@@ -13,6 +211,8 @@
     },
     "lastRiskOffExit": "2026-02-06",
     "lastRiskOnEntry": "2026-04-16",
+    "manualScoreDifferenceSep1": 0.185,
+    "manualSep1ParityPassed": false,
     "observedSessions": 1557,
     "provisionalRegime": "ON",
     "provisionalTarget": "QLD",
@@ -43,11 +243,15 @@
   },
   "hybrid": {
     "asOf": "2026-10-16",
+    "closeCrosscheck20261016": true,
     "ema270": 662.1626,
     "ema80": 719.2593,
     "emaRegime": "BULLISH",
+    "kingAnchorMatched": true,
+    "kingAnchorYahooClose": 723.03,
     "kingCurrentBearLow": 709.8,
     "kingCurrentBullHigh": 751.27,
+    "kingLastCompletedWeek": "2026-10-16",
     "kingRegime": "BEARISH",
     "kingSwitches": [
       {
