@@ -69,7 +69,11 @@ function diagnostics(series,lastCompleted){
   const last120=closeDates.slice(-120),missed=last120.filter(d=>!sym.series.has(d)).length;
   gaps[s]={count:sym.count,start:sym.start,end:sym.end,last120Missing:missed,invalid:sym.missingOrBad};
  }
- const week=weeklyCloses(q).filter(x=>x.date<=lastCompleted);
+ const week=weeklyCloses(q).filter(x=>{
+   const end=new Date(x.date+"T00:00:00Z");
+   end.setUTCDate(end.getUTCDate()+(5+7-end.getUTCDay())%7);
+   return end.toISOString().slice(0,10)<=lastCompleted;
+  });
  const king=kingWeekly(week,{mode:"BULLISH",bullHigh:723.03,startDate:"2026-08-07"});
  const raw=closeDates.map(d=>q.series.get(d).raw);
  const h=hybrid(raw,king.mode);
@@ -78,7 +82,11 @@ function diagnostics(series,lastCompleted){
   asOf:closeDates.at(-1),qqqClose:round(raw.at(-1),2),
   ema80:h.ema80,ema270:h.ema270,emaRegime:h.emaRegime,
   kingRegime:king.mode,kingCurrentBullHigh:round(king.bullHigh,2),kingCurrentBearLow:round(king.bearLow??0,2),
-  kingWeeklyObservations:week.length,lastFourWeeklyCloses:week.slice(-4).map(x=>({date:x.date,close:round(x.close,2)})),
+  kingWeeklyObservations:week.length,kingLastCompletedWeek:week.at(-1)?.date??null,
+  kingAnchorYahooClose:round(q.series.get("2026-08-07")?.raw??0,2),
+  kingAnchorMatched:Math.abs((q.series.get("2026-08-07")?.raw??0)-723.03)<0.2,
+  closeCrosscheck20261016:Math.abs((q.series.get("2026-10-16")?.raw??0)-709.86)<0.2,
+  lastFourWeeklyCloses:week.slice(-4).map(x=>({date:x.date,close:round(x.close,2)})),
   kingSwitches:king.switches,provisionalTarget:h.target
  };
  let centurionReport={status:"unverified",reason:"missing_factors"};
@@ -107,12 +115,18 @@ function diagnostics(series,lastCompleted){
   const exitEvents=replay.filter((r,i)=>i>0&&r.mode==="OFF"&&replay[i-1].mode==="ON");
   const sepIndex=replay.findIndex(r=>r.date==="2026-09-01"),sep=replay[sepIndex]??null,sepFactors=daily[sepIndex]??null;
   const previousEntry=entryEvents.filter(e=>e.date<=latest.date).at(-1)?.date??null;
+  const sampleDates=new Set(["2026-08-14","2026-08-17","2026-08-20","2026-08-21","2026-08-24","2026-08-25","2026-08-26","2026-08-27","2026-08-28","2026-08-31","2026-09-01","2026-09-02","2026-09-03","2026-09-04"]);
+  const checkpointTrace=replay.filter(x=>sampleDates.has(x.date)).map(x=>({date:x.date,rawScore:x.rawScore,smoothedScore:x.smoothedScore,mode:x.mode,
+   factors:daily.find(d=>d.date===x.date)}));
   centurionReport={
    status:skipped===0?"candidate_complete":"gaps_during_replay",
    asOf:latest?.date??null, observedSessions:daily.length,skippedSessions:skipped,
    factors:factor,rawScore:latest?.rawScore,smoothedScore:latest?.smoothedScore,
    provisionalRegime:latest?.mode,provisionalTarget:latest?.target,lastRiskOnEntry:previousEntry,
    lastRiskOffExit:exitEvents.at(-1)?.date??null,
+   checkpointTrace,
+   manualScoreDifferenceSep1:sep?round(sep.smoothedScore-0.815,4):null,
+   manualSep1ParityPassed:!!sep&&sep.rawScore===1&&Math.abs(sep.smoothedScore-0.815)<.02&&sep.mode==="ON",
    sep1ManualCheck:sep?{date:sep.date,rawScore:sep.rawScore,smoothedScore:sep.smoothedScore,mode:sep.mode,factors:sepFactors,manualExpected:{riskOnSince:"2026-04-17",allFiveChecksPass:true,rawScore:1,smoothedScoreApprox:0.815}}:null,
    caution:"Current factor replay uses January-2020 seeded history and Yahoo adjusted closes. Verify against frozen model and official 2026-09-01 checkpoint before activating."
   };
