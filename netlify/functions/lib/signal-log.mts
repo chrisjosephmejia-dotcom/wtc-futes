@@ -12,11 +12,28 @@ const ROBINHOOD_ROUND_TRIP_FEE = ROBINHOOD_FEE_PER_SIDE * 2;
 const V3_START_TRADE_NUMBER = 47;
 const V4_START_TRADE_NUMBER = 104;
 const LEGACY_V3_VERSION = "WTC V3 · HARD RISK + STATE TP";
-const LEDGER_VERSION = 9;
+const LEDGER_VERSION = 10;
 const STALE_FEED_INCIDENT = {
   primaryTradeNumber:57,
   voidTradeNumbers:new Set([58,59,60,61,62]),
   reason:"2026-10-11 stale 17:10 CT NQ history snapshot caused false exits/re-entries",
+  canonicalPrimaryClose:{
+    status:"CLOSED",
+    closedAt:"2026-10-12T00:51:04.168Z",
+    exitPrice:31218.75,
+    exitScore:-3,
+    exitSignal:"WAIT",
+    exitRawSignal:"WAIT",
+    exitReason:"EXIT LONG · SCORE -3 <= 0",
+    exitRawReason:"TIMEFRAME CONFLICT · WAIT",
+    points:45,
+    theoreticalPnl:90,
+    roundTripFees:1.72,
+    netPnlBeforeSlippage:88.28,
+    durationMinutes:166,
+    eligibleForStats:true,
+    auditStatus:"RECONSTRUCTED",
+  },
 };
 const RISK_MODEL = {
   hardStopPoints:HARD_STOP_POINTS,
@@ -76,7 +93,24 @@ export function repairKnownLedgerIncidents(saved:any){
 
   const primary=trades.find((t:any)=>Number(t?.tradeNumber)===STALE_FEED_INCIDENT.primaryTradeNumber);
   const hasIncidentChildren=trades.some((t:any)=>STALE_FEED_INCIDENT.voidTradeNumbers.has(Number(t?.tradeNumber)));
-  if(primary && hasIncidentChildren && primary?.status !== "OPEN"){
+
+  if(primary && primary?.auditStatus === "RECONSTRUCTED"){
+    const canonical=STALE_FEED_INCIDENT.canonicalPrimaryClose;
+    const corrupted=
+      primary?.status !== canonical.status ||
+      primary?.closedAt !== canonical.closedAt ||
+      Number(primary?.exitPrice) !== canonical.exitPrice ||
+      Number(primary?.theoreticalPnl) !== canonical.theoreticalPnl;
+    if(corrupted){
+      Object.assign(primary,canonical,{
+        reconstructionReason:STALE_FEED_INCIDENT.reason,
+        incidentRepairVersion:LEDGER_VERSION,
+      });
+      repaired=true;
+    }
+  }
+
+  if(primary && hasIncidentChildren && primary?.status !== "OPEN" && primary?.auditStatus !== "RECONSTRUCTED"){
     if(!primary.auditOriginal) primary.auditOriginal=incidentOriginal(primary);
     Object.assign(primary,{
       status:"OPEN",
