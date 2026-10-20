@@ -87,7 +87,7 @@ function b64ToBytes(s){const p='='.repeat((4-s.length%4)%4);const b=atob((s+p).r
 function fmtTime(iso){if(!iso)return '—';try{return new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}).format(new Date(iso))+' CT';}catch{return iso}}
 function stateClass(el,state){el.className='state '+state;el.textContent=state;}
 function pnlClass(v){return !Number.isFinite(Number(v))?'flat':Number(v)>0?'pos':Number(v)<0?'neg':'flat';}
-function money(v){if(!Number.isFinite(Number(v)))return '—';const n=Number(v);return `${n>0?'+':''}$${n.toFixed(2)}`;}
+function money(v){if(!Number.isFinite(Number(v)))return '—';const n=Number(v);const a=Math.abs(n).toFixed(2);return n>0?`+${a}`:n<0?`-${a}`:`${a}`;}
 function points(v){if(!Number.isFinite(Number(v)))return '—';const n=Number(v);return `${n>0?'+':''}${n.toFixed(2)}`;}
 function score(v){if(!Number.isFinite(Number(v)))return '—';const n=Number(v);return `${n>0?'+':''}${n}`;}
 function update(s){
