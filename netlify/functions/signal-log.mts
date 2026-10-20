@@ -1,6 +1,6 @@
 import type { Context, Config } from "@netlify/functions";
 import { store } from "./lib/storage.mjs";
-import { MNQ_DOLLARS_PER_POINT, ROBINHOOD_ROUND_TRIP_FEE, V3_START_TRADE_NUMBER, theoreticalMark, repairKnownLedgerIncidents } from "./lib/signal-log.mjs";
+import { MNQ_DOLLARS_PER_POINT, ROBINHOOD_ROUND_TRIP_FEE, V3_START_TRADE_NUMBER, V4_START_TRADE_NUMBER, theoreticalMark, repairKnownLedgerIncidents } from "./lib/signal-log.mjs";
 import { STRATEGY_VERSION } from "./lib/position-state.mjs";
 
 function round(n:number,digits=2){
@@ -44,6 +44,7 @@ export default async (_req:Request,_context:Context) => {
     updatedAt:saved.updatedAt || null,
     retention:"permanent",
     v3StartTradeNumber:V3_START_TRADE_NUMBER,
+    v4StartTradeNumber:V4_START_TRADE_NUMBER,
     displayLimit:25,
     totalStoredTrades:trades.length,
     voidTrades:trades.filter(t=>t?.status === "VOID").length,
@@ -68,7 +69,7 @@ export default async (_req:Request,_context:Context) => {
       openPoints:openMark?.points ?? null,
     },
     trades:rows,
-    note:`${STRATEGY_VERSION}. Trades 1-46 remain V2; trade 47 onward is V3. Trade 57 was reconstructed as the continuous official position after the 2026-10-11 stale-feed defect; trades 58-62 are retained as VOID audit records and excluded from all performance statistics. All V3 trades use a -25 point (-$50 gross) hard stop. The default take-profit is +300 points (+$600 gross), while shorts entered in a BULLISH daily state use +25 points (+$50 gross). After a hard exit, same-direction re-entry is blocked until the original V2 lifecycle exit condition occurs (long: score <= 0 or SELL; short: score >= 0 or BUY). Otherwise V2 score-zero/reversal exits remain intact. Gross and Robinhood Gold fee-adjusted P&L are theoretical for 1 MNQ; slippage and actual execution differences are excluded.`
+    note:`${STRATEGY_VERSION}. Trades 1-46 remain V2; trades 47-103 remain frozen V3; trade 104 onward is V4. Trade 57 was reconstructed as the continuous official position after the 2026-10-11 stale-feed defect; trades 58-62 are retained as VOID audit records and excluded from all performance statistics. V4 keeps the -25 point (-$50 gross) hard stop and the existing score-zero/reversal lifecycle exits, but removes the default +300 point (+$600 gross) take-profit so winners can run. Shorts entered while the daily state is BULLISH still use the existing +25 point (+$50 gross) take-profit. After a hard risk exit, same-direction re-entry is blocked until the original lifecycle exit condition occurs. Gross and Robinhood Gold fee-adjusted P&L are theoretical for 1 MNQ; slippage and actual execution differences are excluded.`
   },{headers:{"Cache-Control":"no-store"}});
 };
 
