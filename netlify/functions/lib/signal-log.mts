@@ -11,7 +11,9 @@ const MNQ_DOLLARS_PER_POINT = 2;
 const ROBINHOOD_FEE_PER_SIDE = 0.86;
 const ROBINHOOD_ROUND_TRIP_FEE = ROBINHOOD_FEE_PER_SIDE * 2;
 const V3_START_TRADE_NUMBER = 47;
-const LEDGER_VERSION = 8;
+const V4_START_TRADE_NUMBER = 104;
+const LEGACY_V3_VERSION = "WTC V3 · HARD RISK + STATE TP";
+const LEDGER_VERSION = 9;
 const STALE_FEED_INCIDENT = {
   primaryTradeNumber:57,
   voidTradeNumbers:new Set([58,59,60,61,62]),
@@ -21,11 +23,13 @@ const RISK_MODEL = {
   hardStopPoints:HARD_STOP_POINTS,
   hardStopGrossDollars:HARD_STOP_POINTS*MNQ_DOLLARS_PER_POINT,
   defaultTakeProfitPoints:DEFAULT_TAKE_PROFIT_POINTS,
-  defaultTakeProfitGrossDollars:DEFAULT_TAKE_PROFIT_POINTS*MNQ_DOLLARS_PER_POINT,
+  defaultTakeProfitGrossDollars:DEFAULT_TAKE_PROFIT_POINTS === null ? null : DEFAULT_TAKE_PROFIT_POINTS*MNQ_DOLLARS_PER_POINT,
   bullishShortTakeProfitPoints:BULLISH_SHORT_TAKE_PROFIT_POINTS,
   bullishShortTakeProfitGrossDollars:BULLISH_SHORT_TAKE_PROFIT_POINTS*MNQ_DOLLARS_PER_POINT,
-  lifecycleLockout:"After a hard exit, block same-direction re-entry until the original V2 lifecycle exit condition occurs.",
+  uncappedWinnerExit:"No fixed take-profit for longs or non-BULLISH shorts; exit on score-zero lifecycle, reversal, session close, or hard stop.",
+  lifecycleLockout:"After a hard risk exit, block same-direction re-entry until the original lifecycle exit condition occurs.",
   v3StartTradeNumber:V3_START_TRADE_NUMBER,
+  v4StartTradeNumber:V4_START_TRADE_NUMBER,
 };
 
 function round(n:number,digits=2){
@@ -124,7 +128,8 @@ function normalizeTradeHistory(trades:any[]){
   const normalized=chronological.map((trade:any,index:number)=>{
     const tradeNumber=index+1;
     const next:any={...trade,tradeNumber};
-    if(tradeNumber >= V3_START_TRADE_NUMBER) next.strategyVersion=STRATEGY_VERSION;
+    if(tradeNumber >= V4_START_TRADE_NUMBER) next.strategyVersion=STRATEGY_VERSION;
+    else if(tradeNumber >= V3_START_TRADE_NUMBER) next.strategyVersion=LEGACY_V3_VERSION;
     return next;
   });
   return normalized.reverse();
@@ -195,7 +200,7 @@ export async function updateSignalLog(current:any){
     trades.unshift({
       id:`${now}-${current.signal}`,
       tradeNumber,
-      strategyVersion:tradeNumber >= V3_START_TRADE_NUMBER ? STRATEGY_VERSION : (saved.strategyVersion || STRATEGY_VERSION),
+      strategyVersion:tradeNumber >= V4_START_TRADE_NUMBER ? STRATEGY_VERSION : (tradeNumber >= V3_START_TRADE_NUMBER ? LEGACY_V3_VERSION : (saved.strategyVersion || LEGACY_V3_VERSION)),
       status:"OPEN",
       direction:current.signal,
       contract:mnqContract(current?.instrument?.symbol),
@@ -221,6 +226,7 @@ export async function updateSignalLog(current:any){
     version:LEDGER_VERSION,
     strategyVersion:STRATEGY_VERSION,
     v3StartTradeNumber:V3_START_TRADE_NUMBER,
+    v4StartTradeNumber:V4_START_TRADE_NUMBER,
     riskModel:RISK_MODEL,
     multiplier:MNQ_DOLLARS_PER_POINT,
     feeModel:{provider:"Robinhood Gold",perSide:ROBINHOOD_FEE_PER_SIDE,roundTrip:ROBINHOOD_ROUND_TRIP_FEE},
@@ -305,4 +311,5 @@ export {
   ROBINHOOD_FEE_PER_SIDE,
   ROBINHOOD_ROUND_TRIP_FEE,
   V3_START_TRADE_NUMBER,
+  V4_START_TRADE_NUMBER,
 };
