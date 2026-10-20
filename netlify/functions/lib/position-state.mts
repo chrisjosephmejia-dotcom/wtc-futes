@@ -25,6 +25,29 @@ function tradeDailyState(raw:any,openTrade:any){
   return openTrade?.dailyState || raw?.daily?.state || null;
 }
 
+function shadowRiskFor(raw:any,previous:any,openTrade:any){
+  if(!actionable(previous) || !openTrade || openTrade?.status !== "OPEN" || openTrade?.direction !== previous) return null;
+  const entry=Number(openTrade?.entryPrice);
+  const high=Number(raw?.market?.lastBarOhlc?.high);
+  const low=Number(raw?.market?.lastBarOhlc?.low);
+  if(!Number.isFinite(entry) || !Number.isFinite(high) || !Number.isFinite(low)) return null;
+  const isLong=previous === "BUY MNQ";
+  const barMfePoints=Math.round((isLong ? high-entry : entry-low)*100)/100;
+  const barMaePoints=Math.round((isLong ? low-entry : entry-high)*100)/100;
+  const stopPrice=Math.round((entry + (isLong ? -HARD_STOP_POINTS : HARD_STOP_POINTS))*100)/100;
+  const stopTouched=isLong ? low <= stopPrice : high >= stopPrice;
+  return {
+    source:"1M_CANDLE_HIGH_LOW_SHADOW_ONLY",
+    barHigh:high,
+    barLow:low,
+    barMfePoints,
+    barMaePoints,
+    stopPrice,
+    stopTouched,
+    note:"Shadow telemetry only; does not alter the official 1-minute V4 position state.",
+  };
+}
+
 export function takeProfitPointsFor(_raw:any,_previous:any,_openTrade:any){
   return DEFAULT_TAKE_PROFIT_POINTS;
 }
@@ -53,6 +76,7 @@ export function resolvePositionState(raw:any,previousSignal:any,openTrade:any=nu
   const dailyState=tradeDailyState(raw,openTrade);
   const takeProfitPoints=takeProfitPointsFor(raw,previous,openTrade);
   const lockActive=lifecycleLockActive(raw,riskLockDirection);
+  const shadowRisk=shadowRiskFor(raw,previous,openTrade);
   let signal="WAIT";
   let reason=rawReason;
   let positionEvent="FLAT";
@@ -149,6 +173,7 @@ export function resolvePositionState(raw:any,previousSignal:any,openTrade:any=nu
       trigger:riskTrigger,
       lockDirection:riskLockDirection || null,
       lockActive,
+      shadowRisk,
     },
   };
 }
