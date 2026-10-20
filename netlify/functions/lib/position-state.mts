@@ -1,7 +1,6 @@
 export const STRATEGY_VERSION = "WTC V4 · HARD STOP + UNCAPPED WINNERS";
 export const HARD_STOP_POINTS = 25;
 export const DEFAULT_TAKE_PROFIT_POINTS:number|null = null;
-export const BULLISH_SHORT_TAKE_PROFIT_POINTS = 25;
 
 export function actionable(signal:any){
   return signal === "BUY MNQ" || signal === "SELL MNQ";
@@ -26,9 +25,7 @@ function tradeDailyState(raw:any,openTrade:any){
   return openTrade?.dailyState || raw?.daily?.state || null;
 }
 
-export function takeProfitPointsFor(raw:any,previous:any,openTrade:any){
-  const dailyState=tradeDailyState(raw,openTrade);
-  if(previous === "SELL MNQ" && dailyState === "BULLISH") return BULLISH_SHORT_TAKE_PROFIT_POINTS;
+export function takeProfitPointsFor(_raw:any,_previous:any,_openTrade:any){
   return DEFAULT_TAKE_PROFIT_POINTS;
 }
 
