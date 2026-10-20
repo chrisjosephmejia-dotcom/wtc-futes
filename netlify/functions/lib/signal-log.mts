@@ -4,7 +4,6 @@ import {
   actionable,
   HARD_STOP_POINTS,
   DEFAULT_TAKE_PROFIT_POINTS,
-  BULLISH_SHORT_TAKE_PROFIT_POINTS,
 } from "./position-state.mjs";
 
 const MNQ_DOLLARS_PER_POINT = 2;
@@ -24,9 +23,7 @@ const RISK_MODEL = {
   hardStopGrossDollars:HARD_STOP_POINTS*MNQ_DOLLARS_PER_POINT,
   defaultTakeProfitPoints:DEFAULT_TAKE_PROFIT_POINTS,
   defaultTakeProfitGrossDollars:DEFAULT_TAKE_PROFIT_POINTS === null ? null : DEFAULT_TAKE_PROFIT_POINTS*MNQ_DOLLARS_PER_POINT,
-  bullishShortTakeProfitPoints:BULLISH_SHORT_TAKE_PROFIT_POINTS,
-  bullishShortTakeProfitGrossDollars:BULLISH_SHORT_TAKE_PROFIT_POINTS*MNQ_DOLLARS_PER_POINT,
-  uncappedWinnerExit:"No fixed take-profit for longs or non-BULLISH shorts; exit on score-zero lifecycle, reversal, session close, or hard stop.",
+  uncappedWinnerExit:"No fixed take-profit for any V4 trade; exit on score-zero lifecycle, reversal, session close, or hard stop.",
   lifecycleLockout:"After a hard risk exit, block same-direction re-entry until the original lifecycle exit condition occurs.",
   v3StartTradeNumber:V3_START_TRADE_NUMBER,
   v4StartTradeNumber:V4_START_TRADE_NUMBER,
