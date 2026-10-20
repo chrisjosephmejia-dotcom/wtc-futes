@@ -212,7 +212,7 @@ export async function computeSignal(){
   return {
     checkedAt:now.toISOString(),checkedAtLabel:np.label,
     signal,reason,
-    market:{feedActive,session,inEntry,firstFive:clock.firstFive,sessionKey:clock.sessionKey,lastBar:new Date(last.t*1000).toISOString(),lastBarLabel:lp.label,ageSec:Math.round(ageSec)},
+    market:{feedActive,session,inEntry,firstFive:clock.firstFive,sessionKey:clock.sessionKey,lastBar:new Date(last.t*1000).toISOString(),lastBarLabel:lp.label,lastBarOhlc:{open:round(last.o,2),high:round(last.h,2),low:round(last.l,2),close:round(last.c,2)},ageSec:Math.round(ageSec)},
     instrument:{symbol:nq.symbol,streamerSymbol:nq.streamerSymbol,exchange:nq.exchange,expirationDate:nq.expirationDate,minuteBars:minuteBars.length,dailyBars:dailyBars.length},
     price:round(price,2),fromOpen:round(fromOpen,2),open:round(open,2),vwap:round(vw,2),openingRange:{low:round(or.low,2),high:round(or.high,2)},
     score,scoreRange:"-9 to +9",threshold:{buy:buyThreshold,sell:sellThreshold},extension:{blocked:extended,pct:round(extensionPct,2),limitPct:round(extensionLimit,2)},
