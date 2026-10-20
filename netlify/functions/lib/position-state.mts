@@ -75,11 +75,11 @@ export function resolvePositionState(raw:any,previousSignal:any,openTrade:any=nu
       positionEvent="EXIT";
       riskTrigger="STOP_LOSS";
       reason=`EXIT LONG · HARD STOP ${openPoints.toFixed(2)} PTS <= -${HARD_STOP_POINTS} PTS (-$50 GROSS)`;
-    } else if(openPoints !== null && Number.isFinite(Number(takeProfitPoints)) && openPoints >= Number(takeProfitPoints)){
+    } else if(takeProfitPoints !== null && openPoints !== null && Number.isFinite(Number(takeProfitPoints)) && openPoints >= Number(takeProfitPoints)){
       signal="WAIT";
       positionEvent="EXIT";
       riskTrigger="TAKE_PROFIT";
-      reason=`EXIT LONG · TAKE PROFIT ${openPoints.toFixed(2)} PTS >= +${Number(takeProfitPoints)} PTS (+${Number(takeProfitPoints)*2} GROSS)`;
+      reason=`EXIT LONG · TAKE PROFIT ${openPoints.toFixed(2)} PTS >= +${Number(takeProfitPoints)} PTS (${Number(takeProfitPoints)*2} GROSS)`;
     } else if(rawSignal === "SELL MNQ"){
       signal="SELL MNQ";
       positionEvent="REVERSE";
@@ -107,7 +107,7 @@ export function resolvePositionState(raw:any,previousSignal:any,openTrade:any=nu
       positionEvent="EXIT";
       riskTrigger="STOP_LOSS";
       reason=`EXIT SHORT · HARD STOP ${openPoints.toFixed(2)} PTS <= -${HARD_STOP_POINTS} PTS (-$50 GROSS)`;
-    } else if(openPoints !== null && Number.isFinite(Number(takeProfitPoints)) && openPoints >= Number(takeProfitPoints)){
+    } else if(takeProfitPoints !== null && openPoints !== null && Number.isFinite(Number(takeProfitPoints)) && openPoints >= Number(takeProfitPoints)){
       signal="WAIT";
       positionEvent="EXIT";
       riskTrigger="TAKE_PROFIT";
