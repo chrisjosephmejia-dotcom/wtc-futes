@@ -1,6 +1,6 @@
-export const STRATEGY_VERSION = "WTC V3 · HARD RISK + STATE TP";
+export const STRATEGY_VERSION = "WTC V4 · HARD STOP + UNCAPPED WINNERS";
 export const HARD_STOP_POINTS = 25;
-export const DEFAULT_TAKE_PROFIT_POINTS = 300;
+export const DEFAULT_TAKE_PROFIT_POINTS:number|null = null;
 export const BULLISH_SHORT_TAKE_PROFIT_POINTS = 25;
 
 export function actionable(signal:any){
@@ -75,11 +75,11 @@ export function resolvePositionState(raw:any,previousSignal:any,openTrade:any=nu
       positionEvent="EXIT";
       riskTrigger="STOP_LOSS";
       reason=`EXIT LONG · HARD STOP ${openPoints.toFixed(2)} PTS <= -${HARD_STOP_POINTS} PTS (-$50 GROSS)`;
-    } else if(openPoints !== null && openPoints >= takeProfitPoints){
+    } else if(openPoints !== null && Number.isFinite(Number(takeProfitPoints)) && openPoints >= Number(takeProfitPoints)){
       signal="WAIT";
       positionEvent="EXIT";
       riskTrigger="TAKE_PROFIT";
-      reason=`EXIT LONG · TAKE PROFIT ${openPoints.toFixed(2)} PTS >= +${takeProfitPoints} PTS (+$${takeProfitPoints*2} GROSS)`;
+      reason=`EXIT LONG · TAKE PROFIT ${openPoints.toFixed(2)} PTS >= +${Number(takeProfitPoints)} PTS (+${Number(takeProfitPoints)*2} GROSS)`;
     } else if(rawSignal === "SELL MNQ"){
       signal="SELL MNQ";
       positionEvent="REVERSE";
@@ -107,11 +107,11 @@ export function resolvePositionState(raw:any,previousSignal:any,openTrade:any=nu
       positionEvent="EXIT";
       riskTrigger="STOP_LOSS";
       reason=`EXIT SHORT · HARD STOP ${openPoints.toFixed(2)} PTS <= -${HARD_STOP_POINTS} PTS (-$50 GROSS)`;
-    } else if(openPoints !== null && openPoints >= takeProfitPoints){
+    } else if(openPoints !== null && Number.isFinite(Number(takeProfitPoints)) && openPoints >= Number(takeProfitPoints)){
       signal="WAIT";
       positionEvent="EXIT";
       riskTrigger="TAKE_PROFIT";
-      reason=`EXIT SHORT · TAKE PROFIT ${openPoints.toFixed(2)} PTS >= +${takeProfitPoints} PTS (+$${takeProfitPoints*2} GROSS · ${dailyState || "NO DAILY STATE"})`;
+      reason=`EXIT SHORT · TAKE PROFIT ${openPoints.toFixed(2)} PTS >= +${Number(takeProfitPoints)} PTS (+${Number(takeProfitPoints)*2} GROSS · ${dailyState || "NO DAILY STATE"})`;
     } else if(rawSignal === "BUY MNQ"){
       signal="BUY MNQ";
       positionEvent="REVERSE";
