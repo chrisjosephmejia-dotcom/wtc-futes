@@ -41,6 +41,7 @@ const RISK_MODEL = {
   defaultTakeProfitPoints:DEFAULT_TAKE_PROFIT_POINTS,
   defaultTakeProfitGrossDollars:DEFAULT_TAKE_PROFIT_POINTS === null ? null : DEFAULT_TAKE_PROFIT_POINTS*MNQ_DOLLARS_PER_POINT,
   uncappedWinnerExit:"No fixed take-profit for any V4 trade; exit on score-zero lifecycle, reversal, session close, or hard stop.",
+  intraminuteShadow:"Record 1-minute candle high/low MAE, MFE and -25 point stop touches without changing official V4 decisions.",
   lifecycleLockout:"After a hard risk exit, block same-direction re-entry until the original lifecycle exit condition occurs.",
   v3StartTradeNumber:V3_START_TRADE_NUMBER,
   v4StartTradeNumber:V4_START_TRADE_NUMBER,
@@ -214,6 +215,29 @@ export async function updateSignalLog(current:any){
 
   if(openIndex >= 0){
     const open=trades[openIndex];
+    const shadow=current?.riskCap?.shadowRisk;
+    if(shadow){
+      const prevMfe=Number(open?.shadowMfePoints);
+      const prevMae=Number(open?.shadowMaePoints);
+      const nextMfe=Number(shadow?.barMfePoints);
+      const nextMae=Number(shadow?.barMaePoints);
+      if(Number.isFinite(nextMfe)){
+        open.shadowMfePoints=Number.isFinite(prevMfe)?Math.max(prevMfe,nextMfe):nextMfe;
+        changed=true;
+      }
+      if(Number.isFinite(nextMae)){
+        open.shadowMaePoints=Number.isFinite(prevMae)?Math.min(prevMae,nextMae):nextMae;
+        changed=true;
+      }
+      if(shadow?.stopTouched){
+        if(!open.shadowStopTouched) changed=true;
+        open.shadowStopTouched=true;
+        open.shadowStopPrice=Number.isFinite(Number(shadow?.stopPrice))?Number(shadow.stopPrice):open.shadowStopPrice ?? null;
+        open.shadowFirstStopTouchAt=open.shadowFirstStopTouchAt || current?.market?.lastBar || current?.checkedAt || new Date().toISOString();
+      }
+      open.shadowLastBarHigh=Number.isFinite(Number(shadow?.barHigh))?Number(shadow.barHigh):open.shadowLastBarHigh ?? null;
+      open.shadowLastBarLow=Number.isFinite(Number(shadow?.barLow))?Number(shadow.barLow):open.shadowLastBarLow ?? null;
+    }
     if(!isActionable || current.signal !== open.direction){
       const closed=closeTrade(open,current);
       if(closed?.status === "CLOSED"){
@@ -246,6 +270,13 @@ export async function updateSignalLog(current:any){
       alignment:alignment(current),
       dailyState:current?.daily?.state || null,
       riskModel:RISK_MODEL,
+      shadowMfePoints:null,
+      shadowMaePoints:null,
+      shadowStopTouched:false,
+      shadowStopPrice:null,
+      shadowFirstStopTouchAt:null,
+      shadowLastBarHigh:null,
+      shadowLastBarLow:null,
     });
     changed=true;
   }
@@ -302,6 +333,12 @@ export async function appendDecisionSnapshot(current:any){
     inEntry:current?.market?.inEntry ?? null,
     extensionBlocked:current?.extension?.blocked ?? null,
     riskCap:current?.riskCap || null,
+    shadowStopTouched:current?.riskCap?.shadowRisk?.stopTouched ?? null,
+    shadowStopPrice:Number.isFinite(Number(current?.riskCap?.shadowRisk?.stopPrice))?Number(current.riskCap.shadowRisk.stopPrice):null,
+    shadowBarMfePoints:Number.isFinite(Number(current?.riskCap?.shadowRisk?.barMfePoints))?Number(current.riskCap.shadowRisk.barMfePoints):null,
+    shadowBarMaePoints:Number.isFinite(Number(current?.riskCap?.shadowRisk?.barMaePoints))?Number(current.riskCap.shadowRisk.barMaePoints):null,
+    shadowBarHigh:Number.isFinite(Number(current?.riskCap?.shadowRisk?.barHigh))?Number(current.riskCap.shadowRisk.barHigh):null,
+    shadowBarLow:Number.isFinite(Number(current?.riskCap?.shadowRisk?.barLow))?Number(current.riskCap.shadowRisk.barLow):null,
     engineError:current?.error || null,
     source:current?.source || null,
     open:Number.isFinite(Number(current?.open))?Number(current.open):null,
