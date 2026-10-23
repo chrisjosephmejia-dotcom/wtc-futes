@@ -19,3 +19,5 @@ Endpoints: /api/status /api/live-price /api/signal-log /api/signal-log.csv
 /api/decision-log.csv?all=1 /api/tasty-status /api/mcl-signal-test /api/mcl-candles-test
 /api/subscription /api/vapid-key /api/test-push /api/test-email /api/email-health.
 Research only; assess MCL data entitlements, contract roll handling, EIA events, drawdown and emergency stops before trading.
+
+Release marker 2026-10-23: renamed runtime imports resolved; waiting for independent Netlify publish verification.
