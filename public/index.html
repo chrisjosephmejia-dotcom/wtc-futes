@@ -16,7 +16,7 @@
 <div class="wrap">
   <div class="top"><div><div class="brand">WHEELHOUSE TRADING CO.</div><h1>MCL FUTURES ALIGNMENT</h1></div><div class="clock" id="clock">—</div></div>
   <div class="card hero">
-    <div class="kicker">WTC MCL V1 SHADOW · NYMEX MCL · 15-SEC DISPLAY · 1-MIN ENGINE</div>
+    <div class="kicker">WTC MCL V1 SHADOW · NYMEX MCL · 60-SEC DISPLAY · 1-MIN ENGINE</div>
     <div id="signal" class="signal wait">WAIT</div>
     <div id="reason" class="reason">Loading engine status…</div>
     <div class="grid">
@@ -127,7 +127,7 @@ function renderLog(data){
   if(data?.note)$('logNote').textContent=data.note;
 }
 async function refresh(){try{const r=await fetch('/api/status',{cache:'no-store'});update(await r.json());}catch(e){$('reason').textContent='STATUS ERROR · '+e.message;}}
-async function refreshLivePrice(){try{const r=await fetch('/api/live-price',{cache:'no-store'});if(!r.ok)throw new Error('Live price unavailable');const q=await r.json();if(Number.isFinite(Number(q.price)))$('price').textContent=`$${Number(q.price).toFixed(2)}`;if(q.symbol)$('priceLabel').textContent=`${q.symbol} futures · live`;$('livePriceState').textContent='DISPLAY REFRESH · 15S';$('livePriceState').className='pill good';}catch(e){$('livePriceState').textContent='LIVE PRICE PAUSED';$('livePriceState').className='pill warn';}}
+async function refreshLivePrice(){try{const r=await fetch('/api/live-price',{cache:'no-store'});if(!r.ok)throw new Error('Live price unavailable');const q=await r.json();if(Number.isFinite(Number(q.price)))$('price').textContent=`$${Number(q.price).toFixed(2)}`;if(q.symbol)$('priceLabel').textContent=`${q.symbol} futures · live`;$('livePriceState').textContent='DISPLAY REFRESH · 60S';$('livePriceState').className='pill good';}catch(e){$('livePriceState').textContent='LIVE PRICE PAUSED';$('livePriceState').className='pill warn';}}
 async function refreshLog(){try{const r=await fetch('/api/signal-log',{cache:'no-store'});if(!r.ok)throw new Error('Signal log unavailable');renderLog(await r.json());}catch(e){const body=$('logBody');body.innerHTML='<tr><td colspan="14" class="emptyLog">SIGNAL LOG ERROR</td></tr>';}}
 function tick(){ $('clock').textContent=new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',weekday:'short',hour:'numeric',minute:'2-digit',second:'2-digit'}).format(new Date())+' CT'; }
 async function initPush(){
@@ -139,6 +139,6 @@ function renderPush(){const on=!!currentSub;$('enable').disabled=on;$('test').di
 $('enable').onclick=async()=>{try{const perm=await Notification.requestPermission();if(perm!=='granted')throw new Error('Notification permission not granted');const reg=await navigator.serviceWorker.ready;const {publicKey}=await (await fetch('/api/vapid-key')).json();currentSub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ToBytes(publicKey)});const r=await fetch('/api/subscription',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(currentSub.toJSON())});if(!r.ok)throw new Error('Server subscription failed');renderPush();await refresh();}catch(e){alert(e.message);renderPush();}};
 $('test').onclick=async()=>{try{const r=await fetch('/api/test-push',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(currentSub.toJSON())});const j=await r.json();if(!r.ok)throw new Error(j.error||'Push test failed');$('pushState').textContent='SERVER TEST SENT · WATCH FOR NOTIFICATION';}catch(e){alert(e.message);}};
 $('disable').onclick=async()=>{if(!currentSub)return;const json=currentSub.toJSON();await fetch('/api/subscription',{method:'DELETE',headers:{'content-type':'application/json'},body:JSON.stringify(json)}).catch(()=>{});await currentSub.unsubscribe();currentSub=null;renderPush();await refresh();};
-setInterval(tick,1000);setInterval(()=>{refresh();refreshLivePrice();},15000);setInterval(refreshLog,30000);tick();refresh();refreshLivePrice();refreshLog();initPush();
+setInterval(tick,1000);setInterval(()=>{if(!document.hidden){refresh();refreshLivePrice();refreshLog();}},60000);tick();refresh();refreshLivePrice();refreshLog();initPush();
 </script>
 </body></html>

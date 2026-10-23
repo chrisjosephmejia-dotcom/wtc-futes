@@ -3,7 +3,6 @@ import { store } from "./lib/storage.mjs";
 import { computeSignal, getCmeClockState } from "./lib/signal-mcl.mjs";
 import { resolvePositionState, actionable, lifecycleLockActive, STRATEGY_VERSION } from "./lib/position-state.mjs";
 import { sendAll } from "./lib/push.mjs";
-import { sendSignalEmail } from "./lib/email.mjs";
 import { updateSignalLog, appendDecisionSnapshot, repairKnownLedgerIncidents } from "./lib/signal-log.mjs";
 
 function transitionTitle(currentSignal:any, previousSignal:any){
@@ -17,7 +16,6 @@ function transitionTitle(currentSignal:any, previousSignal:any){
 async function sendTransitionAlerts(current:any, previousSignal:any){
   const title=transitionTitle(current.signal,previousSignal);
   let pushResult:any=null;
-  let emailResult:any=null;
   try {
     pushResult=await sendAll({
       title,
@@ -27,12 +25,7 @@ async function sendTransitionAlerts(current:any, previousSignal:any){
   } catch(error:any) {
     console.error("push alert failed",error);
   }
-  try {
-    emailResult=await sendSignalEmail(current,previousSignal);
-  } catch(error:any) {
-    console.error("email alert failed",error);
-  }
-  return {pushResult,emailResult,title};
+  return {pushResult,title};
 }
 
 export default async (_req:Request) => {
@@ -67,7 +60,7 @@ export default async (_req:Request) => {
       const alerts=await sendTransitionAlerts(flatCurrent,previous.signal);
       const listed=await store("mcl-push-subscriptions").list({prefix:"sub-"});
       const lastPush=alerts.pushResult?{at:flatCurrent.checkedAt,signal:"WAIT",title:alerts.title,result:alerts.pushResult}:previous.lastPush||null;
-      const lastEmail=alerts.emailResult?{at:flatCurrent.checkedAt,signal:"WAIT",title:alerts.title,id:alerts.emailResult?.id||null}:previous.lastEmail||null;
+      const lastEmail=null;
       await s.setJSON("status",{...flatCurrent,lastPush,lastEmail,pushSubscribers:listed.blobs.length});
       await s.setJSON("state",{signal:"WAIT",rawSignal:"WAIT",strategyVersion:STRATEGY_VERSION,lastPush,lastEmail,pushSubscribers:listed.blobs.length,checkedAt:flatCurrent.checkedAt});
       return;
@@ -108,7 +101,7 @@ export default async (_req:Request) => {
     if (stateChanged && (actionable(current.signal) || actionable(previous.signal))) {
       const alerts=await sendTransitionAlerts(current,previous.signal);
       if(alerts.pushResult) lastPush={at:new Date().toISOString(),signal:current.signal,title:alerts.title,result:alerts.pushResult};
-      if(alerts.emailResult) lastEmail={at:new Date().toISOString(),signal:current.signal,title:alerts.title,id:alerts.emailResult?.id||null};
+      // MCL push-only alerts; email intentionally disabled.
     }
 
     const listed=await store("mcl-push-subscriptions").list({prefix:"sub-"});

@@ -5,7 +5,7 @@ export default async (req:Request,_context:Context) => {
   const sub:any=await req.json().catch(()=>null);
   if (!sub?.endpoint) return Response.json({error:"No push subscription"},{status:400});
   try {
-    await sendOne(sub,{title:"WTC MNQ server test",body:"Real Web Push is working. This came from Netlify, not the open browser tab.",tag:"mnq-server-test",url:"/",kind:"test",ts:Date.now()});
+    await sendOne(sub,{title:"WTC MCL server test",body:"Real Web Push is working. This came from Netlify, not the open browser tab.",tag:"mcl-server-test",url:"/",kind:"test",ts:Date.now()});
     return Response.json({ok:true});
   } catch(error:any) {
     return Response.json({ok:false,error:error?.message||String(error)},{status:500});
