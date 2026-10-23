@@ -83,7 +83,7 @@ function incidentOriginal(trade:any){
 function updateEstimatedClosedTradeFees(trades:any[]){
   let changed=false;
   for(const trade of trades){
-    if(trade?.status !== "CLOSED" || !Number.isFinite(Number(trade?.theoreticalPnl))) continue;
+    if(trade?.status !== "CLOSED" || trade.theoreticalPnl == null || !Number.isFinite(Number(trade.theoreticalPnl))) continue;
     const fee=round(ROBINHOOD_ROUND_TRIP_FEE,2);
     const net=round(Number(trade.theoreticalPnl)-fee,2);
     if(trade.roundTripFees !== fee || trade.netPnlBeforeSlippage !== net){
@@ -214,6 +214,7 @@ async function loadCurrentLedger(){
   const s=store("mcl-engine");
   const existing:any=await s.get("signal-log",{type:"json"}) || {};
   const repaired=repairKnownLedgerIncidents(existing);
+  if(repaired.repaired) await s.setJSON("signal-log",repaired.ledger);
   const trades=normalizeTradeHistory(Array.isArray(repaired.ledger?.trades)?repaired.ledger.trades:[]);
   return {
     ...repaired.ledger,
@@ -228,7 +229,7 @@ export async function updateSignalLog(current:any){
   let trades:any[]=Array.isArray(saved.trades)?saved.trades:[];
   let openIndex=trades.findIndex(t=>t?.status === "OPEN");
   const isActionable=actionable(current?.signal);
-  let changed=saved?.version < LEDGER_VERSION || saved?.strategyVersion !== STRATEGY_VERSION;
+  let changed=saved?.version < LEDGER_VERSION || saved?.strategyVersion !== STRATEGY_VERSION || saved?.feeModel?.roundTrip !== ROBINHOOD_ROUND_TRIP_FEE;
 
   if(openIndex >= 0){
     const open=trades[openIndex];
