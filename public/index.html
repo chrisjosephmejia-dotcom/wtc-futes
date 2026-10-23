@@ -78,7 +78,7 @@
 <div class="sectionHead"><div class="sectionTitle">Last 25 completed trades</div><div id="split" class="sectionNote">—</div></div>
 <div class="tableWrap"><table class="trades"><thead><tr><th>Date</th><th>Side</th><th>Setup</th><th>Contract</th><th>Entry</th><th>Exit</th><th>P&L $</th><th>P&L %</th><th>MFE</th><th>MAE</th><th>Score in</th><th>Score out</th><th>Exit reason</th></tr></thead><tbody id="tradeRows"><tr><td colspan="13">No completed trades yet.</td></tr></tbody></table></div>
 
-<div class="footer">WTC XSP 0DTE V1 is a forward-test model using read-only Tastytrade market data. SPY drives the entry model; ES contributes a capped confirmation layer. Entries use the modeled XSP option ask and exits use the bid, so the primary P&L includes the quoted spread. No orders are placed. V1 rules are intentionally frozen until a useful sample exists.</div>
+<div class="footer">WTC XSP 0DTE V1 is a forward-test model using read-only Tastytrade market data. SPY drives the entry model; ES contributes a capped confirmation layer. Entries use the modeled XSP option ask and exits use the bid, so the primary P&L includes the quoted spread. No orders are placed. V1 rules are intentionally frozen until a useful sample exists. The display refreshes every 60 seconds while visible; the independent 1-minute trading and quote-collection runner continues even when this page is closed.</div>
 </main>
 <script>
 const $=id=>document.getElementById(id),money=n=>Number.isFinite(+n)?(+n).toLocaleString(undefined,{style:'currency',currency:'USD',minimumFractionDigits:2}):'—',num=(n,d=2)=>Number.isFinite(+n)?(+n).toFixed(d):'—',pct=n=>Number.isFinite(+n)?((+n>=0?'+':'')+num(n,2)+'%'):'—';let currentSub=null;
@@ -167,6 +167,6 @@ $('disablePush').onclick=async()=>{
  const j=currentSub.toJSON();await fetch('/api/subscription',{method:'DELETE',headers:{'content-type':'application/json'},body:JSON.stringify(j)}).catch(()=>{});
  await currentSub.unsubscribe();currentSub=null;renderPush();await refresh();
 };
-refresh();initPush();setInterval(refresh,15000);
+refresh();initPush();setInterval(()=>{if(!document.hidden)refresh();},60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();});
 </script>
 </body></html>
