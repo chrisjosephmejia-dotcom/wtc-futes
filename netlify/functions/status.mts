@@ -1,6 +1,6 @@
 import type { Context, Config } from "@netlify/functions";
 import { store } from "./lib/storage.mjs";
-import { computeSignal, getCmeClockState } from "./lib/signal-nq.mjs";
+import { computeSignal, getCmeClockState } from "./lib/signal-mcl.mjs";
 import { resolvePositionState, actionable, STRATEGY_VERSION } from "./lib/position-state.mjs";
 import { repairKnownLedgerIncidents } from "./lib/signal-log.mjs";
 

@@ -1,6 +1,6 @@
 import type { Config } from "@netlify/functions";
 import { store } from "./lib/storage.mjs";
-import { computeSignal, getCmeClockState } from "./lib/signal-nq.mjs";
+import { computeSignal, getCmeClockState } from "./lib/signal-mcl.mjs";
 import { resolvePositionState, actionable, lifecycleLockActive, STRATEGY_VERSION } from "./lib/position-state.mjs";
 import { sendAll } from "./lib/push.mjs";
 import { sendSignalEmail } from "./lib/email.mjs";

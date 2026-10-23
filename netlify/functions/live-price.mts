@@ -1,5 +1,5 @@
 import type { Context, Config } from "@netlify/functions";
-import { getLiveMclPrice } from "./lib/live-nq.mjs";
+import { getLiveMclPrice } from "./lib/live-mcl.mjs";
 
 export default async (_req: Request, _context: Context) => {
   try {

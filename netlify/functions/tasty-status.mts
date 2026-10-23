@@ -120,7 +120,7 @@ export default async (_req: Request, _context: Context) => {
     return Response.json({
       ok: false,
       auth: { ok: true },
-      instrument: { ok: false, reason: "nq_symbol_missing", count: items.length },
+      instrument: { ok: false, reason: "mcl_symbol_missing", count: items.length },
       marketData: { ok: false },
     }, { status: 502, headers: { "Cache-Control": "no-store" } });
   }

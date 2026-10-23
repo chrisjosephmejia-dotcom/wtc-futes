@@ -392,4 +392,4 @@ export default async (_req: Request, _context: Context) => {
   }
 };
 
-export const config: Config = { path: "/api/nq-candles-test" };
+export const config: Config = { path: "/api/mcl-candles-test" };
