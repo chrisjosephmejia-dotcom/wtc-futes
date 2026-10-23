@@ -1,24 +1,21 @@
-# WTC Stock Trader
+# WTC MCL Futures V1 — Shadow research
 
-Development branch for the rebuilt stock decision site.
+Netlify site reused: ticker-pulse-devstage-test.
+Branch: wtc-stock-trader. The old Stock Trader code is recoverable in Git history.
 
-## Purpose
-A practical rules-based "should I buy this dip?" tool. It is not a generic stock screener.
+Design/operation cloned from WTC MNQ V4 without modifying the MNQ main branch.
+Tastytrade credentials stay in the existing Netlify site's server-side environment.
+Independent Micro WTI MCL contract, 1-minute and daily DXLink bars, and separate Netlify Blobs ledger.
+Entry: MNQ V4 VWAP, EMA, opening range, timeframes, score thresholds. Parameters are UNVALIDATED for MCL.
+Long exit when score <= +1; short exit when score >= -1; reversals and session closes also exit.
+No fixed hard stop or take profit in research. This system does NOT execute orders or connect to broker trade APIs.
 
-## V0.1
-- Tastytrade REST live quote
-- Tastytrade DXLink history
-- Volatility-adjusted three-stage dip ladder
-- BUY SMALL / BUY MORE / STRONG DIP / WAIT decisions
-- Long-term trend damage guard
-- Strong-dip thesis re-check gate placeholder
+Scheduled paper engine: once per minute Sun–Fri. It costs Netlify compute even if site is closed.
+UI: page data refresh every 15 seconds while open, log refresh every 30 seconds.
+Alerts: push and email use separate VAPID/Resend credentials, which may not yet be configured on this Netlify site.
+Theoretical P&L: 100 USD per 1.00 USD/bbl move; costs and slippage EXCLUDED.
 
-## Product rule
-Business quality controls conviction and size. Price controls entry timing. "Unproven" is a warning, not an automatic veto.
-
-Production ticker-pulse is intentionally untouched while this branch is developed.
-
-
-Environment refresh deploy marker 1
-
-Planned conversion: WTC MCL V1 is a manual-refresh, read-only shadow research dashboard; no broker orders.
+Endpoints: /api/status /api/live-price /api/signal-log /api/signal-log.csv
+/api/decision-log.csv?all=1 /api/tasty-status /api/mcl-signal-test /api/mcl-candles-test
+/api/subscription /api/vapid-key /api/test-push /api/test-email /api/email-health.
+Research only; assess MCL data entitlements, contract roll handling, EIA events, drawdown and emergency stops before trading.
