@@ -20,3 +20,5 @@ Production ticker-pulse is intentionally untouched while this branch is develope
 
 
 Environment refresh deploy marker 1
+
+Planned conversion: WTC MCL V1 is a manual-refresh, read-only shadow research dashboard; no broker orders.
