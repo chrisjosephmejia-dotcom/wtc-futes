@@ -45,19 +45,17 @@
       <div class="card"><div class="label">Volume</div><div class="value" id="volume">—</div></div>
     </section>
 
-    <div class="footer">Display refreshes every 15 seconds. Credentials remain in Netlify server-side environment variables and are never sent to the browser. This staging page is for validating the Tastytrade feed before wiring it into the existing WAIT / CSP VERTEX / CC VERTEX decision logic.</div>
+    <div class="footer">This standalone feed diagnostic fetches quotes only on page load or when you press Load / change the ticker. Credentials remain in Netlify server-side environment variables and are never sent to the browser. This staging page is for validating the Tastytrade feed before wiring it into the existing WAIT / CSP VERTEX / CC VERTEX decision logic.</div>
   </main>
 
   <script>
     const $ = id => document.getElementById(id);
     let ticker = new URLSearchParams(location.search).get('ticker')?.toUpperCase() || 'SPY';
-    let timer;
 
     function fmt(n, digits=2){ return Number.isFinite(Number(n)) ? Number(n).toLocaleString(undefined,{minimumFractionDigits:digits,maximumFractionDigits:digits}) : '—'; }
     function setTicker(next){ ticker = (next || 'SPY').trim().toUpperCase(); $('tickerInput').value=ticker; $('ticker').textContent=ticker; const u=new URL(location.href); u.searchParams.set('ticker',ticker); history.replaceState({},'',u); refresh(); }
 
     async function refresh(){
-      clearTimeout(timer);
       $('feedStatus').innerHTML='<span class="pulse"></span>Refreshing…';
       try{
         const res=await fetch(`/api/equity-quote?ticker=${encodeURIComponent(ticker)}`,{cache:'no-store'});
@@ -74,15 +72,13 @@
         $('low').textContent='$'+fmt(data.dayLow);
         $('volume').textContent=Number.isFinite(Number(data.volume))?Number(data.volume).toLocaleString():'—';
         const t=data.updatedAt ? new Date(data.updatedAt) : new Date(data.receivedAt || Date.now());
-        $('stamp').textContent=`Tastytrade • updated ${t.toLocaleTimeString()} • next refresh in 15s`;
+        $('stamp').textContent=`Tastytrade • updated ${t.toLocaleTimeString()} • manual snapshot`;
         $('feedStatus').innerHTML='<span class="pulse"></span>Tastytrade live';
         $('feedStatus').className='pill ok';
       }catch(err){
         $('stamp').textContent=`Feed error: ${err.message}`;
         $('feedStatus').textContent='Feed unavailable';
         $('feedStatus').className='pill bad';
-      }finally{
-        timer=setTimeout(refresh,15000);
       }
     }
 
