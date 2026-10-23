@@ -7,12 +7,12 @@ import {
 } from "./position-state.mjs";
 
 const MCL_DOLLARS_PER_POINT = 100;
-const ROBINHOOD_FEE_PER_SIDE = 0; // Costs not estimated for MCL; all P&L is before fees and slippage.
+const ROBINHOOD_FEE_PER_SIDE = 1.12; // Estimated Robinhood Gold MCL all-in cost per side as of 2026-10-23: $0.50 commission + $0.02 NFA + $0.60 NYMEX exchange.
 const ROBINHOOD_ROUND_TRIP_FEE = ROBINHOOD_FEE_PER_SIDE * 2;
 const V3_START_TRADE_NUMBER = 1;
 const V4_START_TRADE_NUMBER = 1;
 const LEGACY_V3_VERSION = "WTC MCL V1 · SHADOW";
-const LEDGER_VERSION = 10;
+const LEDGER_VERSION = 11; // MCL V1 exchange-fee normalization
 const STALE_FEED_INCIDENT = {
   primaryTradeNumber:-1,
   voidTradeNumbers:new Set<number>(),
@@ -80,16 +80,33 @@ function incidentOriginal(trade:any){
   };
 }
 
+function updateEstimatedClosedTradeFees(trades:any[]){
+  let changed=false;
+  for(const trade of trades){
+    if(trade?.status !== "CLOSED" || !Number.isFinite(Number(trade?.theoreticalPnl))) continue;
+    const fee=round(ROBINHOOD_ROUND_TRIP_FEE,2);
+    const net=round(Number(trade.theoreticalPnl)-fee,2);
+    if(trade.roundTripFees !== fee || trade.netPnlBeforeSlippage !== net){
+      trade.roundTripFees=fee;
+      trade.netPnlBeforeSlippage=net;
+      trade.feeModelVersion="MCL_EST_FEE_2026_10_23";
+      changed=true;
+    }
+  }
+  return changed;
+}
+
 export function repairKnownLedgerIncidents(saved:any){
   const trades=normalizeTradeHistory(Array.isArray(saved?.trades)?saved.trades:[]);
+  const feesChanged=updateEstimatedClosedTradeFees(trades);
   if(Number(saved?.version || 0) >= LEDGER_VERSION){
     const primary=trades.find((t:any)=>Number(t?.tradeNumber)===STALE_FEED_INCIDENT.primaryTradeNumber);
     const restoredSignal=primary?.status === "OPEN" && primary?.auditStatus === "RECONSTRUCTED" && actionable(primary?.direction)
       ? primary.direction
       : null;
-    return {ledger:{...saved,trades},repaired:false,restoredSignal};
+    return {ledger:{...saved,trades,version:LEDGER_VERSION},repaired:feesChanged,restoredSignal};
   }
-  let repaired=false;
+  let repaired=feesChanged;
   let restoredSignal:any=null;
 
   const primary=trades.find((t:any)=>Number(t?.tradeNumber)===STALE_FEED_INCIDENT.primaryTradeNumber);
@@ -291,7 +308,7 @@ export async function updateSignalLog(current:any){
     v4StartTradeNumber:V4_START_TRADE_NUMBER,
     riskModel:RISK_MODEL,
     multiplier:MCL_DOLLARS_PER_POINT,
-    feeModel:{provider:"Robinhood Gold",perSide:ROBINHOOD_FEE_PER_SIDE,roundTrip:ROBINHOOD_ROUND_TRIP_FEE},
+    feeModel:{provider:"Robinhood Gold + NFA + NYMEX MCL (estimated, 2026-10-23)",perSide:ROBINHOOD_FEE_PER_SIDE,roundTrip:ROBINHOOD_ROUND_TRIP_FEE,slippageIncluded:false},
     createdAt:saved.createdAt || now,
     updatedAt:now,
     retention:"permanent",

@@ -50,7 +50,7 @@ export default async (_req:Request,_context:Context) => {
     voidTrades:trades.filter(t=>t?.status === "VOID").length,
     multiplier:MCL_DOLLARS_PER_POINT,
     basis:"1 MCL contract",
-    feeModel:{provider:"Unmodeled MCL costs",roundTrip:0},
+    feeModel:{provider:"Robinhood Gold + NFA + NYMEX MCL (estimated)",perSide:ROBINHOOD_ROUND_TRIP_FEE/2,roundTrip:ROBINHOOD_ROUND_TRIP_FEE,slippageIncluded:false},
     riskModel:saved.riskModel || null,
     downloadUrl:"/api/signal-log.csv",
     rawDecisionDownloadUrl:"/api/decision-log.csv",
@@ -69,7 +69,7 @@ export default async (_req:Request,_context:Context) => {
       openPoints:openMark?.points ?? null,
     },
     trades:rows,
-    note:`${STRATEGY_VERSION}. MCL V1 paper trade history begins with trade #1. Entries and exits represent shadow signals, not exchange fills. Gross P&L assumes one MCL contract (100 barrels per $1/bbl) and excludes transaction fees, bid/ask spreads and slippage; no fixed hard stop is enabled in this research version.`
+    note:`${STRATEGY_VERSION}. MCL V1 paper trade history begins with trade #1. Entries and exits represent shadow signals, not exchange fills. Gross P&L assumes one MCL contract (100 barrels per $1/bbl). Net P&L deducts estimated $2.24 round-trip Robinhood Gold, NYMEX and NFA fees per contract as of October 23, 2026; bid/ask spreads and slippage are NOT included. No fixed hard stop is enabled in shadow research.`
   },{headers:{"Cache-Control":"no-store"}});
 };
 
