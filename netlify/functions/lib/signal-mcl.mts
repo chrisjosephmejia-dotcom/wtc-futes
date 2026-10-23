@@ -198,6 +198,32 @@ export async function computeSignal(){
   const buyAlignment=t30.state==="BUY"&&t15.state==="BUY"&&t5.state==="BUY"&&t1.state==="BUY"&&price>vw&&price>=or.mid;
   const sellAlignment=t30.state==="SELL"&&t15.state==="SELL"&&t5.state==="SELL"&&t1.state==="SELL"&&price<vw&&price<=or.mid;
 
+  // Read-only entry-gate audit: never changes BUY/SELL, scoring or strategy thresholds.
+  const entryCheck=(side:"LONG"|"SHORT")=>{
+    const want=side==="LONG"?"BUY":"SELL";
+    const blocks:string[]=[];
+    if(!session)blocks.push("SESSION CLOSED");
+    if(!inEntry)blocks.push("ENTRY WINDOW CLOSED");
+    if(!feedActive)blocks.push("BAR STALE");
+    for(const [name,f] of [["30M",t30],["15M",t15],["5M",t5],["1M",t1]] as const)
+      if(f.state!==want)blocks.push(name+" IS "+f.state+", NEED "+want);
+    if(side==="LONG"&&!(price>vw))blocks.push("PRICE BELOW SESSION VWAP");
+    if(side==="SHORT"&&!(price<vw))blocks.push("PRICE ABOVE SESSION VWAP");
+    if(side==="LONG"&&!(price>=or.mid))blocks.push("PRICE BELOW OR MIDPOINT");
+    if(side==="SHORT"&&!(price<=or.mid))blocks.push("PRICE ABOVE OR MIDPOINT");
+    if(side==="LONG"&&score<buyThreshold)blocks.push("SCORE BELOW LONG THRESHOLD");
+    if(side==="SHORT"&&score>-sellThreshold)blocks.push("SCORE ABOVE SHORT THRESHOLD");
+    const otherChecksPassed=blocks.length===0;
+    if(extended)blocks.push("VWAP EXTENSION");
+    return {otherChecksPassed,eligible:otherChecksPassed&&!extended,blockers:blocks};
+  };
+  const entryDiagnostics={
+    anchor:"NYMEX Globex 17:00 CT (previous evening)",
+    sessionBars:sess.length,
+    volumeBearingBars:sess.filter(b=>b.v>0).length,
+    long:entryCheck("LONG"),short:entryCheck("SHORT")
+  };
+
   let signal:"BUY MCL"|"SELL MCL"|"WAIT"="WAIT",reason="ALIGNMENT CONFLICT";
   if(!session)reason=clock.reason;
   else if(!inEntry)reason=clock.reason;
@@ -216,7 +242,7 @@ export async function computeSignal(){
     instrument:{symbol:mcl.symbol,streamerSymbol:mcl.streamerSymbol,exchange:mcl.exchange,expirationDate:mcl.expirationDate,minuteBars:minuteBars.length,dailyBars:dailyBars.length},
     price:round(price,2),fromOpen:round(fromOpen,2),open:round(open,2),vwap:round(vw,2),openingRange:{low:round(or.low,2),high:round(or.high,2)},
     score,scoreRange:"-9 to +9",threshold:{buy:buyThreshold,sell:sellThreshold},extension:{blocked:extended,pct:round(extensionPct,2),limitPct:round(extensionLimit,2)},
-    volumeRatio:round(volRatio,1),daily,
+    volumeRatio:round(volRatio,1),daily,entryDiagnostics,
     frames:{"30m":t30,"15m":t15,"5m":t5,"1m":t1},
     source:`${mcl.source} ${mcl.symbol}`,
     sourceNote:"Direct MCL futures candles from tastytrade/DXLink. Normal NYMEX Globex hours are Sun-Fri 17:00-16:00 CT with a daily 16:00-17:00 maintenance break; stale data is blocked."
