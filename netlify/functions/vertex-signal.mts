@@ -50,10 +50,14 @@ export default async(req:Request,_ctx:Context)=>{
   const downsideTurn=highForming&&rsi5>=55&&mom5<=-.03&&mom1<=0&&t5.state!=="BULLISH";
   const upsideTurn=lowForming&&rsi5<=45&&mom5>=.03&&mom1>=0&&t5.state!=="BEARISH";
 
+  // Expiration-sensitive directional context; Vertex turn and entry confirmation remain unchanged.
+  const dte=context.weeklyExpiry.calendarDays,horizonMode=dte<=1?"INTRADAY":dte>=14?"EXTENDED":"WEEKLY";
+  const trendWeight=horizonMode==="INTRADAY"?4:horizonMode==="EXTENDED"?13:10;
+  const frameWeights=horizonMode==="INTRADAY"?[6,6,7]:horizonMode==="EXTENDED"?[2,2,2]:[4,4,4];
   let outlookScore=0;
-  if(trend==="BULLISH")outlookScore+=10;else if(trend==="BEARISH")outlookScore-=10;
-  for(const x of [t30,t15,t5]){if(x.state==="BULLISH")outlookScore+=4;else if(x.state==="BEARISH")outlookScore-=4}
-  outlookScore+=clamp(move5*4,-6,6);
+  if(trend==="BULLISH")outlookScore+=trendWeight;else if(trend==="BEARISH")outlookScore-=trendWeight;
+  for(const [i,x] of [t30,t15,t5].entries()){if(x.state==="BULLISH")outlookScore+=frameWeights[i];else if(x.state==="BEARISH")outlookScore-=frameWeights[i]}
+  outlookScore+=horizonMode==="INTRADAY"?Math.max(-2,Math.min(2,move5)):clamp(move5*4,-6,6);
   const upProbability=Math.round(clamp(50+outlookScore*.46,20,80)),downProbability=100-upProbability;
   // Expiry-aware realized-vol proxy: remaining regular-session minutes count for same-day expiries.
    const horizonNow=ctParts(Date.now()/1000),clock=horizonNow.hour*60+horizonNow.minute;
@@ -112,7 +116,7 @@ export default async(req:Request,_ctx:Context)=>{
     timeframes:{m30:t30,m15:t15,m5:t5},
     daily:{atrPct,trend,rsi:drsi,move5,move20,range20:pos20,range52:pos52,realizedVol:rv,ema20:dema20,ema50:dema50,ema200:dema200},
     weeklyExpiry:{...context.weeklyExpiry,remainingSessions:sessions},availableExpiries:context.availableExpiries,today:context.today,
-    outlook:{fridayBias,upProbability,downProbability,estimatedLow,estimatedHigh,rangePct,sessions,score:outlookScore},
+    outlook:{fridayBias,upProbability,downProbability,estimatedLow,estimatedHigh,rangePct,sessions,score:outlookScore,horizonMode},
     eventRisk:{events:context.events,eventsBeforeExpiry:context.eventsBeforeExpiry,coverageEnd:context.horizon,displayHorizon:context.displayHorizon},
     polymarket:context.polymarket,
     factors,source:d.source,updatedAt:new Date().toISOString()
