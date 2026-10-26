@@ -29,9 +29,9 @@ function realizedVol(d:Bar[]){const x=d.slice(-21);if(x.length<3)return NaN;cons
 
 export default async(req:Request,_ctx:Context)=>{
  try{
-  const u=new URL(req.url),ticker=(u.searchParams.get("ticker")||"SPY").trim().toUpperCase();
+  const u=new URL(req.url),ticker=(u.searchParams.get("ticker")||"SPY").trim().toUpperCase(),requestedExpiry=u.searchParams.get("expiry");
   if(!/^[A-Z][A-Z0-9./-]{0,9}$/.test(ticker))return Response.json({ok:false,error:"invalid_ticker"},{status:400});
-  const [d,context]=await Promise.all([getEquityBars(ticker),getMarketContext(ticker)]);
+  const [d,context]=await Promise.all([getEquityBars(ticker),getMarketContext(ticker,requestedExpiry)]);
   const mins=d.minuteBars,daily=d.dailyBars;
   const session=regularSession(mins);if(session.length<20)throw new Error("Not enough regular-session history");
   const five=resample(session,5),fifteen=resample(session,15),thirty=resample(session,30);
@@ -55,7 +55,13 @@ export default async(req:Request,_ctx:Context)=>{
   for(const x of [t30,t15,t5]){if(x.state==="BULLISH")outlookScore+=4;else if(x.state==="BEARISH")outlookScore-=4}
   outlookScore+=clamp(move5*4,-6,6);
   const upProbability=Math.round(clamp(50+outlookScore*.46,20,80)),downProbability=100-upProbability;
-  const sessions=Math.max(1,context.weeklyExpiry.sessions||1),rangePct=(Number.isFinite(rv)?rv:15)/Math.sqrt(252)*Math.sqrt(sessions);
+  // Expiry-aware realized-vol proxy: remaining regular-session minutes count for same-day expiries.
+   const horizonNow=ctParts(Date.now()/1000),clock=horizonNow.hour*60+horizonNow.minute;
+   const weekdayNow=new Date(horizonNow.date+"T12:00:00Z").getUTCDay();
+   const todayFraction=weekdayNow>=1&&weekdayNow<=5&&context.weeklyExpiry.date>=horizonNow.date?
+    Math.max(0,Math.min(1,(900-Math.max(510,clock))/390)):0;
+   const sessions=context.weeklyExpiry.sessions+todayFraction;
+   const rangePct=(Number.isFinite(rv)?rv:15)/Math.sqrt(252)*Math.sqrt(Math.max(0,sessions));
   const estimatedLow=last.c*(1-rangePct/100),estimatedHigh=last.c*(1+rangePct/100);
   const fridayBias=upProbability>=58?"BULLISH":upProbability<=42?"BEARISH":"MIXED";
 
@@ -105,9 +111,9 @@ export default async(req:Request,_ctx:Context)=>{
     intraday:{price:last.c,sessionDate,lastBarAt:new Date(last.t*1000).toISOString(),sessionLow:lo,sessionHigh:hi,sessionLocation:loc,vwap,vwapPct,rsi5,momentum5:mom5,momentum1:mom1,stretchThresholdPct:stretch,formingStretchPct:formingStretch},
     timeframes:{m30:t30,m15:t15,m5:t5},
     daily:{atrPct,trend,rsi:drsi,move5,move20,range20:pos20,range52:pos52,realizedVol:rv,ema20:dema20,ema50:dema50,ema200:dema200},
-    weeklyExpiry:context.weeklyExpiry,
+    weeklyExpiry:{...context.weeklyExpiry,remainingSessions:sessions},availableExpiries:context.availableExpiries,today:context.today,
     outlook:{fridayBias,upProbability,downProbability,estimatedLow,estimatedHigh,rangePct,sessions,score:outlookScore},
-    eventRisk:{events:context.events,eventsBeforeExpiry:context.eventsBeforeExpiry},
+    eventRisk:{events:context.events,eventsBeforeExpiry:context.eventsBeforeExpiry,coverageEnd:context.horizon,displayHorizon:context.displayHorizon},
     polymarket:context.polymarket,
     factors,source:d.source,updatedAt:new Date().toISOString()
   },{headers:{"Cache-Control":"no-store"}});

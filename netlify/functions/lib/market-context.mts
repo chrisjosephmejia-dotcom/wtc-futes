@@ -27,22 +27,29 @@ async function tastyToken(){
  const r=await fetch(`${BASE}/oauth/token`,{method:"POST",headers:{"User-Agent":UA,"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify({grant_type:"refresh_token",refresh_token:refreshToken,client_secret:clientSecret}),signal:AbortSignal.timeout(6500)});
  const b:any=await readJson(r);if(!r.ok||!b?.access_token)throw new Error("Tastytrade OAuth failed");return b.access_token as string;
 }
-async function listedWeeklyExpiry(ticker:string,today:string){
+async function listedExpirySelection(ticker:string,today:string,requested:string|null){
  const target=targetFriday(today);
  try{
   const token=await tastyToken();
   const r=await fetch(`${BASE}/option-chains/${encodeURIComponent(ticker)}/nested`,{headers:{Authorization:`Bearer ${token}`,"User-Agent":UA,Accept:"application/json"},signal:AbortSignal.timeout(5000)});
-  const b:any=await readJson(r);if(!r.ok)throw new Error("option chain");
+  const b:any=await readJson(r);if(!r.ok)throw new Error("Tastytrade option chain unavailable");
   const exps:any[]=(b?.data?.items||[]).flatMap((x:any)=>Array.isArray(x?.expirations)?x.expirations:[]);
-  const dates=exps.map((e:any)=>({date:String(e?.["expiration-date"]||e?.expirationDate||""),type:String(e?.["expiration-type"]||e?.expirationType||"")})).filter((x:any)=>/^\d{4}-\d{2}-\d{2}$/.test(x.date)&&x.date>=target);
-  dates.sort((a:any,b:any)=>a.date.localeCompare(b.date));
-  const fridays=dates.filter((x:any)=>dateUTC(x.date).getUTCDay()===5);
-  const chosen=fridays[0];if(!chosen)throw new Error("no listed Friday expiry");
+  const byDate=new Map<string,{date:string;type:string}>();
+  for(const e of exps){
+   const date=String(e?.["expiration-date"]||e?.expirationDate||"");
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||date<today)continue;
+   if(!byDate.has(date))byDate.set(date,{date,type:String(e?.["expiration-type"]||e?.expirationType||"")});
+  }
+  const availableExpiries=[...byDate.values()].sort((a,b)=>a.date.localeCompare(b.date));
+  if(!availableExpiries.length)throw new Error("No current expirations in Tastytrade option chain");
+  const chosen=requested?availableExpiries.find(x=>x.date===requested):availableExpiries.find(x=>x.date>=target&&dateUTC(x.date).getUTCDay()===5);
+  if(!chosen)throw new Error(requested?"Selected date is not a listed expiration for "+ticker:"No listed Friday expiry found");
   const rolled=dateUTC(today).getUTCDay()===3||dateUTC(today).getUTCDay()===4;
-  return {date:chosen.date,label:rolled?"Following Friday · Wednesday rollover":"Listed Friday expiry",source:"tastytrade option chain",expirationType:chosen.type||null};
- }catch{
-  const wd=dateUTC(today).getUTCDay(),rolled=wd===3||wd===4;
-  return {date:target,label:rolled?"Following Friday · Wednesday rollover":"Upcoming Friday",source:"calendar fallback",expirationType:null};
+  return {expiry:{date:chosen.date,label:requested?"User-selected expiration":rolled?"Following Friday · Wednesday rollover":"Listed Friday expiry",source:"tastytrade option chain",expirationType:chosen.type||null,selected:!!requested},availableExpiries};
+ }catch(e:any){
+  if(requested)throw new Error(e?.message||"Cannot validate custom expiration");
+  const rolled=dateUTC(today).getUTCDay()===3||dateUTC(today).getUTCDay()===4;
+  return {expiry:{date:target,label:rolled?"Following Friday · Wednesday rollover":"Upcoming Friday",source:"calendar fallback",expirationType:null,selected:false},availableExpiries:[]};
  }
 }
 async function blsEvents(today:string,horizon:string):Promise<RiskEvent[]>{
@@ -78,11 +85,17 @@ async function polymarketOverlay(year:number){
   return {available:true,points,tilt:points>=2?"BULLISH":points<=-2?"BEARISH":"NEUTRAL",markets:shown,cap:8,eventTitle:ev?.title||"S&P 500 prediction markets"};
  }catch{return {available:false,points:0,tilt:"NEUTRAL",markets:[],cap:8,eventTitle:"S&P 500 prediction markets"}}
 }
-export async function getMarketContext(ticker="SPY"){
- const key=ticker.toUpperCase(),hit=cache.get(key);if(hit&&Date.now()-hit.at<300000)return hit.value;
- const today=centralToday(),h=new Date(dateUTC(today));h.setUTCDate(h.getUTCDate()+28);const horizon=isoDate(h);
- const [bls,poly,listed]=await Promise.all([blsEvents(today,horizon),polymarketOverlay(Number(today.slice(0,4))),listedWeeklyExpiry(key,today)]);
- const events=[...bls,...fomcEvents(today,horizon),...opexEvents(today,horizon)].sort((a,b)=>a.date.localeCompare(b.date)),expiry=listed.date,beforeExpiry=events.filter(e=>e.date<=expiry);
- const value={today,horizon,weeklyExpiry:{...listed,calendarDays:calendarDays(today,expiry),sessions:sessionsUntil(today,expiry)},events,eventsBeforeExpiry:beforeExpiry,polymarket:poly};
+export async function getMarketContext(ticker="SPY",requestedExpiry:string|null=null){
+ const symbol=ticker.toUpperCase(),today=centralToday();
+ if(requestedExpiry&&(!/^\d{4}-\d{2}-\d{2}$/.test(requestedExpiry)||requestedExpiry<today))throw new Error("Select a valid expiration date today or later");
+ const key=symbol+":"+(requestedExpiry||"AUTO")+":"+today,hit=cache.get(key);
+ if(hit&&Date.now()-hit.at<300000)return hit.value;
+ const h=new Date(dateUTC(today));h.setUTCDate(h.getUTCDate()+120);
+ const horizon=isoDate(h),displayHorizon=isoDate(new Date(dateUTC(today).getTime()+28*DAY));
+ const [listed,bls,poly]=await Promise.all([listedExpirySelection(symbol,today,requestedExpiry),blsEvents(today,horizon),polymarketOverlay(Number(today.slice(0,4)))]);
+ const expiry=listed.expiry.date;
+ const events=[...bls,...fomcEvents(today,horizon),...opexEvents(today,horizon)].sort((a,b)=>a.date.localeCompare(b.date));
+ const beforeExpiry=events.filter(e=>e.date<=expiry);
+ const value={today,horizon,displayHorizon,weeklyExpiry:{...listed.expiry,calendarDays:calendarDays(today,expiry),sessions:sessionsUntil(today,expiry)},availableExpiries:listed.availableExpiries,events,eventsBeforeExpiry:beforeExpiry,polymarket:poly};
  cache.set(key,{at:Date.now(),value});return value;
 }
