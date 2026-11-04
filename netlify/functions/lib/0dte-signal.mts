@@ -132,8 +132,8 @@ export function build0DteSignal(input:{
   if(score>=7){setup="CALL SETUP — WAIT FOR TRIGGER";if(callTrigger){directionalRaw="CALL";setup="BUY XSP CALL";trigger=callTrigger}}
   else if(score<=-7){setup="PUT SETUP — WAIT FOR TRIGGER";if(putTrigger){directionalRaw="PUT";setup="BUY XSP PUT";trigger=putTrigger}}
 
-  const minutes=now.minute,marketOpen=minutes>=510&&minutes<=900,newEntryWindow=minutes>=515&&minutes<=630;
-  const openingBlock=minutes>=510&&minutes<515,lateBlock=minutes>630;
+  const minutes=now.minute,marketOpen=minutes>=510&&minutes<=900,newEntryWindow=minutes>=540&&minutes<600;
+  const openingBlock=minutes>=510&&minutes<515,earlyBlock=minutes>=515&&minutes<540,lateBlock=minutes>=600;
   const chop=crosses>=4,stale=lastBarAgeSec>150;
 
   let raw=directionalRaw;
@@ -141,7 +141,8 @@ export function build0DteSignal(input:{
   if(!marketOpen)blockReason="MARKET CLOSED";
   else if(stale)blockReason="WAIT — STALE DATA";
   else if(openingBlock)blockReason="NO NEW ENTRIES — FIRST 5 MIN";
-  else if(lateBlock)blockReason="NO NEW ENTRIES — AFTER 10:30 CT";
+  else if(earlyBlock)blockReason="NO NEW ENTRIES — BEFORE 9:00 CT";
+  else if(lateBlock)blockReason="NO NEW ENTRIES — AFTER 10:00 CT";
   else if(input.highImpactLockout)blockReason=`WAIT — EVENT RISK${input.highImpactReason?`: ${input.highImpactReason}`:""}`;
   else if(chop)blockReason="WAIT — CHOP";
   if(blockReason)raw="WAIT";
