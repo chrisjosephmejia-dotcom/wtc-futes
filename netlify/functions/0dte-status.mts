@@ -26,7 +26,7 @@ export default async(_req:Request,_ctx:Context)=>{
     const ledger=Array.isArray(trades)?trades:[];
     return Response.json({
       ok:true,
-      status:status||{ok:true,version:"WTC XSP 0DTE V1",headline:"INITIALIZING"},
+      status:status||{ok:true,version:"WTC XSP 0DTE V2",headline:"INITIALIZING"},
       pushSubscribers:subscribers,
       performance:stats(ledger),
       recentTrades:ledger.slice(-25).reverse()
