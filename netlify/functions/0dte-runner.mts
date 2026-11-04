@@ -49,11 +49,11 @@ export default async()=>{
   try{
     let state=await loadState(store,now.date);
     if(now.total<510||now.total>900){
-      const status={ok:true,version:"WTC XSP 0DTE V1",updatedAt:iso(),nowCt:now,session:"CLOSED",headline:"MARKET CLOSED",state};
+      const status={ok:true,version:"WTC XSP 0DTE V2",updatedAt:iso(),nowCt:now,session:"CLOSED",headline:"MARKET CLOSED",state};
       await store.setJSON("status/current.json",status);return;
     }
     if(now.total<515){
-      const status={ok:true,version:"WTC XSP 0DTE V1",updatedAt:iso(),nowCt:now,session:"OPENING_BLOCK",headline:"NO NEW ENTRIES — FIRST 5 MIN",state};
+      const status={ok:true,version:"WTC XSP 0DTE V2",updatedAt:iso(),nowCt:now,session:"OPENING_BLOCK",headline:"NO NEW ENTRIES — FIRST 5 MIN",state};
       await store.setJSON("status/current.json",status);return;
     }
 
@@ -109,7 +109,7 @@ export default async()=>{
         if(reason){
           const midPnl=pnl(pos.entryMid,mid);
           const trade={
-            id:pos.id,version:"WTC XSP 0DTE V1",date:state.date,direction:pos.direction,setup:pos.entryTrigger,
+            id:pos.id,version:"WTC XSP 0DTE V2",date:state.date,direction:pos.direction,setup:pos.entryTrigger,
             contract:pos.contract.symbol,strike:pos.contract.strike,expiration:pos.contract.expiration,optionType:pos.contract.optionType,
             entryTime:pos.entryTime,exitTime:iso(),durationMin:Math.max(0,Math.round((nowMs-pos.entryMs)/60000)),
             entrySpy:pos.entrySpy,exitSpy:signal.spy.price,entryXsp:pos.entryXsp,exitXsp:xspPrice,
@@ -173,7 +173,7 @@ export default async()=>{
     if(position&&optionQuote&&currentPnl===null&&optionQuote.bid!==null)currentPnl=pnl(position.entryAsk,Number(optionQuote.bid));
     const headline=position?`HOLD XSP ${position.direction}`:action?.type==="BLOCK"?action.reason:signal.setup;
     const status={
-      ok:true,version:"WTC XSP 0DTE V1",updatedAt:iso(),nowCt:now,session:"REGULAR",
+      ok:true,version:"WTC XSP 0DTE V2",updatedAt:iso(),nowCt:now,session:"REGULAR",
       headline,signal,eventRisk:events,state,position,optionQuote,currentPnl,xspPrice,marketQuotes:snapshot.quotes,marketHealth:{...snapshot.health,restOk:snapshot.ok!==false,restError:snapshot.error||null,spyDxlink:true,esDxlink:Boolean(esBars)},lastAction:action||state.lastAction
     };
 
@@ -192,7 +192,7 @@ export default async()=>{
       appendRaw(store,now.date,rawRow)
     ]);
   }catch(e:any){
-    const error={ok:false,version:"WTC XSP 0DTE V1",updatedAt:iso(),nowCt:now,error:e?.message||String(e)};
+    const error={ok:false,version:"WTC XSP 0DTE V2",updatedAt:iso(),nowCt:now,error:e?.message||String(e)};
     await store.setJSON("status/current.json",error).catch(()=>{});
     console.error("WTC 0DTE runner",e);
   }
