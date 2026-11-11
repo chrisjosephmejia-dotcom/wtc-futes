@@ -1,4 +1,5 @@
 import WebSocket from "ws";
+import { store } from "./storage.mjs";
 
 export type Bar = { t:number; o:number; h:number; l:number; c:number; v:number };
 
@@ -272,6 +273,22 @@ function toBars(candles:Candle[]):Bar[] {
   return out.sort((a,b)=>a.t-b.t);
 }
 
+// Keep the minute history across the one-minute scheduled executions.
+// An overlap is re-fetched each cycle to repair provider gaps and late revisions.
+// An interruption longer than 45 minutes forces a full seven-day backfill.
+const MINUTE_CACHE_KEY = "nq-minute-bars-v1";
+const MINUTE_CACHE_MIN = 1000;
+const MINUTE_CACHE_MAX = 8000;
+const MINUTE_OVERLAP_MS = 30 * 60 * 1000;
+const MAX_INCREMENTAL_GAP_MS = 45 * 60 * 1000;
+
+function mergeMinuteBars(previous: Bar[], fresh: Bar[]) {
+  const byTime = new Map<number, Bar>();
+  for (const b of previous) if (Number.isFinite(b.t)) byTime.set(b.t, b);
+  for (const b of fresh) if (Number.isFinite(b.t)) byTime.set(b.t, b);
+  return [...byTime.values()].sort((a,b)=>a.t-b.t).slice(-MINUTE_CACHE_MAX);
+}
+
 export async function getNqBars() {
   const accessToken = await getAccessToken();
   const [future, quoteAuth] = await Promise.all([
@@ -280,22 +297,89 @@ export async function getNqBars() {
   ]);
   const streamerSymbol = future["streamer-symbol"] as string;
   const now = Date.now();
+  const cacheStore = store("mnq-market-bars");
+  let saved: any = null;
+  try {
+    saved = await cacheStore.get(MINUTE_CACHE_KEY, { type: "json" });
+  } catch (error:any) {
+    console.warn("NQ minute cache read failed; performing full history fetch", error?.message || String(error));
+  }
+  const cachedBars: Bar[] = saved?.symbol === future.symbol && Array.isArray(saved?.bars)
+    ? saved.bars.filter((b:any) =>
+        Number.isFinite(b?.t) && Number.isFinite(b?.o) &&
+        Number.isFinite(b?.h) && Number.isFinite(b?.l) &&
+        Number.isFinite(b?.c) && Number.isFinite(b?.v))
+    : [];
+  const lastCachedTimeMs = (cachedBars.at(-1)?.t || 0) * 1000;
+  const useIncremental = cachedBars.length >= MINUTE_CACHE_MIN &&
+    lastCachedTimeMs > 0 &&
+    now >= lastCachedTimeMs &&
+    now - lastCachedTimeMs <= MAX_INCREMENTAL_GAP_MS;
+  const fromTime = useIncremental
+    ? lastCachedTimeMs - MINUTE_OVERLAP_MS
+    : now - 7 * 24 * 60 * 60 * 1000;
   const dailyPromise = fetchHistory(
     quoteAuth["dxlink-url"], quoteAuth.token, streamerSymbol, 1, "d",
-    now - 210*24*60*60*1000, 55,
+    now - 210 * 24 * 60 * 60 * 1000, 55,
   ).then((data)=>({ok:true as const,data,error:null as string|null}))
    .catch((error:any)=>({ok:false as const,data:null,error:error?.message||String(error)}));
 
-  const [minute,dailyResult] = await Promise.all([
-    fetchHistory(quoteAuth["dxlink-url"], quoteAuth.token, streamerSymbol, 1, "m", now - 7*24*60*60*1000, 1000),
-    dailyPromise,
-  ]);
+  let minute = await fetchHistory(
+    quoteAuth["dxlink-url"], quoteAuth.token, streamerSymbol, 1, "m",
+    fromTime, useIncremental ? 1 : MINUTE_CACHE_MIN,
+  );
+  let incoming = toBars(minute.candles);
+  if (!minute.snapshotComplete || !incoming.length) {
+    throw new Error("NQ 1m snapshot incomplete or empty");
+  }
+  let minuteBars = useIncremental ? mergeMinuteBars(cachedBars, incoming) : incoming.slice(-MINUTE_CACHE_MAX);
 
-  const minuteBars = toBars(minute.candles);
-  if (!minute.snapshotComplete || minuteBars.length < 1000) throw new Error(`NQ 1m history incomplete (${minuteBars.length} bars)`);
+  // If cache cannot provide the required lookback, rebuild from provider history.
+  if (minuteBars.length < MINUTE_CACHE_MIN) {
+    minute = await fetchHistory(
+      quoteAuth["dxlink-url"], quoteAuth.token, streamerSymbol, 1, "m",
+      now - 7 * 24 * 60 * 60 * 1000, MINUTE_CACHE_MIN,
+    );
+    incoming = toBars(minute.candles);
+    if (!minute.snapshotComplete) throw new Error("NQ 1m full backfill incomplete");
+    minuteBars = incoming.slice(-MINUTE_CACHE_MAX);
+  }
+  if (minuteBars.length < MINUTE_CACHE_MIN) {
+    throw new Error(`NQ 1m history incomplete (${minuteBars.length} bars)`);
+  }
 
-  let dailyBars:Bar[] = [];
-  let dailyError:string|null = dailyResult.error;
+  // A completed HISTORY snapshot can still end with an old candle. In that
+  // case, open one new DXLink session and request a recent overlap before
+  // reporting the feed paused. The independent REST quote never invents bars.
+  let recoveryAttempted = false;
+  if (now - (minuteBars.at(-1)?.t || 0) * 1000 > 90_000) {
+    recoveryAttempted = true;
+    try {
+      const recovery = await fetchHistory(
+        quoteAuth["dxlink-url"], quoteAuth.token, streamerSymbol, 1, "m",
+        now - 60 * 60 * 1000, 1,
+      );
+      if (recovery.snapshotComplete && recovery.candles.length) {
+        minuteBars = mergeMinuteBars(minuteBars, toBars(recovery.candles));
+      }
+    } catch (error:any) {
+      console.warn("NQ DXLink recovery attempt failed", error?.message || String(error));
+    }
+  }
+
+  // Only cache a successfully completed provider snapshot. Never synthesize
+  // candles or promote a cached timestamp to make the feed appear live.
+  try {
+    await cacheStore.setJSON(MINUTE_CACHE_KEY, {
+      symbol: future.symbol, bars: minuteBars, cachedAt: new Date().toISOString(),
+    });
+  } catch (error:any) {
+    console.warn("NQ minute cache write failed; fresh bars remain usable", error?.message || String(error));
+  }
+
+  const dailyResult = await dailyPromise;
+  let dailyBars: Bar[] = [];
+  let dailyError: string | null = dailyResult.error;
   if (dailyResult.ok && dailyResult.data) {
     dailyBars = toBars(dailyResult.data.candles);
     if (!dailyResult.data.snapshotComplete || dailyBars.length < 30) {
@@ -305,13 +389,15 @@ export async function getNqBars() {
   }
 
   return {
-    symbol:future.symbol as string,
+    symbol: future.symbol as string,
     streamerSymbol,
-    exchange:future.exchange || "CME",
-    expirationDate:future["expiration-date"] || null,
+    exchange: future.exchange || "CME",
+    expirationDate: future["expiration-date"] || null,
     minuteBars,
     dailyBars,
-    dailyHealth:{ok:dailyBars.length>=30,error:dailyError},
-    source:"tastytrade DXLink / CME",
+    dailyHealth: { ok: dailyBars.length >= 30, error: dailyError },
+    source: "tastytrade DXLink / CME",
+    minuteHistorySource: useIncremental ? "cached+DXLink-overlap" : "DXLink-full-backfill",
+    recoveryAttempted,
   };
 }

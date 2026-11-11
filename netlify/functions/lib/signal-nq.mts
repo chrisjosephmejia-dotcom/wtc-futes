@@ -167,7 +167,8 @@ export async function computeSignal(){
   const last=sess.at(-1)!,lp=parts(last.t),ageSec=Math.max(0,(Date.now()/1000)-last.t);
   const lastSessionKey=cmeSessionKey(lp);
   const sameSession=Boolean(clock.sessionKey && lastSessionKey===clock.sessionKey);
-  const feedActive=session&&sameSession&&ageSec<=300;
+  // A 1m bar older than 90s is not sufficient to authorize a new signal.
+  const feedActive=session&&sameSession&&ageSec<=90;
   const price=last.c,open=sess[0].o,vw=vwap(sess),or=openingRange(sess);
   const b5=resample(minuteBars,5),b15=resample(minuteBars,15),b30=resample(minuteBars,30);
   const t30=tfState(b30),t15=tfState(b15),t5=tfState(b5),t1=tfState(minuteBars,true),daily=dailyState(dailyBars);

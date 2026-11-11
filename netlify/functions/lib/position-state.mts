@@ -76,7 +76,8 @@ export function resolvePositionState(raw:any,previousSignal:any,openTrade:any=nu
   const dailyState=tradeDailyState(raw,openTrade);
   const takeProfitPoints=takeProfitPointsFor(raw,previous,openTrade);
   const lockActive=lifecycleLockActive(raw,riskLockDirection);
-  const shadowRisk=shadowRiskFor(raw,previous,openTrade);
+  // Historical highs/lows must never be shown as current stop telemetry.
+  const shadowRisk=feedActive ? shadowRiskFor(raw,previous,openTrade) : null;
   let signal="WAIT";
   let reason=rawReason;
   let positionEvent="FLAT";

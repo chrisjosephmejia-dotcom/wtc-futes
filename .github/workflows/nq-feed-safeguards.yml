@@ -1,0 +1,16 @@
+name: NQ feed safeguards
+on:
+  push:
+    branches: [main, 'fix/**']
+  pull_request:
+    branches: [main]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify quote freshness and fail-closed position state
+        run: node --experimental-strip-types --test tests/nq-feed.test.mjs
