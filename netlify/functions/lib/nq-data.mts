@@ -348,6 +348,25 @@ export async function getNqBars() {
     throw new Error(`NQ 1m history incomplete (${minuteBars.length} bars)`);
   }
 
+  // A completed HISTORY snapshot can still end with an old candle. In that
+  // case, open one new DXLink session and request a recent overlap before
+  // reporting the feed paused. The independent REST quote never invents bars.
+  let recoveryAttempted = false;
+  if (now - (minuteBars.at(-1)?.t || 0) * 1000 > 90_000) {
+    recoveryAttempted = true;
+    try {
+      const recovery = await fetchHistory(
+        quoteAuth["dxlink-url"], quoteAuth.token, streamerSymbol, 1, "m",
+        now - 60 * 60 * 1000, 1,
+      );
+      if (recovery.snapshotComplete && recovery.candles.length) {
+        minuteBars = mergeMinuteBars(minuteBars, toBars(recovery.candles));
+      }
+    } catch (error:any) {
+      console.warn("NQ DXLink recovery attempt failed", error?.message || String(error));
+    }
+  }
+
   // Only cache a successfully completed provider snapshot. Never synthesize
   // candles or promote a cached timestamp to make the feed appear live.
   try {
@@ -379,5 +398,6 @@ export async function getNqBars() {
     dailyHealth: { ok: dailyBars.length >= 30, error: dailyError },
     source: "tastytrade DXLink / CME",
     minuteHistorySource: useIncremental ? "cached+DXLink-overlap" : "DXLink-full-backfill",
+    recoveryAttempted,
   };
 }
