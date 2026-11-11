@@ -5,7 +5,7 @@
   "dependencies": {
     "@netlify/blobs": "latest",
     "@netlify/functions": "latest",
-    "web-push": "latest",
+    "web-push": "3.6.7",
     "ws": "latest"
   }
 }
