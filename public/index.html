@@ -98,7 +98,7 @@ function update(s){
   $('feed').textContent=s.market?.feedActive?'NQ CANDLES ACTIVE':('NQ CANDLES STALE'+(Number.isFinite(s.market?.ageSec)?' · '+Math.round(s.market.ageSec/60)+'M OLD':'')); $('feed').className='pill '+(s.market?.feedActive?'good':'warn'); $('window').textContent=s.market?.session?(s.market?.inEntry?'CME SESSION OPEN · SIGNALS ON':'CME SESSION OPEN · FIRST 5M BLOCK'):(s.clock?.reason||'CME SESSION CLOSED'); $('window').className='pill '+(s.market?.inEntry?'good':'warn'); $('daily').textContent='DAILY '+(s.daily?.state||'—'); $('subs').textContent=`PUSH SUBSCRIBERS ${s.pushSubscribers??'—'}`;
   for(const [key,id] of [['30m','f30'],['15m','f15'],['5m','f5'],['1m','f1']]){const f=s.frames?.[key];if(!f)continue;stateClass($(id),f.state);$(id+'d').textContent=`${f.ema} EMA · RSI ${f.rsi} · MACD ${f.macd} · ${f.score>0?'+':''}${f.score}/5`;}
   $('or').textContent=s.openingRange?`${s.openingRange.low.toFixed(2)} – ${s.openingRange.high.toFixed(2)}`:'—'; $('ext').textContent=s.extension?`${s.extension.pct.toFixed(2)}% / limit ${s.extension.limitPct.toFixed(2)}%${s.extension.blocked?' · BLOCKED':''}`:'—'; $('vol').textContent=Number.isFinite(s.volumeRatio)?`${s.volumeRatio.toFixed(1)}× recent`:'—'; $('bar').textContent=s.market?.lastBarOhlc?`${s.market?.lastBarLabel||'—'} · H ${Number(s.market.lastBarOhlc.high).toFixed(2)} / L ${Number(s.market.lastBarOhlc.low).toFixed(2)}`:(s.market?.lastBarLabel||'—');
-  const sr=s.riskCap?.shadowRisk; if(sr){$('shadowStop').textContent=sr.stopTouched?`TOUCHED · ${Number(sr.stopPrice).toFixed(2)}`:`CLEAR · ${Number(sr.stopPrice).toFixed(2)}`;$('shadowStop').style.color=sr.stopTouched?'var(--red)':'var(--green)';$('shadowMove').textContent=`MAE ${points(sr.barMaePoints)} · MFE ${points(sr.barMfePoints)} pts`;}else{$('shadowStop').textContent='FLAT';$('shadowStop').style.color='';$('shadowMove').textContent='—';}
+  const sr=s.riskCap?.shadowRisk; if(sr){$('shadowStop').textContent=sr.stopTouched?`TOUCHED · ${Number(sr.stopPrice).toFixed(2)}`:`CLEAR · ${Number(sr.stopPrice).toFixed(2)}`;$('shadowStop').style.color=sr.stopTouched?'var(--red)':'var(--green)';$('shadowMove').textContent=`MAE ${points(sr.barMaePoints)} · MFE ${points(sr.barMfePoints)} pts`;}else{$('shadowStop').textContent=s.market?.feedActive?'FLAT':'UNAVAILABLE · STALE FEED';$('shadowStop').style.color='';$('shadowMove').textContent='—';}
   $('engine').textContent=fmtTime(s.checkedAt); $('lastPush').textContent=s.lastPush?`${s.lastPush.title||s.lastPush.signal} · ${fmtTime(s.lastPush.at)}`:'None yet';
 }
 function renderLog(data){
@@ -119,7 +119,17 @@ function renderLog(data){
   if(data?.note)$('logNote').textContent=data.note;
 }
 async function refresh(){try{const r=await fetch('/api/status',{cache:'no-store'});update(await r.json());}catch(e){$('reason').textContent='STATUS ERROR · '+e.message;}}
-async function refreshLivePrice(){try{const r=await fetch('/api/live-price',{cache:'no-store'});if(!r.ok)throw new Error('Live price unavailable');const q=await r.json();if(Number.isFinite(Number(q.price)))$('price').textContent=`$${Number(q.price).toFixed(2)}`;if(q.symbol)$('priceLabel').textContent=`${q.symbol} futures · live`;$('livePriceState').textContent='DISPLAY REFRESH · 60S';$('livePriceState').className='pill good';}catch(e){$('livePriceState').textContent='LIVE PRICE PAUSED';$('livePriceState').className='pill warn';}}
+async function refreshLivePrice(){try{
+  const r=await fetch('/api/live-price',{cache:'no-store'});
+  const q=await r.json();
+  if(!r.ok)throw new Error(q.error||'REST price unavailable');
+  const age=Date.now()-Date.parse(q.quoteTime);
+  if(!q.verified||!Number.isFinite(Number(q.price))||Number(q.price)<=0||!Number.isFinite(age)||age>120000||age< -30000)throw new Error('REST quote failed freshness check');
+  $('price').textContent=`${Number(q.price).toFixed(2)}`;
+  if(q.symbol)$('priceLabel').textContent=`${q.symbol} futures · REST quote`;
+  $('livePriceState').textContent=`PRICE VERIFIED · ${Math.max(0,Math.round(age/1000))}S OLD`;
+  $('livePriceState').className='pill good';$('livePriceState').title='Independent tastytrade REST snapshot; V4 signals still require fresh DXLink candles';
+}catch(e){$('livePriceState').textContent='REST PRICE UNAVAILABLE';$('livePriceState').className='pill warn';$('livePriceState').title=String(e.message||e);}}
 async function refreshLog(){try{const r=await fetch('/api/signal-log',{cache:'no-store'});if(!r.ok)throw new Error('Signal log unavailable');renderLog(await r.json());}catch(e){const body=$('logBody');body.innerHTML='<tr><td colspan="14" class="emptyLog">SIGNAL LOG ERROR</td></tr>';}}
 function tick(){ $('clock').textContent=new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',weekday:'short',hour:'numeric',minute:'2-digit',second:'2-digit'}).format(new Date())+' CT'; }
 async function initPush(){
@@ -131,6 +141,7 @@ function renderPush(){const on=!!currentSub;$('enable').disabled=on;$('test').di
 $('enable').onclick=async()=>{try{const perm=await Notification.requestPermission();if(perm!=='granted')throw new Error('Notification permission not granted');const reg=await navigator.serviceWorker.ready;const {publicKey}=await (await fetch('/api/vapid-key')).json();currentSub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ToBytes(publicKey)});const r=await fetch('/api/subscription',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(currentSub.toJSON())});if(!r.ok)throw new Error('Server subscription failed');renderPush();await refresh();}catch(e){alert(e.message);renderPush();}};
 $('test').onclick=async()=>{try{const r=await fetch('/api/test-push',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(currentSub.toJSON())});const j=await r.json();if(!r.ok)throw new Error(j.error||'Push test failed');$('pushState').textContent='SERVER TEST SENT · WATCH FOR NOTIFICATION';}catch(e){alert(e.message);}};
 $('disable').onclick=async()=>{if(!currentSub)return;const json=currentSub.toJSON();await fetch('/api/subscription',{method:'DELETE',headers:{'content-type':'application/json'},body:JSON.stringify(json)}).catch(()=>{});await currentSub.unsubscribe();currentSub=null;renderPush();await refresh();};
-setInterval(tick,1000);setInterval(()=>{if(!document.hidden){refresh();refreshLivePrice();refreshLog();}},60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden){refresh();refreshLivePrice();refreshLog();}});tick();refresh();refreshLivePrice();refreshLog();initPush();
+async function refreshAll(){await refresh();await refreshLivePrice();await refreshLog();}
+setInterval(tick,1000);setInterval(()=>{if(!document.hidden)refreshAll();},60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshAll();});tick();refreshAll();initPush();
 </script>
 </body></html>
