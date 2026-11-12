@@ -388,6 +388,17 @@ export async function getNqBars() {
     }
   }
 
+  const latestBar = minuteBars.at(-1) || null;
+  console.info("NQ_CANDLE_HEALTH", JSON.stringify({
+    checkedAt: new Date().toISOString(),
+    symbol: future.symbol,
+    streamerSymbol,
+    lastBar: latestBar ? new Date(latestBar.t * 1000).toISOString() : null,
+    ageSec: latestBar ? Math.round((Date.now() / 1000) - latestBar.t) : null,
+    bars: minuteBars.length,
+    historySource: useIncremental ? "incremental" : "full",
+    recoveryAttempted,
+  }));
   return {
     symbol: future.symbol as string,
     streamerSymbol,
