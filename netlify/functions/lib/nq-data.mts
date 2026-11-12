@@ -327,43 +327,93 @@ export async function getNqBars() {
   ).then((data)=>({ok:true as const,data,error:null as string|null}))
    .catch((error:any)=>({ok:false as const,data:null,error:error?.message||String(error)}));
 
-  // Long DXLink history snapshots can end at an older bar even when the
-  // same dt=all symbol returns fresh OHLCV for a shorter window. On a cold
-  // start or broken cache, fetch full history AND 6h/3h current-session tails
-  // concurrently, then merge by true exchange candle timestamp.
-  const primaryPromise = fetchHistory(
-    quoteAuth["dxlink-url"], quoteAuth.token, streamerSymbol, 1, "m",
-    fromTime, useIncremental ? 1 : MINUTE_CACHE_MIN,
-  );
-  const tailPromises = useIncremental ? [] : [6,3].map(hours =>
-    fetchHistory(
-      quoteAuth["dxlink-url"], quoteAuth.token, streamerSymbol, 1, "m",
-      now - hours * 60 * 60 * 1000, 1,
-    ).then(data => ({hours, data, error:null as string|null}))
-      .catch((error:any) => ({hours, data:null, error:error?.message||String(error)}))
-  );
-  const [minute, ...tailResults] = await Promise.all([primaryPromise, ...tailPromises]);
-  const incoming = toBars(minute.candles);
-  if (!minute.snapshotComplete || !incoming.length) {
-    throw new Error("NQ 1m snapshot incomplete or empty");
-  }
-  let minuteBars = mergeMinuteBars(useIncremental ? cachedBars : [], incoming);
-  for (const tail of tailResults) {
-    if (tail.data?.snapshotComplete && tail.data.candles.length) {
-      minuteBars = mergeMinuteBars(minuteBars, toBars(tail.data.candles));
-    } else {
-      console.warn("NQ recent-window recovery failed", tail.hours, tail.error || "empty snapshot");
+  // DXLink sometimes returns NO Candle events for an otherwise healthy
+  // intraday subscription. A timeout from one WebSocket must not discard
+  // the last verified minute history or turn a position into an error state.
+  // Query two bounded windows on separate sockets and use the first verified
+  // current snapshot. If both fail, retain actual cached bars but explicitly
+  // mark the feed paused (never infer a new candle from a REST quote).
+  let minuteBars: Bar[] = [];
+  let recentSnapshotOk = false;
+  let recoveryAttempted = false;
+  let minuteHistorySource = "DXLink-unavailable";
+  const isCurrentSnapshot = (bars: Bar[]) => {
+    const last = bars.at(-1)?.t;
+    return last !== undefined && Number.isFinite(last) &&
+      last * 1000 >= now - 90_000 && last * 1000 <= now + 30_000;
+  };
+  const fetchVerifiedTail = async (fromMs: number, label: string) => {
+    const snapshot = await fetchHistory(
+      quoteAuth["dxlink-url"], quoteAuth.token, streamerSymbol,
+      1, "m", fromMs, 1,
+    );
+    const bars = toBars(snapshot.candles);
+    if (!snapshot.snapshotComplete || !bars.length || !isCurrentSnapshot(bars)) {
+      throw new Error(`NQ ${label} snapshot missing fresh, complete bars`);
     }
+    return { bars, label };
+  };
+
+  if (useIncremental) {
+    const selected = await Promise.any([
+      fetchVerifiedTail(now - 8 * 60_000, "8m-recent"),
+      fetchVerifiedTail(fromTime, "30m-overlap"),
+    ]).catch((error:any) => {
+      console.warn("NQ recent candle streams unavailable; retaining last verified bars",
+        error?.message || String(error));
+      return null;
+    });
+    if (selected) {
+      recentSnapshotOk = true;
+      minuteBars = mergeMinuteBars(cachedBars, selected.bars);
+      minuteHistorySource = selected.label;
+    } else {
+      minuteBars = cachedBars;
+      recoveryAttempted = true;
+      minuteHistorySource = "verified-cache-paused";
+    }
+  } else {
+    recoveryAttempted = true;
+    const requests = [
+      {label:"7d-baseline",fromMs:now - 7 * 24 * 60 * 60 * 1000,minEvents:MINUTE_CACHE_MIN},
+      {label:"6h-tail",fromMs:now - 6 * 60 * 60 * 1000,minEvents:1},
+      {label:"3h-tail",fromMs:now - 3 * 60 * 60 * 1000,minEvents:1},
+    ];
+    const outcomes = await Promise.allSettled(requests.map(async (q) => {
+      const snapshot = await fetchHistory(
+        quoteAuth["dxlink-url"], quoteAuth.token, streamerSymbol,
+        1, "m", q.fromMs, q.minEvents,
+      );
+      if (!snapshot.snapshotComplete) throw new Error("incomplete snapshot");
+      return {label:q.label,bars:toBars(snapshot.candles)};
+    }));
+    minuteBars = cachedBars;
+    for (let i=0;i<outcomes.length;i++) {
+      const outcome = outcomes[i];
+      if (outcome.status==="fulfilled" && outcome.value.bars.length) {
+        minuteBars = mergeMinuteBars(minuteBars, outcome.value.bars);
+        if (isCurrentSnapshot(outcome.value.bars)) recentSnapshotOk = true;
+      } else {
+        console.warn("NQ backfill source unavailable", requests[i].label,
+          outcome.status==="rejected" ? String(outcome.reason?.message||outcome.reason) : "empty snapshot");
+      }
+    }
+    minuteHistorySource = "7d+6h+3h-reconciled";
   }
+
   if (minuteBars.length < MINUTE_CACHE_MIN) {
     throw new Error(`NQ 1m history incomplete (${minuteBars.length} bars)`);
   }
 
-  // Do not authorize V4 using a recent candle when the path from the CME
-  // session opener contains a missing interval: VWAP/range would be wrong.
+  // A complete past session is NOT enough: signals require confirmation
+  // that a live candle snapshot actually arrived during this invocation.
+  // Preserve a genuine cached bar on transient provider failure, but
+  // reserve all trading decisions until a current stream is verified.
   const coverage = currentNqSessionCoverage(minuteBars, now);
   if (!coverage.complete) console.warn("NQ SESSION GAP", JSON.stringify(coverage));
-  const recoveryAttempted = !useIncremental;
+  if (!recentSnapshotOk) console.warn("NQ LIVE CANDLES UNVERIFIED", JSON.stringify({
+    checkedAt:new Date().toISOString(), lastBar:new Date(minuteBars.at(-1)!.t*1000).toISOString(),
+  }));
 
   // Only cache a successfully completed provider snapshot. Never synthesize
   // candles or promote a cached timestamp to make the feed appear live.
@@ -394,7 +444,8 @@ export async function getNqBars() {
     lastBar: latestBar ? new Date(latestBar.t * 1000).toISOString() : null,
     ageSec: latestBar ? Math.round((Date.now() / 1000) - latestBar.t) : null,
     bars: minuteBars.length,
-    historySource: useIncremental ? "incremental" : "full",
+    historySource: minuteHistorySource,
+    recentSnapshotOk,
     candleAggregation: "dt=all",
     coverage,
     recoveryAttempted,
@@ -408,7 +459,8 @@ export async function getNqBars() {
     dailyBars,
     dailyHealth: { ok: dailyBars.length >= 30, error: dailyError },
     source: "tastytrade DXLink / CME",
-    minuteHistorySource: useIncremental ? "cached+DXLink-overlap" : "DXLink-full-backfill",
+    minuteHistorySource,
+    recentSnapshotOk,
     recoveryAttempted,
     sessionHistoryComplete: coverage.complete,
     sessionCoverage: coverage,
