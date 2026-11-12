@@ -168,7 +168,7 @@ export async function computeSignal(){
   const lastSessionKey=cmeSessionKey(lp);
   const sameSession=Boolean(clock.sessionKey && lastSessionKey===clock.sessionKey);
   // A 1m bar older than 90s is not sufficient to authorize a new signal.
-  const feedActive=session&&sameSession&&ageSec<=90;
+  const feedActive=session&&sameSession&&ageSec<=90&&nq.sessionHistoryComplete === true;
   const price=last.c,open=sess[0].o,vw=vwap(sess),or=openingRange(sess);
   const b5=resample(minuteBars,5),b15=resample(minuteBars,15),b30=resample(minuteBars,30);
   const t30=tfState(b30),t15=tfState(b15),t5=tfState(b5),t1=tfState(minuteBars,true),daily=dailyState(dailyBars);
@@ -202,6 +202,7 @@ export async function computeSignal(){
   let signal:"BUY MNQ"|"SELL MNQ"|"WAIT"="WAIT",reason="ALIGNMENT CONFLICT";
   if(!session)reason=clock.reason;
   else if(!inEntry)reason=clock.reason;
+  else if(!nq.sessionHistoryComplete)reason=`SESSION CANDLE GAP · ${nq.sessionCoverage?.reason || "INCOMPLETE BACKFILL"}`;
   else if(!feedActive)reason=`FEED PAUSED · LAST NQ BAR ${lp.label}`;
   else if(extended)reason=`EXTENSION BLOCK · ${round(extensionPct,2)}% FROM VWAP`;
   else if(buyAlignment&&score>=buyThreshold){signal="BUY MNQ";reason=`ALL BULLISH · SCORE +${score}/${buyThreshold}`;}
@@ -213,7 +214,7 @@ export async function computeSignal(){
   return {
     checkedAt:now.toISOString(),checkedAtLabel:np.label,
     signal,reason,
-    market:{feedActive,session,inEntry,firstFive:clock.firstFive,sessionKey:clock.sessionKey,lastBar:new Date(last.t*1000).toISOString(),lastBarLabel:lp.label,lastBarOhlc:{open:round(last.o,2),high:round(last.h,2),low:round(last.l,2),close:round(last.c,2)},ageSec:Math.round(ageSec)},
+    market:{feedActive,session,sessionHistoryComplete:nq.sessionHistoryComplete,sessionCoverage:nq.sessionCoverage,inEntry,firstFive:clock.firstFive,sessionKey:clock.sessionKey,lastBar:new Date(last.t*1000).toISOString(),lastBarLabel:lp.label,lastBarOhlc:{open:round(last.o,2),high:round(last.h,2),low:round(last.l,2),close:round(last.c,2)},ageSec:Math.round(ageSec)},
     instrument:{symbol:nq.symbol,streamerSymbol:nq.streamerSymbol,exchange:nq.exchange,expirationDate:nq.expirationDate,minuteBars:minuteBars.length,dailyBars:dailyBars.length},
     price:round(price,2),fromOpen:round(fromOpen,2),open:round(open,2),vwap:round(vw,2),openingRange:{low:round(or.low,2),high:round(or.high,2)},
     score,scoreRange:"-9 to +9",threshold:{buy:buyThreshold,sell:sellThreshold},extension:{blocked:extended,pct:round(extensionPct,2),limitPct:round(extensionLimit,2)},
