@@ -2,6 +2,7 @@ import WebSocket from "ws";
 import { store } from "./storage.mjs";
 import { nqCandleSymbol } from "./nq-candle-symbol.mjs";
 import { currentNqSessionCoverage } from "./nq-session-integrity.mjs";
+import { isFreshNqCandleSnapshot } from "./nq-candle-freshness.mjs";
 
 export type Bar = { t:number; o:number; h:number; l:number; c:number; v:number };
 
@@ -342,11 +343,7 @@ export async function getNqBars() {
   let recentSnapshotOk = false;
   let recoveryAttempted = false;
   let minuteHistorySource = "DXLink-unavailable";
-  const isCurrentSnapshot = (bars: Bar[]) => {
-    const last = bars.at(-1)?.t;
-    return last !== undefined && Number.isFinite(last) &&
-      last * 1000 >= now - 90_000 && last * 1000 <= now + 30_000;
-  };
+  const isCurrentSnapshot = (bars: Bar[]) => isFreshNqCandleSnapshot(bars,now);
   const fetchVerifiedTail = async (fromMs: number, label: string, signal: AbortSignal) => {
     const snapshot = await fetchHistory(
       quoteAuth["dxlink-url"], quoteAuth.token, streamerSymbol,
