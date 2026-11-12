@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { validateQuote, getLiveNqPrice } from "../netlify/functions/lib/live-nq.mts";
 import { nqCandleSymbol } from "../netlify/functions/lib/nq-candle-symbol.mts";
 import { currentNqSessionCoverage } from "../netlify/functions/lib/nq-session-integrity.mts";
+import { isFreshNqCandleSnapshot } from "../netlify/functions/lib/nq-candle-freshness.mts";
 import { resolvePositionState } from "../netlify/functions/lib/position-state.mts";
 
 const NOW = Date.parse("2026-11-11T23:38:00.000Z");
@@ -97,4 +98,20 @@ test("CME session coverage handles summer daylight saving", () => {
   const now=Date.parse("2026-07-01T22:15:00.000Z");
   const bars=Array.from({length:14},(_,i)=>({t:start+i*60}));
   assert.equal(currentNqSessionCoverage(bars,now).complete,true);
+});
+
+test("intermittent DXLink failures cannot promote cached candles into verified live data", () => {
+  const now=Date.parse("2026-11-12T03:05:20Z");
+  const current={t:Date.parse("2026-11-12T03:05:00Z")/1000};
+  const prior={t:Date.parse("2026-11-12T03:03:00Z")/1000};
+  assert.equal(isFreshNqCandleSnapshot([current],now),true);
+  assert.equal(isFreshNqCandleSnapshot([prior],now),false);
+  assert.equal(isFreshNqCandleSnapshot([],now),false);
+  assert.equal(isFreshNqCandleSnapshot([{t:NaN}],now),false);
+  assert.equal(isFreshNqCandleSnapshot([{t:(now+31_000)/1000}],now),false);
+  // Even a recent cache must be treated as unverified when both sockets fail:
+  const snapshotVerified=false;
+  const sessionComplete=true;
+  const feedActive=isFreshNqCandleSnapshot([current],now) && snapshotVerified && sessionComplete;
+  assert.equal(feedActive,false);
 });
