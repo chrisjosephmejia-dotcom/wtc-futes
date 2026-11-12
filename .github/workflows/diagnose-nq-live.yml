@@ -40,6 +40,13 @@ jobs:
               fields={k:obj.get(k) for k in ("ok","symbol","subscribed","snapshotEnded","receivedMessages","events","validTrades","earliest","latest","latestAgeSec","latestPrice","elapsedMs","error")}
               print("TIME_AND_SALE_PROBE","HTTP",res.status,json.dumps(fields),flush=True)
           except Exception as exc:print("TIME_AND_SALE_PROBE ERROR",str(exc)[:350],flush=True)
+          try:
+            req=urllib.request.Request(f"{base}/api/nq-trades-probe?lookbackMinutes=90",headers={"Cache-Control":"no-cache","User-Agent":"wtc-diagnostics/1.0"})
+            with urllib.request.urlopen(req,timeout=25) as res:
+              obj=json.loads(res.read())
+              fields={k:obj.get(k) for k in ("ok","symbol","subscribed","snapshotEnded","receivedMessages","events","validTrades","earliest","latest","latestAgeSec","latestPrice","elapsedMs","error","lookbackMinutes")}
+              print("TIME_AND_SALE_90MIN","HTTP",res.status,json.dumps(fields),flush=True)
+          except Exception as exc:print("TIME_AND_SALE_90MIN ERROR",str(exc)[:350],flush=True)
           print("ALTERNATE DXLINK PROBES",flush=True)
           probes=[
             ("HISTORY_SHORT",{"contract":"HISTORY","lookbackMinutes":"120"}),
