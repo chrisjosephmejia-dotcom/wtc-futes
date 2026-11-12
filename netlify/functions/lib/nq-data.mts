@@ -113,6 +113,7 @@ async function fetchHistory(
   unit:"m"|"d",
   fromTime:number,
   minEvents:number,
+  signal?:AbortSignal,
 ) {
   const candleSymbol = nqCandleSymbol(streamerSymbol, period, unit);
   const requestedFields = [
@@ -131,9 +132,10 @@ async function fetchHistory(
     let settled = false;
 
     const hardTimer = setTimeout(()=>finish(), 12000);
-
+    const onAbort = () => fail(new Error("NQ redundant DXLink request cancelled"));
     const cleanup = () => {
       clearTimeout(hardTimer);
+      signal?.removeEventListener("abort", onAbort);
       try { ws.close(); } catch {}
     };
     const fail = (err:Error) => {
@@ -210,6 +212,9 @@ async function fetchHistory(
         });
       }
     };
+
+    if (signal?.aborted) onAbort();
+    else signal?.addEventListener("abort",onAbort,{once:true});
 
     ws.on("open",()=>send({
       type:"SETUP", channel:0, version:"0.1-DXF-JS/0.3.0",
@@ -342,10 +347,10 @@ export async function getNqBars() {
     return last !== undefined && Number.isFinite(last) &&
       last * 1000 >= now - 90_000 && last * 1000 <= now + 30_000;
   };
-  const fetchVerifiedTail = async (fromMs: number, label: string) => {
+  const fetchVerifiedTail = async (fromMs: number, label: string, signal: AbortSignal) => {
     const snapshot = await fetchHistory(
       quoteAuth["dxlink-url"], quoteAuth.token, streamerSymbol,
-      1, "m", fromMs, 1,
+      1, "m", fromMs, 1, signal,
     );
     const bars = toBars(snapshot.candles);
     if (!snapshot.snapshotComplete || !bars.length || !isCurrentSnapshot(bars)) {
@@ -355,14 +360,15 @@ export async function getNqBars() {
   };
 
   if (useIncremental) {
+    const controller = new AbortController();
     const selected = await Promise.any([
-      fetchVerifiedTail(now - 8 * 60_000, "8m-recent"),
-      fetchVerifiedTail(fromTime, "30m-overlap"),
+      fetchVerifiedTail(now - 8 * 60_000, "8m-recent", controller.signal),
+      fetchVerifiedTail(fromTime, "30m-overlap", controller.signal),
     ]).catch((error:any) => {
       console.warn("NQ recent candle streams unavailable; retaining last verified bars",
         error?.message || String(error));
       return null;
-    });
+    }).finally(() => controller.abort());
     if (selected) {
       recentSnapshotOk = true;
       minuteBars = mergeMinuteBars(cachedBars, selected.bars);
