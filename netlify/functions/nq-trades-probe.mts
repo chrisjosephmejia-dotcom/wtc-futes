@@ -40,6 +40,8 @@ async function probeTimeAndSale(url:string,token:string,symbol:string,lookbackMi
     const ws=new WebSocket(url);
     let finished=false, subscribed=false, snapshotEnded=false,received=0,events=0,valid=0;
     let latestTime=0,earliestTime=Infinity,latestPrice:number|null=null;
+    const minuteBuckets = new Map<number,number>();
+    let snapshotBoundaryAt:number|null=null, snapshotEvents=0;
     let eventFields=requested;
     const begin=Date.now(),fromTime=begin-lookbackMinutes*60_000;
     const timer=setTimeout(finish,10000);
@@ -50,6 +52,11 @@ async function probeTimeAndSale(url:string,token:string,symbol:string,lookbackMi
       latest:latestTime?new Date(latestTime).toISOString():null,
       latestAgeSec:latestTime?Math.round((Date.now()-latestTime)/1000):null,
       latestPrice,
+      minuteCoverage:minuteBuckets.size,
+      firstMinuteCounts:[...minuteBuckets.entries()].sort((a,b)=>a[0]-b[0]).slice(0,8).map(([time,count])=>({time:new Date(time).toISOString(),count})),
+      lastMinuteCounts:[...minuteBuckets.entries()].sort((a,b)=>a[0]-b[0]).slice(-8).map(([time,count])=>({time:new Date(time).toISOString(),count})),
+      snapshotBoundaryAt:snapshotBoundaryAt?new Date(snapshotBoundaryAt).toISOString():null,
+      snapshotEvents,
       fieldNames:eventFields,
       elapsedMs:Date.now()-begin,
     })}
@@ -80,10 +87,13 @@ async function probeTimeAndSale(url:string,token:string,symbol:string,lookbackMi
           events++;
           if(Number.isFinite(t)&&t>0){
             earliestTime=Math.min(earliestTime,t);
+            const minute=Math.floor(t/60000)*60000;
+            minuteBuckets.set(minute,(minuteBuckets.get(minute)||0)+1);
             if(t>=latestTime){latestTime=t;latestPrice=Number.isFinite(p)?p:null;}
           }
           if(Number.isFinite(p)&&p>0&&Number.isFinite(size)&&size>0&&row.validTick!==false) valid++;
-          if((Number(row.eventFlags)||0)&(0x08|0x10)) snapshotEnded=true;
+          if(!snapshotEnded) snapshotEvents++;
+          if((Number(row.eventFlags)||0)&(0x08|0x10)) {snapshotEnded=true;snapshotBoundaryAt=t;}
         }
         if(snapshotEnded) setTimeout(finish,150);
       }
