@@ -1,31 +1,31 @@
-name: Probe NQ candle DXLink aggregation modes
+name: Verify live NQ feed after recovery
 on:
-  workflow_dispatch:
   push:
     branches: [main]
+  workflow_dispatch:
 jobs:
-  probe:
+  verify:
     runs-on: ubuntu-latest
     steps:
-      - name: Compare candle timestamps from four DXLink symbol variants
+      - name: Verify current OHLCV session continuity without trading
         run: |
           python3 - <<'PY'
-          import urllib.request, urllib.parse, json, datetime, time
-          print("UTC NOW",datetime.datetime.now(datetime.timezone.utc).isoformat(),flush=True)
-          # Allow the latest production deploy to publish before invoking endpoints.
-          time.sleep(18)
-          base="https://wtc-futes.netlify.app/api/nq-candles-test"
-          cases=[("dt_all_7d_wait",{"dt":"all","lookbackMinutes":"10080","waitFull":"1"}),("dt_all_4h_wait",{"dt":"all","lookbackMinutes":"240","waitFull":"1"})]
-          for name,extra in cases:
-            p={"lookbackMinutes":"120","unit":"ms","contract":"HISTORY",**extra}
-            url=base+"?"+urllib.parse.urlencode(p)
-            try:
-              req=urllib.request.Request(url,headers={"Cache-Control":"no-cache","User-Agent":"wtc-aggregates-check/1.0"})
-              with urllib.request.urlopen(req,timeout=26) as response:
-                j=json.loads(response.read())
-                d=j.get("dxlink",{})
-                cs=j.get("candles") or []
-                last=cs[-1] if cs else {}
-                print(name, json.dumps({"HTTP":response.status,"ok":j.get("ok"),"error":j.get("error"),"symbol":d.get("candleSymbol"),"ageSec":d.get("ageSec"),"count":d.get("usableCandles"),"last":last.get("time"),"lastClose":last.get("close"),"lastVolume":last.get("volume"),"snapshotComplete":d.get("snapshotComplete")}),flush=True)
-            except Exception as e:print(name,"ERROR",str(e)[:280],flush=True)
+          import urllib.request,urllib.error,json,time,datetime
+          time.sleep(20)
+          base="https://wtc-futes.netlify.app"
+          print("VERIFIED_UTC",datetime.datetime.now(datetime.timezone.utc).isoformat(),flush=True)
+          for iteration in range(2):
+            for path in ["nq-signal-test","status","live-price"]:
+              try:
+                req=urllib.request.Request(f"{base}/api/{path}",headers={"Cache-Control":"no-cache","User-Agent":"wtc-recovery-verify/1.0"})
+                with urllib.request.urlopen(req,timeout=40) as res:
+                  obj=json.loads(res.read())
+                  m=obj.get("market") or {}
+                  c=m.get("sessionCoverage") or {}
+                  o={"ok":obj.get("ok"),"error":obj.get("error"),"reason":obj.get("reason"),"signal":obj.get("signal"),"lastBar":m.get("lastBar"),"ageSec":m.get("ageSec"),"feedActive":m.get("feedActive"),"sessionHistoryComplete":m.get("sessionHistoryComplete"),"coverage":c,"minuteBars":(obj.get("instrument") or {}).get("minuteBars"),"daily":(obj.get("daily") or {}).get("state"),"price":obj.get("price"),"quoteTime":obj.get("quoteTime"),"verified":obj.get("verified")}
+                  print("CHECK",iteration,path,"HTTP",res.status,json.dumps(o),flush=True)
+              except urllib.error.HTTPError as e:
+                print("CHECK",iteration,path,"HTTP_ERROR",e.code,e.read().decode()[:700],flush=True)
+              except Exception as e:print("CHECK",iteration,path,"ERROR",str(e)[:500],flush=True)
+            time.sleep(12)
           PY
