@@ -1,5 +1,6 @@
 import WebSocket from "ws";
 import { store } from "./storage.mjs";
+import { nqCandleSymbol } from "./nq-candle-symbol.mjs";
 
 export type Bar = { t:number; o:number; h:number; l:number; c:number; v:number };
 
@@ -112,7 +113,7 @@ async function fetchHistory(
   fromTime:number,
   minEvents:number,
 ) {
-  const candleSymbol = `${streamerSymbol}{=${period}${unit}}`;
+  const candleSymbol = nqCandleSymbol(streamerSymbol, period, unit);
   const requestedFields = [
     "eventType","eventSymbol","eventFlags","index","time","count",
     "open","high","low","close","volume","vwap"
@@ -276,7 +277,7 @@ function toBars(candles:Candle[]):Bar[] {
 // Keep the minute history across the one-minute scheduled executions.
 // An overlap is re-fetched each cycle to repair provider gaps and late revisions.
 // An interruption longer than 45 minutes forces a full seven-day backfill.
-const MINUTE_CACHE_KEY = "nq-minute-bars-v1";
+const MINUTE_CACHE_KEY = "nq-minute-bars-dt-all-v1";
 const MINUTE_CACHE_MIN = 1000;
 const MINUTE_CACHE_MAX = 8000;
 const MINUTE_OVERLAP_MS = 30 * 60 * 1000;
@@ -397,6 +398,7 @@ export async function getNqBars() {
     ageSec: latestBar ? Math.round((Date.now() / 1000) - latestBar.t) : null,
     bars: minuteBars.length,
     historySource: useIncremental ? "incremental" : "full",
+    candleAggregation: "dt=all",
     recoveryAttempted,
   }));
   return {
