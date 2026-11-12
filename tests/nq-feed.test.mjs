@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { validateQuote, getLiveNqPrice } from "../netlify/functions/lib/live-nq.mts";
 import { nqCandleSymbol } from "../netlify/functions/lib/nq-candle-symbol.mts";
+import { currentNqSessionCoverage } from "../netlify/functions/lib/nq-session-integrity.mts";
 import { resolvePositionState } from "../netlify/functions/lib/position-state.mts";
 
 const NOW = Date.parse("2026-11-11T23:38:00.000Z");
@@ -68,4 +69,32 @@ test("intraday NQ candles explicitly aggregate all valid trades, including ETH",
   assert.equal(nqCandleSymbol("/NQZ26:XCME", 5, "m"), "/NQZ26:XCME{=5m,dt=all}");
   assert.equal(nqCandleSymbol("/NQZ26:XCME", 1, "d"), "/NQZ26:XCME{=1d}");
   assert.throws(() => nqCandleSymbol("",1,"m"), /Invalid/);
+});
+
+
+test("current CME session must start at 17 CT and have uninterrupted minute candles", () => {
+  const start=Date.parse("2026-11-11T23:00:00.000Z")/1000; // 17:00 CST
+  const now=Date.parse("2026-11-12T01:01:00.000Z");
+  const bars=Array.from({length:120},(_,i)=>({t:start+i*60}));
+  const good=currentNqSessionCoverage(bars,now);
+  assert.equal(good.complete,true);
+  assert.equal(good.maxGapSec,60);
+  assert.equal(good.reason,"CONTIGUOUS");
+
+  const gap=bars.filter((_,i)=>i<30 || i>50);
+  const incomplete=currentNqSessionCoverage(gap,now);
+  assert.equal(incomplete.complete,false);
+  assert.equal(incomplete.reason,"INTRADAY_GAP");
+  assert.ok(incomplete.maxGapSec>180);
+
+  const missingOpen=currentNqSessionCoverage(bars.slice(10),now);
+  assert.equal(missingOpen.complete,false);
+  assert.equal(missingOpen.reason,"MISSING_SESSION_OPEN");
+});
+
+test("CME session coverage handles summer daylight saving", () => {
+  const start=Date.parse("2026-07-01T22:00:00.000Z")/1000; // 17:00 CDT
+  const now=Date.parse("2026-07-01T22:15:00.000Z");
+  const bars=Array.from({length:14},(_,i)=>({t:start+i*60}));
+  assert.equal(currentNqSessionCoverage(bars,now).complete,true);
 });
