@@ -1,6 +1,7 @@
 import WebSocket from "ws";
 import { store } from "./storage.mjs";
 import { nqCandleSymbol } from "./nq-candle-symbol.mjs";
+import { currentNqSessionCoverage } from "./nq-session-integrity.mjs";
 
 export type Bar = { t:number; o:number; h:number; l:number; c:number; v:number };
 
@@ -315,7 +316,8 @@ export async function getNqBars() {
   const useIncremental = cachedBars.length >= MINUTE_CACHE_MIN &&
     lastCachedTimeMs > 0 &&
     now >= lastCachedTimeMs &&
-    now - lastCachedTimeMs <= MAX_INCREMENTAL_GAP_MS;
+    now - lastCachedTimeMs <= MAX_INCREMENTAL_GAP_MS &&
+    currentNqSessionCoverage(cachedBars, now).complete;
   const fromTime = useIncremental
     ? lastCachedTimeMs - MINUTE_OVERLAP_MS
     : now - 7 * 24 * 60 * 60 * 1000;
@@ -325,48 +327,43 @@ export async function getNqBars() {
   ).then((data)=>({ok:true as const,data,error:null as string|null}))
    .catch((error:any)=>({ok:false as const,data:null,error:error?.message||String(error)}));
 
-  let minute = await fetchHistory(
+  // Long DXLink history snapshots can end at an older bar even when the
+  // same dt=all symbol returns fresh OHLCV for a shorter window. On a cold
+  // start or broken cache, fetch full history AND 6h/3h current-session tails
+  // concurrently, then merge by true exchange candle timestamp.
+  const primaryPromise = fetchHistory(
     quoteAuth["dxlink-url"], quoteAuth.token, streamerSymbol, 1, "m",
     fromTime, useIncremental ? 1 : MINUTE_CACHE_MIN,
   );
-  let incoming = toBars(minute.candles);
+  const tailPromises = useIncremental ? [] : [6,3].map(hours =>
+    fetchHistory(
+      quoteAuth["dxlink-url"], quoteAuth.token, streamerSymbol, 1, "m",
+      now - hours * 60 * 60 * 1000, 1,
+    ).then(data => ({hours, data, error:null as string|null}))
+      .catch((error:any) => ({hours, data:null, error:error?.message||String(error)}))
+  );
+  const [minute, ...tailResults] = await Promise.all([primaryPromise, ...tailPromises]);
+  const incoming = toBars(minute.candles);
   if (!minute.snapshotComplete || !incoming.length) {
     throw new Error("NQ 1m snapshot incomplete or empty");
   }
-  let minuteBars = useIncremental ? mergeMinuteBars(cachedBars, incoming) : incoming.slice(-MINUTE_CACHE_MAX);
-
-  // If cache cannot provide the required lookback, rebuild from provider history.
-  if (minuteBars.length < MINUTE_CACHE_MIN) {
-    minute = await fetchHistory(
-      quoteAuth["dxlink-url"], quoteAuth.token, streamerSymbol, 1, "m",
-      now - 7 * 24 * 60 * 60 * 1000, MINUTE_CACHE_MIN,
-    );
-    incoming = toBars(minute.candles);
-    if (!minute.snapshotComplete) throw new Error("NQ 1m full backfill incomplete");
-    minuteBars = incoming.slice(-MINUTE_CACHE_MAX);
+  let minuteBars = mergeMinuteBars(useIncremental ? cachedBars : [], incoming);
+  for (const tail of tailResults) {
+    if (tail.data?.snapshotComplete && tail.data.candles.length) {
+      minuteBars = mergeMinuteBars(minuteBars, toBars(tail.data.candles));
+    } else {
+      console.warn("NQ recent-window recovery failed", tail.hours, tail.error || "empty snapshot");
+    }
   }
   if (minuteBars.length < MINUTE_CACHE_MIN) {
     throw new Error(`NQ 1m history incomplete (${minuteBars.length} bars)`);
   }
 
-  // A completed HISTORY snapshot can still end with an old candle. In that
-  // case, open one new DXLink session and request a recent overlap before
-  // reporting the feed paused. The independent REST quote never invents bars.
-  let recoveryAttempted = false;
-  if (now - (minuteBars.at(-1)?.t || 0) * 1000 > 90_000) {
-    recoveryAttempted = true;
-    try {
-      const recovery = await fetchHistory(
-        quoteAuth["dxlink-url"], quoteAuth.token, streamerSymbol, 1, "m",
-        now - 60 * 60 * 1000, 1,
-      );
-      if (recovery.snapshotComplete && recovery.candles.length) {
-        minuteBars = mergeMinuteBars(minuteBars, toBars(recovery.candles));
-      }
-    } catch (error:any) {
-      console.warn("NQ DXLink recovery attempt failed", error?.message || String(error));
-    }
-  }
+  // Do not authorize V4 using a recent candle when the path from the CME
+  // session opener contains a missing interval: VWAP/range would be wrong.
+  const coverage = currentNqSessionCoverage(minuteBars, now);
+  if (!coverage.complete) console.warn("NQ SESSION GAP", JSON.stringify(coverage));
+  const recoveryAttempted = !useIncremental;
 
   // Only cache a successfully completed provider snapshot. Never synthesize
   // candles or promote a cached timestamp to make the feed appear live.
@@ -399,6 +396,7 @@ export async function getNqBars() {
     bars: minuteBars.length,
     historySource: useIncremental ? "incremental" : "full",
     candleAggregation: "dt=all",
+    coverage,
     recoveryAttempted,
   }));
   return {
@@ -412,5 +410,7 @@ export async function getNqBars() {
     source: "tastytrade DXLink / CME",
     minuteHistorySource: useIncremental ? "cached+DXLink-overlap" : "DXLink-full-backfill",
     recoveryAttempted,
+    sessionHistoryComplete: coverage.complete,
+    sessionCoverage: coverage,
   };
 }
