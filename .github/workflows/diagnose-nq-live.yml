@@ -33,4 +33,24 @@ jobs:
                   print(route,"HTTP",res.status,json.dumps(fields),flush=True)
               except Exception as exc:print(route,"ERROR",str(exc)[:350],flush=True)
             if i==0:time.sleep(15)
+          print("ALTERNATE DXLINK PROBES",flush=True)
+          probes=[
+            ("HISTORY_SHORT",{"contract":"HISTORY","lookbackMinutes":"120"}),
+            ("AUTO_SHORT",{"contract":"AUTO","lookbackMinutes":"120"}),
+            ("AUTO_BID",{"contract":"AUTO","lookbackMinutes":"120","price":"bid"}),
+            ("AUTO_ASK",{"contract":"AUTO","lookbackMinutes":"120","price":"ask"}),
+            ("HISTORY_SECONDS",{"contract":"HISTORY","lookbackMinutes":"120","unit":"s"}),
+          ]
+          import urllib.parse
+          for label,params in probes:
+            try:
+              u=f"{base}/api/nq-candles-test?"+urllib.parse.urlencode(params)
+              req=urllib.request.Request(u,headers={"Cache-Control":"no-cache","User-Agent":"wtc-diagnostics/1.0"})
+              with urllib.request.urlopen(req,timeout=24) as res:
+                obj=json.loads(res.read())
+                d=obj.get("dxlink") or {}
+                candles=obj.get("candles") or []
+                fields={"ok":obj.get("ok"),"error":obj.get("error"),"contract":d.get("feedContract"),"unit":d.get("fromTimeUnit"),"usableCandles":d.get("usableCandles"),"snapshotComplete":d.get("snapshotComplete"),"latestCandle":candles[-1].get("time") if candles else None,"latestClose":candles[-1].get("close") if candles else None}
+                print(label,"HTTP",res.status,json.dumps(fields),flush=True)
+            except Exception as exc:print(label,"ERROR",str(exc)[:350],flush=True)
           PY
