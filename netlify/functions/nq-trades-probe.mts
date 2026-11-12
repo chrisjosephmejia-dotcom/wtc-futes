@@ -34,14 +34,14 @@ async function credentials() {
   return {future, token};
 }
 
-async function probeTimeAndSale(url:string,token:string,symbol:string) {
+async function probeTimeAndSale(url:string,token:string,symbol:string,lookbackMinutes:number) {
   const requested = ["eventType","eventSymbol","eventFlags","index","time","price","size","type","validTick","extendedTradingHours"];
   return new Promise<any>((resolve,reject)=>{
     const ws=new WebSocket(url);
     let finished=false, subscribed=false, snapshotEnded=false,received=0,events=0,valid=0;
     let latestTime=0,earliestTime=Infinity,latestPrice:number|null=null;
     let eventFields=requested;
-    const begin=Date.now(),fromTime=begin-5*60_000;
+    const begin=Date.now(),fromTime=begin-lookbackMinutes*60_000;
     const timer=setTimeout(finish,10000);
     function cleanup(){clearTimeout(timer);try{ws.close()}catch{}}
     function finish(){if(finished)return;finished=true;cleanup();resolve({
@@ -96,8 +96,10 @@ async function probeTimeAndSale(url:string,token:string,symbol:string) {
 export default async (_req:Request) => {
   try {
     const {future,token}=await credentials();
-    const result=await probeTimeAndSale(token["dxlink-url"],token.token,future["streamer-symbol"]);
-    return Response.json({ok:Boolean(result.events&&result.latestAgeSec!=null&&result.latestAgeSec<120),symbol:future.symbol,...result},{headers:{"Cache-Control":"no-store"}});
+    const q = new URL(_req.url).searchParams;
+    const lookbackMinutes = Math.max(1,Math.min(120,Number(q.get("lookbackMinutes")) || 5));
+    const result=await probeTimeAndSale(token["dxlink-url"],token.token,future["streamer-symbol"],lookbackMinutes);
+    return Response.json({ok:Boolean(result.events&&result.latestAgeSec!=null&&result.latestAgeSec<120),symbol:future.symbol,lookbackMinutes,...result},{headers:{"Cache-Control":"no-store"}});
   }catch(error:any){return Response.json({ok:false,error:error?.message||String(error)},{status:503,headers:{"Cache-Control":"no-store"}})}
 };
 export const config:Config={path:"/api/nq-trades-probe"};
