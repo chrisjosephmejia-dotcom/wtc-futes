@@ -1,0 +1,16 @@
+name: MCL live price safeguards
+on:
+  push:
+    branches: ['wtc-stock-trader', 'fix/mcl-price-poll-reliability-20261111']
+  pull_request:
+    branches: ['wtc-stock-trader']
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate MCL timestamp and REST display isolation
+        run: node --experimental-strip-types --test tests/mcl-price-feed.test.mjs
