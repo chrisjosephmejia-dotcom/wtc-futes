@@ -356,6 +356,9 @@ export default async (req: Request, _context: Context) => {
     const usable = result.candles.filter((c) => c.open !== null && c.high !== null && c.low !== null && c.close !== null);
     const spacing = spacingStats(usable);
     const historyReady = result.snapshotComplete && usable.length >= 1200 && spacing.oneMinuteStepPct >= 90;
+    const latestCandleTime = usable.at(-1)?.time || 0;
+    const ageSec = latestCandleTime ? Math.round((Date.now() - latestCandleTime) / 1000) : null;
+    const feedFresh = ageSec !== null && ageSec >= -30 && ageSec <= 90;
     const last = usable.slice(-10).map((c) => ({
       time: new Date(c.time).toISOString(),
       timeCT: ctLabel(c.time),
@@ -369,7 +372,7 @@ export default async (req: Request, _context: Context) => {
     }));
 
     return Response.json({
-      ok: historyReady,
+      ok: historyReady && feedFresh,
       auth: { ok: true },
       instrument: {
         ok: true,
@@ -379,8 +382,10 @@ export default async (req: Request, _context: Context) => {
         expirationDate: future["expiration-date"] || null,
       },
       dxlink: {
-        ok: usable.length > 0,
+        ok: usable.length > 0 && feedFresh,
         historyReady,
+        feedFresh,
+        ageSec,
         snapshotComplete: result.snapshotComplete,
         feedContract: probe.contract,
         fromTimeUnit: probe.unit,
