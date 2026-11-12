@@ -124,7 +124,7 @@ type Candle = {
 
 type CandleRow = Candle & { flags: number };
 
-type FeedProbe = {contract: "HISTORY" | "AUTO"; lookbackMinutes: number; unit: "ms" | "s"; price: "last" | "bid" | "ask"; dt: "" | "all" | "eth" | "rth" | "source"; explicitLast: boolean};
+type FeedProbe = {contract: "HISTORY" | "AUTO"; lookbackMinutes: number; unit: "ms" | "s"; price: "last" | "bid" | "ask"; dt: "" | "all" | "eth" | "rth" | "source"; explicitLast: boolean; waitFull: boolean};
 async function fetchCandles(dxlinkUrl: string, quoteToken: string, streamerSymbol: string, probe: FeedProbe) {
   const priceSuffix = probe.price === "last" && !probe.explicitLast ? "" : `,price=${probe.price}`;
   const dataTypeSuffix = probe.dt ? `,dt=${probe.dt}` : "";
@@ -219,7 +219,7 @@ async function fetchCandles(dxlinkUrl: string, quoteToken: string, streamerSymbo
 
       applyPending();
 
-      if (snapshotComplete && candlesByIndex.size >= 1000) {
+      if (!probe.waitFull && snapshotComplete && candlesByIndex.size >= 1000) {
         setTimeout(finish, 150);
       }
     };
@@ -347,6 +347,7 @@ export default async (req: Request, _context: Context) => {
       price: q.get("price") === "bid" ? "bid" : q.get("price") === "ask" ? "ask" : "last",
       dt: ["all","eth","rth","source"].includes(q.get("dt") || "") ? q.get("dt") as FeedProbe["dt"] : "",
       explicitLast: q.get("explicitLast") === "1",
+      waitFull: q.get("waitFull") === "1",
     };
     const accessToken = await getAccessToken();
     const [future, quoteAuth] = await Promise.all([
@@ -396,6 +397,7 @@ export default async (req: Request, _context: Context) => {
         priceType: probe.price,
         dataType: probe.dt || null,
         explicitLast: probe.explicitLast,
+        waitFull: probe.waitFull,
         entitlementLevel: quoteAuth.level || null,
         quoteTokenExpiresAt: quoteAuth["expires-at"] || null,
         candleSymbol: result.candleSymbol,
