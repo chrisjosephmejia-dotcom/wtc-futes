@@ -124,9 +124,12 @@ type Candle = {
 
 type CandleRow = Candle & { flags: number };
 
-async function fetchCandles(dxlinkUrl: string, quoteToken: string, streamerSymbol: string) {
-  const candleSymbol = `${streamerSymbol}{=1m}`;
-  const fromTime = Date.now() - 7 * 24 * 60 * 60 * 1000;
+type FeedProbe = {contract: "HISTORY" | "AUTO"; lookbackMinutes: number; unit: "ms" | "s"; price: "last" | "bid" | "ask"};
+async function fetchCandles(dxlinkUrl: string, quoteToken: string, streamerSymbol: string, probe: FeedProbe) {
+  const priceSuffix = probe.price === "last" ? "" : `,price=${probe.price}`;
+  const candleSymbol = `${streamerSymbol}{=1m${priceSuffix}}`;
+  const fromTime = Date.now() - probe.lookbackMinutes * 60 * 1000;
+  const wireFromTime = probe.unit === "s" ? Math.floor(fromTime / 1000) : fromTime;
   const requestedFields = [
     "eventType", "eventSymbol", "eventFlags", "index", "time", "count",
     "open", "high", "low", "close", "volume", "vwap"
@@ -276,7 +279,7 @@ async function fetchCandles(dxlinkUrl: string, quoteToken: string, streamerSymbo
       }
 
       if (msg?.type === "AUTH_STATE" && msg?.state === "AUTHORIZED") {
-        send({ type: "CHANNEL_REQUEST", channel: 3, service: "FEED", parameters: { contract: "HISTORY" } });
+        send({ type: "CHANNEL_REQUEST", channel: 3, service: "FEED", parameters: { contract: probe.contract } });
         return;
       }
 
@@ -304,7 +307,7 @@ async function fetchCandles(dxlinkUrl: string, quoteToken: string, streamerSymbo
             type: "FEED_SUBSCRIPTION",
             channel: 3,
             reset: true,
-            add: [{ type: "Candle", symbol: candleSymbol, fromTime }],
+            add: [{ type: "Candle", symbol: candleSymbol, fromTime: wireFromTime }],
           });
         }
         return;
@@ -333,8 +336,15 @@ function spacingStats(candles: Candle[]) {
   };
 }
 
-export default async (_req: Request, _context: Context) => {
+export default async (req: Request, _context: Context) => {
   try {
+    const q = new URL(req.url).searchParams;
+    const probe: FeedProbe = {
+      contract: q.get("contract") === "AUTO" ? "AUTO" : "HISTORY",
+      lookbackMinutes: Math.min(10080, Math.max(30, Number(q.get("lookbackMinutes")) || 10080)),
+      unit: q.get("unit") === "s" ? "s" : "ms",
+      price: q.get("price") === "bid" ? "bid" : q.get("price") === "ask" ? "ask" : "last",
+    };
     const accessToken = await getAccessToken();
     const [future, quoteAuth] = await Promise.all([
       getActiveNq(accessToken),
@@ -342,7 +352,7 @@ export default async (_req: Request, _context: Context) => {
     ]);
 
     const streamerSymbol = future["streamer-symbol"] as string;
-    const result = await fetchCandles(quoteAuth["dxlink-url"], quoteAuth.token, streamerSymbol);
+    const result = await fetchCandles(quoteAuth["dxlink-url"], quoteAuth.token, streamerSymbol, probe);
     const usable = result.candles.filter((c) => c.open !== null && c.high !== null && c.low !== null && c.close !== null);
     const spacing = spacingStats(usable);
     const historyReady = result.snapshotComplete && usable.length >= 1200 && spacing.oneMinuteStepPct >= 90;
@@ -372,7 +382,10 @@ export default async (_req: Request, _context: Context) => {
         ok: usable.length > 0,
         historyReady,
         snapshotComplete: result.snapshotComplete,
-        feedContract: "HISTORY",
+        feedContract: probe.contract,
+        fromTimeUnit: probe.unit,
+        lookbackMinutes: probe.lookbackMinutes,
+        priceType: probe.price,
         entitlementLevel: quoteAuth.level || null,
         quoteTokenExpiresAt: quoteAuth["expires-at"] || null,
         candleSymbol: result.candleSymbol,
