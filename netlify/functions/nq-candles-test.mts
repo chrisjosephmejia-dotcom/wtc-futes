@@ -124,10 +124,11 @@ type Candle = {
 
 type CandleRow = Candle & { flags: number };
 
-type FeedProbe = {contract: "HISTORY" | "AUTO"; lookbackMinutes: number; unit: "ms" | "s"; price: "last" | "bid" | "ask"};
+type FeedProbe = {contract: "HISTORY" | "AUTO"; lookbackMinutes: number; unit: "ms" | "s"; price: "last" | "bid" | "ask"; dt: "" | "all" | "eth" | "rth" | "source"; explicitLast: boolean};
 async function fetchCandles(dxlinkUrl: string, quoteToken: string, streamerSymbol: string, probe: FeedProbe) {
-  const priceSuffix = probe.price === "last" ? "" : `,price=${probe.price}`;
-  const candleSymbol = `${streamerSymbol}{=1m${priceSuffix}}`;
+  const priceSuffix = probe.price === "last" && !probe.explicitLast ? "" : `,price=${probe.price}`;
+  const dataTypeSuffix = probe.dt ? `,dt=${probe.dt}` : "";
+  const candleSymbol = `${streamerSymbol}{=1m${priceSuffix}${dataTypeSuffix}}`;
   const fromTime = Date.now() - probe.lookbackMinutes * 60 * 1000;
   const wireFromTime = probe.unit === "s" ? Math.floor(fromTime / 1000) : fromTime;
   const requestedFields = [
@@ -344,6 +345,8 @@ export default async (req: Request, _context: Context) => {
       lookbackMinutes: Math.min(10080, Math.max(30, Number(q.get("lookbackMinutes")) || 10080)),
       unit: q.get("unit") === "s" ? "s" : "ms",
       price: q.get("price") === "bid" ? "bid" : q.get("price") === "ask" ? "ask" : "last",
+      dt: ["all","eth","rth","source"].includes(q.get("dt") || "") ? q.get("dt") as FeedProbe["dt"] : "",
+      explicitLast: q.get("explicitLast") === "1",
     };
     const accessToken = await getAccessToken();
     const [future, quoteAuth] = await Promise.all([
@@ -391,6 +394,8 @@ export default async (req: Request, _context: Context) => {
         fromTimeUnit: probe.unit,
         lookbackMinutes: probe.lookbackMinutes,
         priceType: probe.price,
+        dataType: probe.dt || null,
+        explicitLast: probe.explicitLast,
         entitlementLevel: quoteAuth.level || null,
         quoteTokenExpiresAt: quoteAuth["expires-at"] || null,
         candleSymbol: result.candleSymbol,
