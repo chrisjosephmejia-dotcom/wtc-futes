@@ -7,64 +7,25 @@ jobs:
   diagnostic:
     runs-on: ubuntu-latest
     steps:
-      - name: Read current production data without secrets
-        env:
-          SITE: https://wtc-futes.netlify.app
+      - name: Check quote and trade coverage in production
         run: |
           python3 - <<'PY'
           import json, urllib.request, datetime, time
+          time.sleep(18)
           base="https://wtc-futes.netlify.app"
-          for i in range(2):
-            print("sample",i,"utc",datetime.datetime.now(datetime.timezone.utc).isoformat(),flush=True)
-            for route in ("status","live-price","nq-candles-test"):
-              try:
-                req=urllib.request.Request(f"{base}/api/{route}",headers={"Cache-Control":"no-cache","User-Agent":"wtc-diagnostics/1.0"})
-                with urllib.request.urlopen(req,timeout=25) as res:
-                  obj=json.loads(res.read())
-                  if route=="status":
-                    m=obj.get("market") or {}
-                    fields={"signal":obj.get("signal"),"reason":obj.get("reason"),"checkedAt":obj.get("checkedAt"),"error":obj.get("error"),"price":obj.get("price"),"lastBar":m.get("lastBar"),"ageSec":m.get("ageSec"),"feedActive":m.get("feedActive"),"instrument":obj.get("instrument",{}).get("symbol")}
-                  elif route=="live-price":
-                    fields={k:obj.get(k) for k in ("verified","symbol","price","quoteTime","ageSec","checkedAt","error")}
-                  else:
-                    d=obj.get("dxlink") or {}
-                    candles=obj.get("candles") or []
-                    fields={"ok":obj.get("ok"),"error":obj.get("error"),"symbol":(obj.get("instrument") or {}).get("symbol"),"snapshotComplete":d.get("snapshotComplete"),"usableCandles":d.get("usableCandles"),"requestedFrom":d.get("requestedFrom"),"latestCandle":candles[-1].get("time") if candles else None}
-                  print(route,"HTTP",res.status,json.dumps(fields),flush=True)
-              except Exception as exc:print(route,"ERROR",str(exc)[:350],flush=True)
-            if i==0:time.sleep(15)
-          try:
-            req=urllib.request.Request(f"{base}/api/nq-trades-probe",headers={"Cache-Control":"no-cache","User-Agent":"wtc-diagnostics/1.0"})
-            with urllib.request.urlopen(req,timeout=20) as res:
-              obj=json.loads(res.read())
-              fields={k:obj.get(k) for k in ("ok","symbol","subscribed","snapshotEnded","receivedMessages","events","validTrades","earliest","latest","latestAgeSec","latestPrice","elapsedMs","error")}
-              print("TIME_AND_SALE_PROBE","HTTP",res.status,json.dumps(fields),flush=True)
-          except Exception as exc:print("TIME_AND_SALE_PROBE ERROR",str(exc)[:350],flush=True)
-          try:
-            req=urllib.request.Request(f"{base}/api/nq-trades-probe?lookbackMinutes=90",headers={"Cache-Control":"no-cache","User-Agent":"wtc-diagnostics/1.0"})
-            with urllib.request.urlopen(req,timeout=25) as res:
-              obj=json.loads(res.read())
-              fields={k:obj.get(k) for k in ("ok","symbol","subscribed","snapshotEnded","receivedMessages","events","validTrades","earliest","latest","latestAgeSec","latestPrice","elapsedMs","error","lookbackMinutes")}
-              print("TIME_AND_SALE_90MIN","HTTP",res.status,json.dumps(fields),flush=True)
-          except Exception as exc:print("TIME_AND_SALE_90MIN ERROR",str(exc)[:350],flush=True)
-          print("ALTERNATE DXLINK PROBES",flush=True)
-          probes=[
-            ("HISTORY_SHORT",{"contract":"HISTORY","lookbackMinutes":"120"}),
-            ("AUTO_SHORT",{"contract":"AUTO","lookbackMinutes":"120"}),
-            ("AUTO_BID",{"contract":"AUTO","lookbackMinutes":"120","price":"bid"}),
-            ("AUTO_ASK",{"contract":"AUTO","lookbackMinutes":"120","price":"ask"}),
-            ("HISTORY_SECONDS",{"contract":"HISTORY","lookbackMinutes":"120","unit":"s"}),
-          ]
-          import urllib.parse
-          for label,params in probes:
+          print("CHECKED_AT",datetime.datetime.now(datetime.timezone.utc).isoformat(),flush=True)
+          for path in ("status","live-price","nq-trades-probe?lookbackMinutes=90"):
             try:
-              u=f"{base}/api/nq-candles-test?"+urllib.parse.urlencode(params)
-              req=urllib.request.Request(u,headers={"Cache-Control":"no-cache","User-Agent":"wtc-diagnostics/1.0"})
-              with urllib.request.urlopen(req,timeout=24) as res:
-                obj=json.loads(res.read())
-                d=obj.get("dxlink") or {}
-                candles=obj.get("candles") or []
-                fields={"ok":obj.get("ok"),"error":obj.get("error"),"contract":d.get("feedContract"),"unit":d.get("fromTimeUnit"),"usableCandles":d.get("usableCandles"),"snapshotComplete":d.get("snapshotComplete"),"latestCandle":candles[-1].get("time") if candles else None,"latestClose":candles[-1].get("close") if candles else None}
-                print(label,"HTTP",res.status,json.dumps(fields),flush=True)
-            except Exception as exc:print(label,"ERROR",str(exc)[:350],flush=True)
+              req=urllib.request.Request(f"{base}/api/{path}",headers={"Cache-Control":"no-cache","User-Agent":"wtc-diagnostics/1.1"})
+              with urllib.request.urlopen(req,timeout=25) as res:
+                x=json.loads(res.read())
+                if path=="status":
+                  m=x.get("market") or {}
+                  out={"status":x.get("signal"),"reason":x.get("reason"),"lastBar":m.get("lastBar"),"ageSec":m.get("ageSec"),"feedActive":m.get("feedActive")}
+                elif path=="live-price":
+                  out={k:x.get(k) for k in ("verified","price","quoteTime","ageSec","error")}
+                else:
+                  out={k:x.get(k) for k in ("ok","events","validTrades","earliest","latest","minuteCoverage","firstMinuteCounts","lastMinuteCounts","snapshotBoundaryAt","snapshotEvents","error")}
+                print(path,"HTTP",res.status,json.dumps(out),flush=True)
+            except Exception as e:print(path,"ERROR",str(e)[:400],flush=True)
           PY
