@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { validateQuote, getLiveNqPrice } from "../netlify/functions/lib/live-nq.mts";
+import { nqCandleSymbol } from "../netlify/functions/lib/nq-candle-symbol.mts";
 import { resolvePositionState } from "../netlify/functions/lib/position-state.mts";
 
 const NOW = Date.parse("2026-11-11T23:38:00.000Z");
@@ -59,4 +60,12 @@ test("stale DXLink bars cannot generate new entries", () => {
   const position=resolvePositionState(raw,"WAIT");
   assert.equal(position.signal,"WAIT");
   assert.equal(position.positionEvent,"FLAT");
+});
+
+
+test("intraday NQ candles explicitly aggregate all valid trades, including ETH", () => {
+  assert.equal(nqCandleSymbol("/NQZ26:XCME", 1, "m"), "/NQZ26:XCME{=1m,dt=all}");
+  assert.equal(nqCandleSymbol("/NQZ26:XCME", 5, "m"), "/NQZ26:XCME{=5m,dt=all}");
+  assert.equal(nqCandleSymbol("/NQZ26:XCME", 1, "d"), "/NQZ26:XCME{=1d}");
+  assert.throws(() => nqCandleSymbol("",1,"m"), /Invalid/);
 });
