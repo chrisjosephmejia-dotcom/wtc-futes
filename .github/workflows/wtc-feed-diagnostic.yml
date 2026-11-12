@@ -1,0 +1,39 @@
+name: Check WTC futures and MCL feeds
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read-only price and candle snapshots
+        run: |
+          python3 - <<'PY'
+          import json,urllib.request,urllib.error,datetime,time
+          bases={"MNQ":"https://wtc-futes.netlify.app","MCL":"https://wtc-mcl.netlify.app"}
+          for i in range(2):
+            print("CHECK_UTC",i,datetime.datetime.now(datetime.timezone.utc).isoformat(),flush=True)
+            for name,base in bases.items():
+              for route in ("status","live-price"):
+                try:
+                  req=urllib.request.Request(f"{base}/api/{route}",headers={"Cache-Control":"no-store","User-Agent":"wtc-live-feed-audit/1.0"})
+                  with urllib.request.urlopen(req,timeout=34) as res:
+                    data=json.loads(res.read())
+                    m=data.get("market") or {}
+                    fields={
+                      "http":res.status,"signal":data.get("signal"),"reason":data.get("reason"),
+                      "error":data.get("error"),"checkedAt":data.get("checkedAt"),
+                      "price":data.get("price"),"barTime":data.get("barTime"),
+                      "quoteTime":data.get("quoteTime"),"ageSec":data.get("ageSec"),
+                      "feedActive":m.get("feedActive"),"lastBar":m.get("lastBar"),
+                      "marketAgeSec":m.get("ageSec"),"sessionHistoryComplete":m.get("sessionHistoryComplete"),
+                      "sessionCoverage":m.get("sessionCoverage"),
+                      "source":data.get("source"),
+                    }
+                    print(name,route,json.dumps(fields,default=str),flush=True)
+                except urllib.error.HTTPError as err:
+                  print(name,route,"HTTP_ERROR",err.code,err.read().decode()[:450],flush=True)
+                except Exception as err:print(name,route,"ERROR",str(err)[:450],flush=True)
+            if i==0:time.sleep(15)
+          PY
