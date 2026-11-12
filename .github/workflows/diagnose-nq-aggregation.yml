@@ -15,7 +15,7 @@ jobs:
           # Allow the latest production deploy to publish before invoking endpoints.
           time.sleep(18)
           base="https://wtc-futes.netlify.app/api/nq-candles-test"
-          cases=[("dt_all_2h",{"dt":"all","lookbackMinutes":"120"}),("dt_all_3h",{"dt":"all","lookbackMinutes":"180"}),("dt_all_4h",{"dt":"all","lookbackMinutes":"240"}),("dt_all_6h",{"dt":"all","lookbackMinutes":"360"}),("dt_all_8h",{"dt":"all","lookbackMinutes":"480"})]
+          cases=[("dt_all_7d_wait",{"dt":"all","lookbackMinutes":"10080","waitFull":"1"}),("dt_all_4h_wait",{"dt":"all","lookbackMinutes":"240","waitFull":"1"})]
           for name,extra in cases:
             p={"lookbackMinutes":"120","unit":"ms","contract":"HISTORY",**extra}
             url=base+"?"+urllib.parse.urlencode(p)
