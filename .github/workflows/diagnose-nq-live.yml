@@ -1,0 +1,36 @@
+name: Diagnose production NQ feed
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read current production data without secrets
+        env:
+          SITE: https://wtc-futes.netlify.app
+        run: |
+          python3 - <<'PY'
+          import json, urllib.request, datetime, time
+          base="https://wtc-futes.netlify.app"
+          for i in range(2):
+            print("sample",i,"utc",datetime.datetime.now(datetime.timezone.utc).isoformat(),flush=True)
+            for route in ("status","live-price","nq-candles-test"):
+              try:
+                req=urllib.request.Request(f"{base}/api/{route}",headers={"Cache-Control":"no-cache","User-Agent":"wtc-diagnostics/1.0"})
+                with urllib.request.urlopen(req,timeout=25) as res:
+                  obj=json.loads(res.read())
+                  if route=="status":
+                    m=obj.get("market") or {}
+                    fields={"signal":obj.get("signal"),"reason":obj.get("reason"),"checkedAt":obj.get("checkedAt"),"error":obj.get("error"),"price":obj.get("price"),"lastBar":m.get("lastBar"),"ageSec":m.get("ageSec"),"feedActive":m.get("feedActive"),"instrument":obj.get("instrument",{}).get("symbol")}
+                  elif route=="live-price":
+                    fields={k:obj.get(k) for k in ("verified","symbol","price","quoteTime","ageSec","checkedAt","error")}
+                  else:
+                    d=obj.get("dxlink") or {}
+                    candles=obj.get("candles") or []
+                    fields={"ok":obj.get("ok"),"error":obj.get("error"),"symbol":(obj.get("instrument") or {}).get("symbol"),"snapshotComplete":d.get("snapshotComplete"),"usableCandles":d.get("usableCandles"),"requestedFrom":d.get("requestedFrom"),"latestCandle":candles[-1].get("time") if candles else None}
+                  print(route,"HTTP",res.status,json.dumps(fields),flush=True)
+              except Exception as exc:print(route,"ERROR",str(exc)[:350],flush=True)
+            if i==0:time.sleep(15)
+          PY
