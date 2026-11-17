@@ -20,16 +20,24 @@ function lastCompletedUSSession(){
 }
 async function chart(symbol,completedThrough){
  const url="https://query1.finance.yahoo.com/v8/finance/chart/"+encodeURIComponent(symbol)+"?period1="+epoch+"&period2="+(Math.floor(Date.now()/1000)+86400)+"&interval=1d&events=div%2Csplits";
- let r,lastError;
+ let r,lastError,candidate;
  for(const host of ["query1.finance.yahoo.com","query2.finance.yahoo.com"]){
   try {
    r=await fetch(url.replace("query1.finance.yahoo.com",host),{headers:{"user-agent":"Mozilla/5.0 StrategySignals/1.0","accept":"application/json"},signal:AbortSignal.timeout(3500)});
-   if(r.ok)break;
+   if(r.ok){
+    const payload=await r.json();
+    const d=payload?.chart?.result?.[0];
+    const dates=d?.timestamp??[],raw=d?.indicators?.quote?.[0]?.close??[],adj=d?.indicators?.adjclose?.[0]?.adjclose??[];
+    const latest=dates.reduce((max,t,i)=>{const day=utcDate(t);return day<=completedThrough&&Number.isFinite(raw[i])&&raw[i]>0&&Number.isFinite(adj[i])&&adj[i]>0&&day>max?day:max},"");
+    if(latest&&(!candidate||latest>candidate.latest))candidate={payload,latest};
+    if(latest===completedThrough)break;
+    lastError=Error("stale_or_incomplete_"+latest);r=null;continue;
+   }
    lastError=Error("http_"+r.status);r=null;
   } catch(e){lastError=e;r=null;}
  }
- if(!r)throw lastError??Error("source_unavailable");
- const data=(await r.json())?.chart?.result?.[0];
+ if(!candidate)throw lastError??Error("source_unavailable");
+ const data=candidate.payload?.chart?.result?.[0];
  if(!Array.isArray(data?.timestamp)||!Array.isArray(data?.indicators?.quote?.[0]?.close))throw Error("invalid_data");
  const raw=data.indicators.quote[0].close,adjusted=data.indicators.adjclose?.[0]?.adjclose;
  // A provider may publish today's partial index candle ahead of completed ETF
