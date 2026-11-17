@@ -20,8 +20,15 @@ function lastCompletedUSSession(){
 }
 async function chart(symbol,completedThrough){
  const url="https://query1.finance.yahoo.com/v8/finance/chart/"+encodeURIComponent(symbol)+"?period1="+epoch+"&period2="+(Math.floor(Date.now()/1000)+86400)+"&interval=1d&events=div%2Csplits";
- const r=await fetch(url,{headers:{"user-agent":"Mozilla/5.0 StrategySignals/1.0","accept":"application/json"},signal:AbortSignal.timeout(7000)});
- if(!r.ok)throw Error("http_"+r.status);
+ let r,lastError;
+ for(const host of ["query1.finance.yahoo.com","query2.finance.yahoo.com"]){
+  try {
+   r=await fetch(url.replace("query1.finance.yahoo.com",host),{headers:{"user-agent":"Mozilla/5.0 StrategySignals/1.0","accept":"application/json"},signal:AbortSignal.timeout(3500)});
+   if(r.ok)break;
+   lastError=Error("http_"+r.status);r=null;
+  } catch(e){lastError=e;r=null;}
+ }
+ if(!r)throw lastError??Error("source_unavailable");
  const data=(await r.json())?.chart?.result?.[0];
  if(!Array.isArray(data?.timestamp)||!Array.isArray(data?.indicators?.quote?.[0]?.close))throw Error("invalid_data");
  const raw=data.indicators.quote[0].close,adjusted=data.indicators.adjclose?.[0]?.adjclose;
@@ -197,9 +204,9 @@ export default async function handler(req){
  }));
  const errors=fetched.filter(x=>x.error);
  const summaries=Object.fromEntries(fetched.filter(x=>x.value).map(x=>[x.symbol,x.value]));
- if(errors.length)return respond({status:"source_fetch_incomplete",lastCompletedSession:lastSession,
+ if(!summaries.QQQ)return respond({status:"source_fetch_incomplete",lastCompletedSession:lastSession,
   errors,received:Object.fromEntries(Object.entries(summaries).map(([k,s])=>[k,{count:s.count,start:s.start,end:s.end,excludedOpenSession:s.excludedOpenSession}]))});
- try {return respond({status:"research_ready",...diagnostics(summaries,lastSession)})}
+ try {return respond({status:"research_ready",sourceErrors:errors,...diagnostics(summaries,lastSession)})}
  catch(e){return respond({status:"source_validation_failed",lastCompletedSession:lastSession,reason:e?.message??"diagnostics_failed",
    sourceSummaries:Object.fromEntries(Object.entries(summaries).map(([k,s])=>[k,{count:s.count,start:s.start,end:s.end,excludedOpenSession:s.excludedOpenSession}]))})}
 }
