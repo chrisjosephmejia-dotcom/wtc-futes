@@ -11,16 +11,22 @@ const headers={
 };
 const respond=(body,status=200)=>new Response(JSON.stringify(body),{status,headers});
 async function withHistory(body,context){
+ for(const key of ["hybrid","centurion"]){
+  const v=body[key];
+  if(body.dataDelayed&&v?.verified===true)body[key]={verified:false,reason:"Latest completed session missing",lastVerified:v};
+ }
+ if(body.dataDelayed){body.verified=false;body.status="market_data_delayed";}
  try{
   if(context?.deploy?.context!=="production")return body;
   const store=getStore({name:"verified-signals-v1",consistency:"strong"});
   await Promise.all(["hybrid","centurion"].map(async key=>{
    try{
     const v=body[key];
+    const candidate=v?.verified===true?v:v?.lastVerified;
     const previous=await store.getWithMetadata(key,{type:"json"});
-    if(v?.verified===true){
-     if(!previous||previous.data.asOf<v.asOf){
-      await store.setJSON(key,v,previous?{onlyIfMatch:previous.etag}:{onlyIfNew:true});
+    if(candidate?.verified===true){
+     if(!previous||previous.data.asOf<candidate.asOf){
+      await store.setJSON(key,candidate,previous?{onlyIfMatch:previous.etag}:{onlyIfNew:true});
      }
     }else if(previous?.data?.verified===true){
      body[key]={...v,verified:false,lastVerified:previous.data};
@@ -39,7 +45,7 @@ export default async function handler(req,context){
   const current=report.status==="research_ready" &&
    report.readyForLiveSignals===false &&
    Number(report.observationCount)>=1400 &&
-   report.asOf===report.lastCompletedSession &&
+   report.asOf===(report.evaluatedSession??report.lastCompletedSession) &&
    h?.status==="candidate_complete" && h.asOf===report.asOf &&
    h.kingAnchorMatched===true && h.closeCrosscheck20261016===true &&
    s?.last120Missing===0 && s?.start<="2020-01-15" && s?.end===report.asOf &&
@@ -58,7 +64,7 @@ export default async function handler(req,context){
   });
   const centurionVerified=!!(
     report.status==="research_ready"&&
-    report.asOf===report.lastCompletedSession&&
+    report.asOf===(report.evaluatedSession??report.lastCompletedSession)&&
     factorsFresh&&
     cent?.status==="candidate_complete"&&
     cent.asOf===report.asOf&&
@@ -76,7 +82,7 @@ export default async function handler(req,context){
   return respond(await withHistory({
    verified:verified&&centurionVerified,
    status:verified&&centurionVerified?"both_systems_active":verified?"hybrid_active_centurion_review":"research_validation_pending",
-   asOf:report.asOf??null,readOnly:true,
+   asOf:report.asOf??null,readOnly:true,dataDelayed:report.asOf!==report.lastCompletedSession,expectedSession:report.lastCompletedSession,
    primaryDataSource:"Yahoo Finance historical daily closes",
    secondaryCrosscheck:"2026-08-07 King anchor and 2026-10-16 Robinhood regular-session quote",
    dataCoverage:{start:s?.start??null,end:s?.end??null,sessions:report.observationCount??null},
