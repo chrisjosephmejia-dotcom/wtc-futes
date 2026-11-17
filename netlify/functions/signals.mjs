@@ -46,6 +46,7 @@ export default async function handler(req,context){
    Number.isFinite(h.ema80)&&Number.isFinite(h.ema270)&&
    ["BULLISH","BEARISH"].includes(h.kingRegime) &&
    ["TQQQ","QQQ","CASH"].includes(h.provisionalTarget);
+  console.info("signal_audit",JSON.stringify({status:report.status,asOf:report.asOf,lastCompletedSession:report.lastCompletedSession,reason:report.reason,errors:(report.sourceErrors??report.errors??[]).map(x=>({symbol:x.symbol,error:x.error})),qqq:report.sources?.QQQ??report.received?.QQQ??report.sourceSummaries?.QQQ,hybrid:h?{status:h.status,kingAnchorMatched:h.kingAnchorMatched,closeCrosscheck20261016:h.closeCrosscheck20261016,kingLastCompletedWeek:h.kingLastCompletedWeek}:null,centurion:report.centurion?{status:report.centurion.status,checks:report.centurion.independentChecks}:null}));
   const kingWeekComplete=h?.kingLastCompletedWeek && h.kingLastCompletedWeek<=report.asOf;
   const verified=!!(current&&kingWeekComplete);
   const cent=report.centurion;
@@ -113,7 +114,8 @@ export default async function handler(req,context){
    },
    warning:"Research-only public signals, not trade execution. Provider data corrections may revise historical values."
   },context));
- } catch {
+ } catch(e) {
+  console.warn("signal_audit_failed",e?.name,e?.message?.slice(0,150));
   return respond(await withHistory({
    verified:false,status:"source_temporarily_unavailable",asOf:null,readOnly:true,
    hybrid:{verified:false,reason:"Daily historical data could not be validated"},
