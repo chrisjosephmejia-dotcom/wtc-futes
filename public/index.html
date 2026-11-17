@@ -68,56 +68,46 @@ const showColoredStatus=(id,status,before='',after='')=>{
  else if(status==='BEARISH'||status==='FAIL')word.className='signal-negative';
  el.replaceChildren(document.createTextNode(before),word,document.createTextNode(after));
 };
-async function load(){
- try{
-  const resp=await fetch('/api/signals');
-  if(!resp.ok)throw Error('provider unavailable');
-  const s=await resp.json(),feed=document.getElementById('feed');
-  if(s.hybrid?.verified){
-   const h=s.hybrid;
-   feed.lastChild.textContent='HYBRID ACTIVE · '+h.asOf;
-   feed.classList.remove('warning');
-   show('hybrid-target','TARGET: '+h.target);
-   document.getElementById('hybrid-target').classList.add('verified');
-   show('hybrid-time','Confirmed '+h.asOf+' closing data · Trade next regular session');
-   showColoredStatus('ema-regime',h.emaRegime);
-   show('emas',h.ema80.toFixed(2)+' / '+h.ema270.toFixed(2));
-   showColoredStatus('king-regime',h.kingRegime,'',' · week of '+h.kingLastCompletedWeek);
-   show('updated','Last verified Hybrid close: '+h.asOf);
+const cacheKey='wtc-verified-signals-v1';
+let saved={};try{saved=JSON.parse(localStorage.getItem(cacheKey)||'{}')||{}}catch{}
+function render(s){
+ const feed=document.getElementById('feed');
+ const statuses=[];
+ for(const [key,prefix] of [['hybrid','hybrid'],['centurion','cent']]){
+  const fresh=s[key]?.verified===true;
+  if(fresh&&(!saved[key]||s[key].asOf>=saved[key].asOf))saved[key]=s[key];
+  const v=fresh?s[key]:(s[key]?.lastVerified||saved[key]);
+  const label=fresh?'LIVE':v?'STALE':'UNAVAILABLE';
+  statuses.push(key.toUpperCase()+' '+label);
+  document.getElementById(prefix+'-target').classList.toggle('verified',fresh);
+  show(prefix+'-target',v?(fresh?'TARGET: ':'LAST TARGET: ')+(v.target==='TREASURY_BILL_ETF'?'T-BILL ETF':v.target):'SIGNAL UNAVAILABLE');
+  show(prefix+'-time',fresh?'Confirmed '+v.asOf+' close · Next regular session':v?'STALE · Last verified '+v.asOf+' · No fresh trade signal':'No verified historical signal available');
+  if(key==='hybrid'){
+   showColoredStatus('ema-regime',v?.emaRegime||'—');
+   show('emas',v? v.ema80.toFixed(2)+' / '+v.ema270.toFixed(2):'—');
+   showColoredStatus('king-regime',v?.kingRegime||'—','',v?' · week of '+v.kingLastCompletedWeek:'');
   }else{
-   feed.lastChild.textContent='HISTORICAL DATA · VALIDATION PENDING';
-   show('hybrid-time',s.hybrid?.reason||'Awaiting complete confirmed-session prices');
-  }
-  if(s.centurion?.verified){
-   const c=s.centurion;
-   const result=c.target==='TREASURY_BILL_ETF'?'T-BILL ETF':c.target;
-   show('cent-target','TARGET: '+result);
-   document.getElementById('cent-target').classList.add('verified');
-   show('cent-time','Confirmed '+c.asOf+' close · Next regular-session target');
-   show('cent-raw',(c.rawScore*100).toFixed(2)+'%');
-   show('cent-score',(c.smoothedScore*100).toFixed(2)+'%');
-   show('cent-action',c.regime+' · '+c.action);
+   show('cent-raw',v?(v.rawScore*100).toFixed(2)+'%':'—');
+   show('cent-score',v?(v.smoothedScore*100).toFixed(2)+'%':'—');
+   show('cent-action',v?(fresh?v.regime+' · '+v.action:v.regime+' · HISTORICAL ONLY'):'—');
    for(const [name,weight] of [['credit',1],['volatility',1],['breadth',1],['trend',1],['utilities',2]]){
-    const passed=c.factors?.[name]===true;
-    showColoredStatus('cent-'+name,passed?'PASS':'FAIL',(weight===1?'1 pt':'2 pts')+' · ');
+    showColoredStatus('cent-'+name,v?(v.factors?.[name]===true?'PASS':'FAIL'):'—',''+weight+(weight===1?' pt · ':' pts · '));
    }
-   if(s.hybrid?.verified){
-    feed.lastChild.textContent='BOTH SYSTEMS ACTIVE · '+s.asOf;
-    show('updated','Last verified close (both): '+s.asOf);
-   }else{
-    feed.lastChild.textContent='CENTURION ACTIVE · '+c.asOf;
-    feed.classList.remove('warning');
-    show('updated','Last verified Centurion close: '+c.asOf);
-   }
-  }else{
-   show('cent-target','SIGNAL PENDING');
-   show('cent-time',s.centurion?.reason||'Factor data or historical validation missing');
   }
- }catch{
-  show('hybrid-time','Data service temporarily unavailable · No current recommendation');
-  show('cent-time','Data service temporarily unavailable');
-  document.getElementById('feed').lastChild.textContent='DATA SERVICE TEMPORARILY UNAVAILABLE';
  }
+ try{localStorage.setItem(cacheKey,JSON.stringify(saved))}catch{}
+ feed.lastChild.textContent=statuses.join(' · ');
+ feed.classList.toggle('warning',!s.hybrid?.verified||!s.centurion?.verified);
+ show('updated','Hybrid: '+(s.hybrid?.verified?s.hybrid.asOf:(s.hybrid?.lastVerified||saved.hybrid)?.asOf||'unavailable')+' · Centurion: '+(s.centurion?.verified?s.centurion.asOf:(s.centurion?.lastVerified||saved.centurion)?.asOf||'unavailable'));
 }
+let loading=false;
+async function load(){
+ if(loading)return;loading=true;
+ try{const resp=await fetch('/api/signals',{cache:'no-store',signal:AbortSignal.timeout(25000)});render(await resp.json())}
+ catch{render({})}finally{loading=false}
+}
+render({});
+setInterval(load,120000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)load()});
 load();
 </script></body></html>
