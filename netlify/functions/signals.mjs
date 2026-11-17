@@ -2,6 +2,7 @@
 // complete daily data and independent historical monitoring checkpoints.
 // No user accounts, authentication tokens, or order endpoints are exposed.
 import audit from "./model-audit.mjs";
+import {getStore} from "@netlify/blobs";
 const headers={
   "content-type":"application/json; charset=utf-8",
   "x-content-type-options":"nosniff",
@@ -9,7 +10,27 @@ const headers={
   "Netlify-CDN-Cache-Control":"public, s-maxage=120, stale-while-revalidate=60"
 };
 const respond=(body,status=200)=>new Response(JSON.stringify(body),{status,headers});
-export default async function handler(req){
+async function withHistory(body,context){
+ try{
+  if(context?.deploy?.context!=="production")return body;
+  const store=getStore({name:"verified-signals-v1",consistency:"strong"});
+  await Promise.all(["hybrid","centurion"].map(async key=>{
+   try{
+    const v=body[key];
+    const previous=await store.getWithMetadata(key,{type:"json"});
+    if(v?.verified===true){
+     if(!previous||previous.data.asOf<v.asOf){
+      await store.setJSON(key,v,previous?{onlyIfMatch:previous.etag}:{onlyIfNew:true});
+     }
+    }else if(previous?.data?.verified===true){
+     body[key]={...v,verified:false,lastVerified:previous.data};
+    }
+   }catch(e){console.warn("signal_cache",key,e?.name);body.cacheWarning="Signal history storage unavailable"}
+  }));
+ }catch(e){console.warn("signal_cache",e?.name);body.cacheWarning="Signal history storage unavailable"}
+ return body;
+}
+export default async function handler(req,context){
  if(req.method!=="GET")return respond({error:"method_not_allowed"},405);
  try {
   const response=await audit(new Request("https://strategy-signals.internal/api/model-audit"));
@@ -51,7 +72,7 @@ export default async function handler(req){
     ["QLD","TREASURY_BILL_ETF"].includes(cent.provisionalTarget)&&
     cent.provisionalTarget===(cent.provisionalRegime==="ON"?"QLD":"TREASURY_BILL_ETF")
   );
-  return respond({
+  return respond(await withHistory({
    verified:verified&&centurionVerified,
    status:verified&&centurionVerified?"both_systems_active":verified?"hybrid_active_centurion_review":"research_validation_pending",
    asOf:report.asOf??null,readOnly:true,
@@ -91,13 +112,13 @@ export default async function handler(req){
     asOf:cent?.asOf??null
    },
    warning:"Research-only public signals, not trade execution. Provider data corrections may revise historical values."
-  });
+  },context));
  } catch {
-  return respond({
+  return respond(await withHistory({
    verified:false,status:"source_temporarily_unavailable",asOf:null,readOnly:true,
    hybrid:{verified:false,reason:"Daily historical data could not be validated"},
    centurion:{verified:false,reason:"Daily factors or checkpoint history could not be validated"}
-  },503);
+  },context),503);
  }
 }
 export const config={
