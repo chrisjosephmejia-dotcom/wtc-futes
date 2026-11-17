@@ -1,55 +1,450 @@
 {
+  "asOf": "2026-11-13",
+  "centurion": {
+    "asOf": "2026-11-13",
+    "caution": "The manual's Sept-01 81.5% checkpoint is inconsistent with independently verified Sept-02 and Oct-16 checks; rules remain frozen and site uses independently corroborated checkpoints.",
+    "checkpointTrace": [
+      {
+        "date": "2026-08-14",
+        "factors": {
+          "breadth": true,
+          "credit": true,
+          "date": "2026-08-14",
+          "trend": true,
+          "utilities": true,
+          "volatility": true
+        },
+        "mode": "ON",
+        "rawScore": 1,
+        "smoothedScore": 0.997227
+      },
+      {
+        "date": "2026-08-17",
+        "factors": {
+          "breadth": true,
+          "credit": true,
+          "date": "2026-08-17",
+          "trend": true,
+          "utilities": true,
+          "volatility": true
+        },
+        "mode": "ON",
+        "rawScore": 1,
+        "smoothedScore": 0.998152
+      },
+      {
+        "date": "2026-08-20",
+        "factors": {
+          "breadth": true,
+          "credit": true,
+          "date": "2026-08-20",
+          "trend": true,
+          "utilities": true,
+          "volatility": true
+        },
+        "mode": "ON",
+        "rawScore": 1,
+        "smoothedScore": 0.999452
+      },
+      {
+        "date": "2026-08-21",
+        "factors": {
+          "breadth": true,
+          "credit": true,
+          "date": "2026-08-21",
+          "trend": true,
+          "utilities": true,
+          "volatility": true
+        },
+        "mode": "ON",
+        "rawScore": 1,
+        "smoothedScore": 0.999635
+      },
+      {
+        "date": "2026-08-24",
+        "factors": {
+          "breadth": true,
+          "credit": true,
+          "date": "2026-08-24",
+          "trend": true,
+          "utilities": true,
+          "volatility": true
+        },
+        "mode": "ON",
+        "rawScore": 1,
+        "smoothedScore": 0.999757
+      },
+      {
+        "date": "2026-08-25",
+        "factors": {
+          "breadth": true,
+          "credit": true,
+          "date": "2026-08-25",
+          "trend": true,
+          "utilities": true,
+          "volatility": true
+        },
+        "mode": "ON",
+        "rawScore": 1,
+        "smoothedScore": 0.999838
+      },
+      {
+        "date": "2026-08-26",
+        "factors": {
+          "breadth": true,
+          "credit": true,
+          "date": "2026-08-26",
+          "trend": true,
+          "utilities": true,
+          "volatility": true
+        },
+        "mode": "ON",
+        "rawScore": 1,
+        "smoothedScore": 0.999892
+      },
+      {
+        "date": "2026-08-27",
+        "factors": {
+          "breadth": true,
+          "credit": true,
+          "date": "2026-08-27",
+          "trend": true,
+          "utilities": true,
+          "volatility": true
+        },
+        "mode": "ON",
+        "rawScore": 1,
+        "smoothedScore": 0.999928
+      },
+      {
+        "date": "2026-08-28",
+        "factors": {
+          "breadth": true,
+          "credit": true,
+          "date": "2026-08-28",
+          "trend": true,
+          "utilities": true,
+          "volatility": true
+        },
+        "mode": "ON",
+        "rawScore": 1,
+        "smoothedScore": 0.999952
+      },
+      {
+        "date": "2026-08-31",
+        "factors": {
+          "breadth": true,
+          "credit": true,
+          "date": "2026-08-31",
+          "trend": true,
+          "utilities": true,
+          "volatility": true
+        },
+        "mode": "ON",
+        "rawScore": 1,
+        "smoothedScore": 0.999968
+      },
+      {
+        "date": "2026-09-01",
+        "factors": {
+          "breadth": true,
+          "credit": true,
+          "date": "2026-09-01",
+          "trend": true,
+          "utilities": true,
+          "volatility": true
+        },
+        "mode": "ON",
+        "rawScore": 1,
+        "smoothedScore": 0.999979
+      },
+      {
+        "date": "2026-09-02",
+        "factors": {
+          "breadth": true,
+          "credit": true,
+          "date": "2026-09-02",
+          "trend": true,
+          "utilities": true,
+          "volatility": true
+        },
+        "mode": "ON",
+        "rawScore": 1,
+        "smoothedScore": 0.999986
+      },
+      {
+        "date": "2026-09-03",
+        "factors": {
+          "breadth": true,
+          "credit": true,
+          "date": "2026-09-03",
+          "trend": true,
+          "utilities": true,
+          "volatility": true
+        },
+        "mode": "ON",
+        "rawScore": 1,
+        "smoothedScore": 0.999991
+      },
+      {
+        "date": "2026-09-04",
+        "factors": {
+          "breadth": true,
+          "credit": true,
+          "date": "2026-09-04",
+          "trend": true,
+          "utilities": true,
+          "volatility": true
+        },
+        "mode": "ON",
+        "rawScore": 1,
+        "smoothedScore": 0.999994
+      }
+    ],
+    "cooldownSessionsLatest": 0,
+    "emergencyExitTriggeredLatest": false,
+    "factorMeasurements": {
+      "breadth": {
+        "ema100": 0.220151,
+        "pass": false,
+        "ratio": 0.219109
+      },
+      "credit": {
+        "changePct": 0.814,
+        "pass": true,
+        "ratio": 0.748371,
+        "ratio20SessionsAgo": 0.742325
+      },
+      "trend": {
+        "adjustedQQQ": 679.89,
+        "ema150": 695.81,
+        "pass": false
+      },
+      "utilities": {
+        "ema50": 0.055998,
+        "pass": false,
+        "ratio": 0.05838
+      },
+      "volatility": {
+        "pass": true,
+        "vix": 19.3,
+        "vix3m": 20.62
+      }
+    },
+    "factors": {
+      "breadth": false,
+      "credit": true,
+      "date": "2026-11-13",
+      "trend": false,
+      "utilities": false,
+      "volatility": true
+    },
+    "holdSessionsLatest": 0,
+    "independentCheckpointPassed": true,
+    "independentChecks": {
+      "apr17EffectiveEntry": true,
+      "noSkippedReplaySessions": true,
+      "oct16FactorParity": true,
+      "oct16ScoreParity": true,
+      "sep2AllFivePass": true,
+      "sep2SmoothedNear100": true
+    },
+    "independentReference": {
+      "inconsistentManualNote": {
+        "date": "2026-09-01",
+        "reason": "Contradicts independent Sep-02 near-100 reading and extended all-pass streak",
+        "rulesUnchanged": true,
+        "statedSmoothed": 0.815
+      },
+      "oct16": {
+        "date": "2026-10-16",
+        "expected": {
+          "breadth": false,
+          "credit": false,
+          "mode": "ON",
+          "rawScore": 0.3333333333333333,
+          "smoothedScoreApprox": 0.6,
+          "trend": true,
+          "utilities": false,
+          "volatility": true
+        },
+        "reconstructed": {
+          "factors": {
+            "breadth": false,
+            "credit": false,
+            "date": "2026-10-16",
+            "trend": true,
+            "utilities": false,
+            "volatility": true
+          },
+          "mode": "ON",
+          "rawScore": 0.333333,
+          "smoothedScore": 0.599998
+        },
+        "source": "Official Friday Centurion monitoring"
+      },
+      "sep2": {
+        "date": "2026-09-02",
+        "expected": {
+          "allFivePass": true,
+          "mode": "ON",
+          "smoothedScoreApprox": 0.99999
+        },
+        "reconstructed": {
+          "mode": "ON",
+          "rawScore": 1,
+          "smoothedScore": 0.999986
+        },
+        "source": "Prior completed-session Centurion monitoring"
+      }
+    },
+    "lastRiskOffExit": "2026-10-26",
+    "lastRiskOnEntry": "2026-04-16",
+    "manualScoreDifferenceSep1": 0.185,
+    "manualSep1ParityPassed": false,
+    "modeChangedLatestSession": false,
+    "observedSessions": 1577,
+    "provisionalRegime": "OFF",
+    "provisionalTarget": "TREASURY_BILL_ETF",
+    "rawScore": 0.333333,
+    "sep1ManualCheck": {
+      "date": "2026-09-01",
+      "factors": {
+        "breadth": true,
+        "credit": true,
+        "date": "2026-09-01",
+        "trend": true,
+        "utilities": true,
+        "volatility": true
+      },
+      "manualExpected": {
+        "allFiveChecksPass": true,
+        "rawScore": 1,
+        "riskOnSince": "2026-04-17",
+        "smoothedScoreApprox": 0.815
+      },
+      "mode": "ON",
+      "rawScore": 1,
+      "smoothedScore": 0.999979
+    },
+    "skippedSessions": 0,
+    "smoothedScore": 0.249311,
+    "status": "candidate_complete"
+  },
+  "dataDelayed": true,
+  "evaluatedSession": "2026-11-13",
+  "hybrid": {
+    "asOf": "2026-11-13",
+    "closeCrosscheck20261016": true,
+    "ema270": 666.6518,
+    "ema80": 708.9945,
+    "emaRegime": "BULLISH",
+    "kingAnchorMatched": true,
+    "kingAnchorYahooClose": 723.03,
+    "kingCurrentBearLow": 656.1,
+    "kingCurrentBullHigh": 751.27,
+    "kingLastCompletedWeek": "2026-11-13",
+    "kingRegime": "BEARISH",
+    "kingSwitches": [
+      {
+        "close": 709.7999877929688,
+        "date": "2026-10-16",
+        "mode": "BEARISH"
+      }
+    ],
+    "kingWeeklyObservations": 15,
+    "lastFourWeeklyCloses": [
+      {
+        "close": 704.4,
+        "date": "2026-10-23"
+      },
+      {
+        "close": 690.49,
+        "date": "2026-10-30"
+      },
+      {
+        "close": 656.1,
+        "date": "2026-11-06"
+      },
+      {
+        "close": 679.89,
+        "date": "2026-11-13"
+      }
+    ],
+    "provisionalTarget": "QQQ",
+    "qqqClose": 679.89,
+    "status": "candidate_complete"
+  },
   "lastCompletedSession": "2026-11-16",
-  "reason": "incomplete_qqq_history",
-  "sourceSummaries": {
+  "note": "Research diagnostic only; candidate values are not verified published recommendations.",
+  "observationCount": 1727,
+  "readyForLiveSignals": false,
+  "sourceErrors": [],
+  "sources": {
     "HYG": {
       "count": 1727,
       "end": "2026-11-13",
       "excludedOpenSession": 0,
+      "invalid": 1,
+      "last120Missing": 0,
       "start": "2020-01-02"
     },
     "LQD": {
       "count": 1727,
       "end": "2026-11-13",
       "excludedOpenSession": 0,
+      "invalid": 1,
+      "last120Missing": 0,
       "start": "2020-01-02"
     },
     "QQEW": {
       "count": 1727,
       "end": "2026-11-13",
       "excludedOpenSession": 0,
+      "invalid": 1,
+      "last120Missing": 0,
       "start": "2020-01-02"
     },
     "QQQ": {
       "count": 1727,
       "end": "2026-11-13",
       "excludedOpenSession": 0,
+      "invalid": 1,
+      "last120Missing": 0,
       "start": "2020-01-02"
     },
     "SPY": {
       "count": 1727,
       "end": "2026-11-13",
       "excludedOpenSession": 0,
+      "invalid": 1,
+      "last120Missing": 0,
       "start": "2020-01-02"
     },
     "XLU": {
       "count": 1727,
       "end": "2026-11-13",
       "excludedOpenSession": 0,
+      "invalid": 1,
+      "last120Missing": 0,
       "start": "2020-01-02"
     },
     "^VIX": {
       "count": 1730,
       "end": "2026-11-16",
       "excludedOpenSession": 0,
+      "invalid": 63,
+      "last120Missing": 0,
       "start": "2020-01-02"
     },
     "^VIX3M": {
       "count": 1728,
       "end": "2026-11-16",
       "excludedOpenSession": 0,
+      "invalid": 0,
+      "last120Missing": 0,
       "start": "2020-01-02"
     }
   },
-  "status": "source_validation_failed"
+  "status": "research_ready"
 }

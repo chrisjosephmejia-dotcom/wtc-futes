@@ -1,23 +1,44 @@
 {
-  "asOf": null,
+  "asOf": "2026-11-13",
   "centurion": {
-    "asOf": null,
+    "asOf": "2026-11-13",
     "reason": "Historical factor data or independent checkpoint validation incomplete",
     "verified": false
   },
   "dataCoverage": {
-    "end": null,
-    "sessions": null,
-    "start": null
+    "end": "2026-11-13",
+    "sessions": 1727,
+    "start": "2020-01-02"
   },
+  "dataDelayed": true,
+  "expectedSession": "2026-11-16",
   "hybrid": {
-    "reason": "Historical checks or King session confirmation incomplete",
+    "lastVerified": {
+      "asOf": "2026-11-13",
+      "ema270": 666.6518,
+      "ema80": 708.9945,
+      "emaRegime": "BULLISH",
+      "execution": "Next regular session after confirmed close",
+      "kingLastCompletedWeek": "2026-11-13",
+      "kingRegime": "BEARISH",
+      "kingSwitches": [
+        {
+          "close": 709.7999877929688,
+          "date": "2026-10-16",
+          "mode": "BEARISH"
+        }
+      ],
+      "qqqClose": 679.89,
+      "target": "QQQ",
+      "verified": true
+    },
+    "reason": "Latest completed session missing",
     "verified": false
   },
   "primaryDataSource": "Yahoo Finance historical daily closes",
   "readOnly": true,
   "secondaryCrosscheck": "2026-08-07 King anchor and 2026-10-16 Robinhood regular-session quote",
-  "status": "research_validation_pending",
+  "status": "market_data_delayed",
   "verified": false,
   "warning": "Research-only public signals, not trade execution. Provider data corrections may revise historical values."
 }
