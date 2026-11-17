@@ -37,6 +37,28 @@ async function chart(symbol,completedThrough){
   } catch(e){lastError=e;r=null;}
  }
  if(!candidate)throw lastError??Error("source_unavailable");
+ // Fetch a short, separately keyed history window when the long chart lags.
+ // Merge only provider-supplied raw AND adjusted observations, never synthesize prices.
+ if(candidate.latest<completedThrough){
+  const shortStart=Math.floor(Date.parse(completedThrough+"T00:00:00Z")/1000)-10*86400;
+  for(const host of ["query2.finance.yahoo.com","query1.finance.yahoo.com"]){
+   try{
+    const shortUrl="https://"+host+"/v8/finance/chart/"+encodeURIComponent(symbol)+"?period1="+shortStart+"&period2="+(Math.floor(Date.now()/1000)+86400)+"&interval=1d&events=div%2Csplits&includePrePost=false";
+    const res=await fetch(shortUrl,{headers:{"user-agent":"Mozilla/5.0 StrategySignals/1.0","accept":"application/json","cache-control":"no-cache"},signal:AbortSignal.timeout(2500)});
+    if(!res.ok)continue;
+    const short=(await res.json())?.chart?.result?.[0],long=candidate.payload.chart.result[0];
+    const a=short?.indicators?.quote?.[0]?.close,b=short?.indicators?.adjclose?.[0]?.adjclose;
+    const lr=long.indicators.quote[0].close,la=long.indicators.adjclose?.[0]?.adjclose;
+    if(!Array.isArray(short?.timestamp)||!Array.isArray(a)||!Array.isArray(b)||!Array.isArray(la))continue;
+    const overlap=new Map(long.timestamp.map((t,i)=>[utcDate(t),i]));
+    const matches=short.timestamp.map((t,i)=>({i,j:overlap.get(utcDate(t))})).filter(x=>x.j!==undefined&&Number.isFinite(a[x.i])&&Number.isFinite(b[x.i])&&Number.isFinite(lr[x.j])&&Number.isFinite(la[x.j]));
+    if(matches.length<3||!matches.every(({i,j})=>Math.abs(a[i]-lr[j])<0.011&&Math.abs(b[i]-la[j])<0.011))continue;
+    const i=short.timestamp.findIndex((t,i)=>utcDate(t)===completedThrough&&Number.isFinite(a[i])&&a[i]>0&&Number.isFinite(b[i])&&b[i]>0);
+    if(i<0)continue;
+    long.timestamp.push(short.timestamp[i]);lr.push(a[i]);la.push(b[i]);candidate.latest=completedThrough;break;
+   }catch{}
+  }
+ }
  const data=candidate.payload?.chart?.result?.[0];
  if(!Array.isArray(data?.timestamp)||!Array.isArray(data?.indicators?.quote?.[0]?.close))throw Error("invalid_data");
  const raw=data.indicators.quote[0].close,adjusted=data.indicators.adjclose?.[0]?.adjclose;
