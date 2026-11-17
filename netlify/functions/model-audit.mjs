@@ -214,7 +214,11 @@ export default async function handler(req){
  const summaries=Object.fromEntries(fetched.filter(x=>x.value).map(x=>[x.symbol,x.value]));
  if(!summaries.QQQ)return respond({status:"source_fetch_incomplete",lastCompletedSession:lastSession,
   errors,received:Object.fromEntries(Object.entries(summaries).map(([k,s])=>[k,{count:s.count,start:s.start,end:s.end,excludedOpenSession:s.excludedOpenSession}]))});
- try {return respond({status:"research_ready",sourceErrors:errors,...diagnostics(summaries,lastSession)})}
+ try {
+  const available=summaries.QQQ.end<lastSession?summaries.QQQ.end:lastSession;
+  const report=diagnostics(summaries,available);
+  return respond({status:"research_ready",sourceErrors:errors,...report,lastCompletedSession:lastSession,evaluatedSession:available,dataDelayed:available!==lastSession});
+ }
  catch(e){return respond({status:"source_validation_failed",lastCompletedSession:lastSession,reason:e?.message??"diagnostics_failed",
    sourceSummaries:Object.fromEntries(Object.entries(summaries).map(([k,s])=>[k,{count:s.count,start:s.start,end:s.end,excludedOpenSession:s.excludedOpenSession}]))})}
 }
