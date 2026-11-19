@@ -333,46 +333,70 @@ export async function getNqBars() {
   ).then((data)=>({ok:true as const,data,error:null as string|null}))
    .catch((error:any)=>({ok:false as const,data:null,error:error?.message||String(error)}));
 
-  // DXLink sometimes returns NO Candle events for an otherwise healthy
-  // intraday subscription. A timeout from one WebSocket must not discard
-  // the last verified minute history or turn a position into an error state.
-  // Query two bounded windows on separate sockets and use the first verified
-  // current snapshot. If both fail, retain actual cached bars but explicitly
-  // mark the feed paused (never infer a new candle from a REST quote).
+  // A DXLink minute snapshot can occasionally time out at busy market
+  // boundaries even while the REST quote and cached bars remain healthy.
+  // Try two independent windows, then ONE new-token reconnect if both fail.
+  // Never promote a cached candle or REST quote into a live V4 decision.
   let minuteBars: Bar[] = [];
   let recentSnapshotOk = false;
   let recoveryAttempted = false;
   let minuteHistorySource = "DXLink-unavailable";
-  const isCurrentSnapshot = (bars: Bar[]) => isFreshNqCandleSnapshot(bars,now);
-  const fetchVerifiedTail = async (fromMs: number, label: string, signal: AbortSignal) => {
+  // Check freshness at receipt, not against the timestamp taken before a
+  // potentially 12-second WebSocket timeout (or an additional retry).
+  const isCurrentSnapshot = (bars: Bar[]) => isFreshNqCandleSnapshot(bars, Date.now());
+  const fetchVerifiedTail = async (
+    fromMs: number, label: string, auth=quoteAuth, signal?: AbortSignal,
+  ) => {
     const snapshot = await fetchHistory(
-      quoteAuth["dxlink-url"], quoteAuth.token, streamerSymbol,
+      auth["dxlink-url"], auth.token, streamerSymbol,
       1, "m", fromMs, 1, signal,
     );
     const bars = toBars(snapshot.candles);
     if (!snapshot.snapshotComplete || !bars.length || !isCurrentSnapshot(bars)) {
-      throw new Error(`NQ ${label} snapshot missing fresh, complete bars`);
+      const last = bars.at(-1)?.t;
+      throw new Error(`NQ ${label} snapshot missing fresh, complete bars${last ? ` (last ${new Date(last*1000).toISOString()})` : ""}`);
     }
     return { bars, label };
   };
 
   if (useIncremental) {
     const controller = new AbortController();
-    const selected = await Promise.any([
-      fetchVerifiedTail(now - 8 * 60_000, "8m-recent", controller.signal),
-      fetchVerifiedTail(fromTime, "30m-overlap", controller.signal),
-    ]).catch((error:any) => {
-      console.warn("NQ recent candle streams unavailable; retaining last verified bars",
-        error?.message || String(error));
-      return null;
-    }).finally(() => controller.abort());
+    let selected: {bars: Bar[];label: string} | null = null;
+    try {
+      selected = await Promise.any([
+        fetchVerifiedTail(now - 8 * 60_000, "8m-recent", quoteAuth, controller.signal),
+        fetchVerifiedTail(fromTime, "30m-overlap", quoteAuth, controller.signal),
+      ]);
+    } catch (error:any) {
+      const causes: any[] = error instanceof AggregateError ? error.errors : [error];
+      console.warn("NQ primary candle streams failed; retrying with fresh quote token",
+        causes.map((cause)=>cause?.message || String(cause)).join(" | "));
+    } finally {
+      controller.abort(); // Close the redundant socket before opening a retry.
+    }
+
+    if (!selected) {
+      recoveryAttempted = true;
+      try {
+        const newQuoteAuth = await getQuoteToken(accessToken);
+        selected = await fetchVerifiedTail(Date.now() - 8 * 60_000, "8m-retry", newQuoteAuth);
+        console.info("NQ_CANDLE_RECOVERED", JSON.stringify({
+          checkedAt: new Date().toISOString(),
+          source: selected.label,
+          lastBar: new Date(selected.bars.at(-1)!.t*1000).toISOString(),
+        }));
+      } catch (error:any) {
+        console.warn("NQ final candle retry failed; holding last verified cache",
+          error?.message || String(error));
+      }
+    }
+
     if (selected) {
       recentSnapshotOk = true;
       minuteBars = mergeMinuteBars(cachedBars, selected.bars);
       minuteHistorySource = selected.label;
     } else {
       minuteBars = cachedBars;
-      recoveryAttempted = true;
       minuteHistorySource = "verified-cache-paused";
     }
   } else {
