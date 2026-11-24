@@ -54,6 +54,10 @@ Existing spreadsheet **WTC Options**, with:
 
 This is a *ledger-position viewer*, **not a broker position service**. Never use it as the only safeguard against selling uncovered calls. Same-day activity not yet saved in the ledger cannot appear until recorded. Reconfirm your actual short calls, orders, and share availability in the brokerage before acting.
 
+## Connection verification after configuring Deploy Preview secrets
+
+Once both private values are configured for Deploy Previews, deploy the preview again. An unauthenticated request to `/api/positions` should return HTTP 401 (login required), not HTTP 503 (not configured). Next, enter the access password through the preview UI and check that the latest SPY/QQQ rows load. A 401 confirms the login guard is present, but is **not** proof that the Google key or spreadsheet sharing works; those are verified only by a successful authenticated read.
+
 ## Credential-context troubleshooting
 
 A variable existing at the project level is not enough: **Deploy Previews** must hold a non-empty value for `WTC_GOOGLE_PRIVATE_KEY` and `WTC_POSITIONS_ACCESS_PASSWORD`. `production` values are not inherited into Deploy Previews. If the position panel says `Position access is not configured`, check the Deploy Preview context and redeploy the preview before trying again. Do not print, copy into an issue, or commit secret values.
