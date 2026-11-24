@@ -58,8 +58,9 @@ async function googleAccessToken(){
   return cachedToken.token;
 }
 function centralDate(){
-  return new Intl.DateTimeFormat("en-CA",{timeZone:"America/Chicago",year:"numeric",month:"2-digit",day:"2-digit"})
-    .format(new Date());
+  const parts=new Intl.DateTimeFormat("en-US",{timeZone:"America/Chicago",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
+  const value=(type:string)=>parts.find(p=>p.type===type)?.value||"";
+  return value("year")+"-"+value("month")+"-"+value("day");
 }
 async function getSheetPositions(){
   const id=env("WTC_OPTIONS_SHEET_ID");
