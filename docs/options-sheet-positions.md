@@ -28,6 +28,7 @@ Existing spreadsheet **WTC Options**, with:
    - `WTC_POSITIONS_ACCESS_PASSWORD` = a **new, unique, random password** (at least 16 characters), used only to unlock the read-only position panel.
 6. **Review the Netlify combined Lambda environment-variable size limit** before setting a large private key, especially if other API credentials are configured. If it is too large, use a secret manager / short-lived credential flow rather than putting key material in static HTML or a public repository.
 7. Only after the environment variables and Sheet Viewer permission are established, merge the feature PR into the `wtc-options-seller` branch to deploy. Redeploy after changing env vars.
+8. **Configuration check:** verify the four `WTC_` environment variables exist with Functions scope (secret flags on the key and access password). Changing environment variables on an existing deploy does **not** update that deploy; publish a new deploy preview before testing and again after merging to production.
 
 ## User experience
 
