@@ -53,3 +53,7 @@ Existing spreadsheet **WTC Options**, with:
 ## Safety
 
 This is a *ledger-position viewer*, **not a broker position service**. Never use it as the only safeguard against selling uncovered calls. Same-day activity not yet saved in the ledger cannot appear until recorded. Reconfirm your actual short calls, orders, and share availability in the brokerage before acting.
+
+## Credential-context troubleshooting
+
+A variable existing at the project level is not enough: **Deploy Previews** must hold a non-empty value for `WTC_GOOGLE_PRIVATE_KEY` and `WTC_POSITIONS_ACCESS_PASSWORD`. `production` values are not inherited into Deploy Previews. If the position panel says `Position access is not configured`, check the Deploy Preview context and redeploy the preview before trying again. Do not print, copy into an issue, or commit secret values.
