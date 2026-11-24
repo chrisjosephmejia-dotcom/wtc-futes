@@ -17,6 +17,7 @@ style.textContent=`
 .wtc-positions button{border:1px solid #2b3952;background:#152238;color:#e2e8f0;border-radius:9px;padding:9px 12px;cursor:pointer;font-weight:700}
 .wtc-positions button:hover{border-color:#67d5ff}
 .wtc-positions .wtc-login{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:12px 0}
+.wtc-positions [hidden]{display:none !important}
 .wtc-positions input{background:#090f1b;color:#fff;border:1px solid #2b3952;border-radius:9px;padding:10px 12px}
 .wtc-positions .wtc-position{padding:12px;margin:10px 0 4px;border:1px solid #293950;background:#0b1321;border-radius:12px}
 .wtc-positions .wtc-position strong{display:block;font-size:17px;margin:4px 0}
