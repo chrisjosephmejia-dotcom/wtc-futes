@@ -1,6 +1,7 @@
 import type { Context, Config } from "@netlify/functions";
 import { getEquityBars, type Bar } from "./lib/equity-data.mts";
 import { getMarketContext } from "./lib/market-context.mts";
+import { nyseCashSessionMinutes,nyseTodayRemainingFraction } from "./lib/nyse-sessions.mts";
 
 function ema(xs:number[],n:number){if(!xs.length)return NaN;const k=2/(n+1);let e=xs[0];for(let i=1;i<xs.length;i++)e=xs[i]*k+e*(1-k);return e}
 function rsi(xs:number[],n=14){if(xs.length<n+1)return NaN;let g=0,l=0;for(let i=xs.length-n;i<xs.length;i++){const d=xs[i]-xs[i-1];if(d>=0)g+=d;else l-=d}if(l===0)return 100;const rs=(g/n)/(l/n);return 100-100/(1+rs)}
@@ -61,9 +62,8 @@ export default async(req:Request,_ctx:Context)=>{
   const upProbability=Math.round(clamp(50+outlookScore*.46,20,80)),downProbability=100-upProbability;
   // Expiry-aware realized-vol proxy: remaining regular-session minutes count for same-day expiries.
    const horizonNow=ctParts(Date.now()/1000),clock=horizonNow.hour*60+horizonNow.minute;
-   const weekdayNow=new Date(horizonNow.date+"T12:00:00Z").getUTCDay();
-   const todayFraction=weekdayNow>=1&&weekdayNow<=5&&context.weeklyExpiry.date>=horizonNow.date?
-    Math.max(0,Math.min(1,(900-Math.max(510,clock))/390)):0;
+   const todayFraction=context.weeklyExpiry.date>=horizonNow.date?
+    nyseTodayRemainingFraction(horizonNow.date,clock):0;
    const sessions=context.weeklyExpiry.sessions+todayFraction;
    const rangePct=(Number.isFinite(rv)?rv:15)/Math.sqrt(252)*Math.sqrt(Math.max(0,sessions));
   const estimatedLow=last.c*(1-rangePct/100),estimatedHigh=last.c*(1+rangePct/100);
@@ -98,8 +98,8 @@ export default async(req:Request,_ctx:Context)=>{
   if(upsideTurn&&csp>=60){decision="CSP VERTEX";reason="Downside intraday extreme is stretched and an upside momentum turn is confirmed.";formation="CONFIRMED_CSP"}
 
   const now=ctParts(Date.now()/1000),m=now.hour*60+now.minute;
-  const weekday=new Date(now.date+"T12:00:00Z").getUTCDay();
-  const open=weekday>=1&&weekday<=5&&m>=510&&m<900;
+  const minutes=nyseCashSessionMinutes(now.date);
+  const open=minutes>0&&m>=510&&m<510+minutes;
   const sessionDate=ctParts(last.t).date;
   const stale=Date.now()/1000-last.t>180;
   if(!open){
