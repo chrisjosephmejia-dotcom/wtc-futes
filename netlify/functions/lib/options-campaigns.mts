@@ -102,6 +102,7 @@ export function buildCampaigns(grid:unknown[][],ticker:"SPY"|"QQQ",account:strin
  if(active.length>1)warnings.push("Multiple open campaigns recorded; confirm coverage and roll associations.");
  return {ticker,account,activeCampaigns:active,
   recentCampaigns:all.slice(-6).reverse(),
+  recentRollingCampaigns:all.filter(x=>x.rollCount>0).slice(-3).reverse(),
   totalCampaigns:all.length,
   warnings,
   caveat:"Roll chains use adjacent spreadsheet rows when the previous call says ROLLED, with matching ticker/contracts and plausible dates. Links are inferred, not broker-confirmed."};
