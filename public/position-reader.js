@@ -42,7 +42,7 @@ let snapshot=null,current=(new URLSearchParams(location.search).get("ticker")||"
 if(!["SPY","QQQ"].includes(current))current="SPY";
 for(const symbol of ["SPY","QQQ"]){
  const button=document.createElement("button");button.type="button";button.textContent=symbol;button.dataset.symbol=symbol;
- button.addEventListener("click",()=>{current=symbol;input.value=symbol;analyze.click();paint();});
+ button.addEventListener("click",()=>{current=symbol;input.value=symbol;window.dispatchEvent(new CustomEvent("wtc:symbol",{detail:{ticker:symbol}}));analyze.click();paint();});
  buttons.append(button);
 }
 controls.insertBefore(buttons,input);
@@ -80,6 +80,7 @@ function paint(){
  $("wtc-position-footer").textContent="Entry targets are not live option marks. Always confirm position, share coverage, and recent fills directly in Robinhood. No trades are sent or logged by this panel.";
 }
 async function load(){
+ window.dispatchEvent(new CustomEvent("wtc:positions",{detail:null}));
  setStatus("Reading latest saved entries from Google Sheets…");
  $("wtc-refresh-positions").disabled=true;
  try{
@@ -92,6 +93,7 @@ async function load(){
    if(!res.ok)throw new Error(data.error||"Unable to read spreadsheet");
    $("wtc-position-login").hidden=true;
    snapshot=data;
+   window.dispatchEvent(new CustomEvent("wtc:positions",{detail:data}));
    setStatus("Read-only sheet connection active · refreshed "+new Date(data.readAt).toLocaleTimeString());
    paint();
  }catch(error){
