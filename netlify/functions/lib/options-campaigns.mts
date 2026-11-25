@@ -14,7 +14,7 @@ type Leg = {
   notes:string;
 };
 const value=(x:unknown)=>String(x??"").trim();
-const money=(x:unknown)=>{const n=Number(value(x).replace(/[$,\s]/g,""));return Number.isFinite(n)?n:null;};
+const money=(x:unknown)=>{const cleaned=value(x).replace(/[$,\s]/g,"");if(!cleaned)return null;const n=Number(cleaned);return Number.isFinite(n)?n:null;};
 const cents=(n:number)=>Math.round((n+Number.EPSILON)*100)/100;
 function date(x:unknown){
  const v=value(x),m=v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
