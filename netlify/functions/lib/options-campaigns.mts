@@ -31,8 +31,10 @@ function findLegs(grid:unknown[][],ticker:"SPY"|"QQQ"){
  const cols=grid[h].map(x=>value(x).toLowerCase().replace(/[^a-z0-9]/g,""));
  const col=(s:string)=>cols.indexOf(s.replace(/[^a-z0-9]/g,""));
  const ix={ticker:col("ticker"),strategy:col("strategy"),opened:col("opened"),expiry:col("exp"),strike:col("strike"),
-  contracts:col("contracts"),credit:col("net premium"),debit:col("net buy to close"),status:col("outcome"),notes:col("notes")};
+  contracts:col("contracts"),credit:col("net premium"),debit:col("net buy to close"),status:col("outcome")};
  if(Object.values(ix).some(x=>x<0))throw new Error("Campaign ledger columns changed");
+ // Header T is blank in Traditional IRA, although notes are populated there.
+ const noteCol=col("notes")>=0?col("notes"):19;
  const legs:Leg[]=[];const warnings:string[]=[];
  for(let i=h+1;i<grid.length;i++){
   const r=grid[i];
@@ -48,7 +50,7 @@ function findLegs(grid:unknown[][],ticker:"SPY"|"QQQ"){
    continue;
   }
   legs.push({row:i+1,ticker,opened,expiry,strike:strike!,contracts:contracts!,
-   netOpening:credit,closeDebit:status==="open"?null:debit, status, notes:value(r[ix.notes])});
+   netOpening:credit,closeDebit:status==="open"?null:debit, status, notes:value(r[noteCol])});
  }
  return {legs,warnings};
 }
