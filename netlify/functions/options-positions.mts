@@ -1,6 +1,7 @@
 import type { Config, Context } from "@netlify/functions";
 import { createHash, createHmac, createSign, randomBytes, timingSafeEqual } from "node:crypto";
 import { extractOpenCalls } from "./lib/options-ledger.mjs";
+import { buildCampaigns } from "./lib/options-campaigns.mjs";
 
 const SHEET_SCOPE="https://www.googleapis.com/auth/spreadsheets.readonly";
 const COOKIE="__Host-wtc-positions";
@@ -78,7 +79,9 @@ async function getSheetPositions(){
   const today=centralDate();
   const spy=extractOpenCalls(ranges[0].values||[],"SPY","Traditional IRA",today);
   const qqq=extractOpenCalls(ranges[1].values||[],"QQQ","Audi Wheel",today);
-  return {readAt:new Date().toISOString(),todayChicago:today,positions:{SPY:spy,QQQ:qqq},
+  const spyCampaigns=buildCampaigns(ranges[0].values||[],"SPY","Traditional IRA");
+  const qqqCampaigns=buildCampaigns(ranges[1].values||[],"QQQ","Audi Wheel");
+  return {readAt:new Date().toISOString(),todayChicago:today,positions:{SPY:spy,QQQ:qqq},campaigns:{SPY:spyCampaigns,QQQ:qqqCampaigns},
     disclaimer:"Ledger-only positions. This is not a real-time brokerage reconciliation. Confirm same-day trades and available shares before opening or rolling calls."};
 }
 export default async (request:Request,_context:Context)=>{
