@@ -71,11 +71,14 @@ function render(){
  const opened=rec.openCalls||[],active=history.activeCampaigns||[],p=getPrice(selected);
  const leg=opened[0],campaign=leg?active.find(c=>c.sourceRows.includes(leg.sourceRow)):null;
  const age=Date.now()-Date.parse(sheet.readAt);
+ const sheetOld=!Number.isFinite(age)||age<0||age>300000;
  const needsCheck=rec.safetyState==="RECONCILE"||Boolean(history.warnings?.length)||opened.length>1||
-  (opened.length===1&&active.length!==1)||!Number.isFinite(age)||age<0||age>300000;
+  (opened.length===1&&active.length!==1);
  let mode,reason;
  if(needsCheck){
-  mode="RECONCILE";reason="Ledger warning, multiple open campaigns or old sheet read. Verify current broker position before using this classification.";
+  mode="RECONCILE";reason="Ledger status or roll-chain inconsistency: review saved trades and confirm with Robinhood.";
+ }else if(sheetOld){
+  mode="DATA CHECK";reason="The sheet was last read more than five minutes ago. Select Refresh sheet to update; this is not evidence of a trade mismatch.";
  }else if(opened.length===0){
   mode="UNCOVERED";reason="No open "+selected+" call RECORDED in Sheets. This is not broker confirmation that shares are uncovered.";
  }else if(campaign&&campaign.rollCount>0){
