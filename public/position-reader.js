@@ -101,6 +101,8 @@ async function load(){
  }finally{$("wtc-refresh-positions").disabled=false;}
 }
 $("wtc-refresh-positions").addEventListener("click",load);
+// Analyze / Refresh should update the ledger and market snapshots together.
+analyze.addEventListener("click",load);
 $("wtc-position-login").addEventListener("submit",async event=>{
  event.preventDefault();const pass=$("wtc-position-password").value;
  setStatus("Authenticating…");

@@ -4,10 +4,14 @@ on:
     branches: [wtc-options-seller]
     paths:
       - 'netlify/functions/options-positions.mts'
+      - 'netlify/functions/lib/market-context.mts'
+      - 'netlify/functions/lib/nyse-sessions.mts'
+      - 'netlify/functions/vertex-signal.mts'
       - 'netlify/functions/lib/options-ledger.mts'
       - 'netlify/functions/lib/options-campaigns.mts'
       - 'tests/options-ledger.test.mts'
       - 'tests/options-campaigns.test.mts'
+      - 'tests/nyse-sessions.test.mts'
       - 'public/position-reader.js'
       - 'public/options-defense.js'
       - 'public/index.html'
@@ -21,7 +25,7 @@ jobs:
         with:
           node-version: '24'
       - name: Run ledger parser tests
-        run: node --experimental-strip-types --test tests/options-ledger.test.mts tests/options-campaigns.test.mts
+        run: node --experimental-strip-types --test tests/options-ledger.test.mts tests/options-campaigns.test.mts tests/nyse-sessions.test.mts
       - name: Check browser panel syntax
         run: |
           node --check public/position-reader.js
