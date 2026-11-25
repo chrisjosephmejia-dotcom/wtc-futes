@@ -123,9 +123,11 @@ async function loadQuote(id){
   const q=await getJson('/api/equity-quote?ticker='+encodeURIComponent(ticker),9000,quoteController.signal);
   if(id!==generation)return;
   renderQuote(q);quoteState='ok';
+  window.dispatchEvent(new CustomEvent("wtc:market",{detail:{ticker:q.ticker,kind:"quote",price:q.mark??q.mid??q.last,timestamp:q.updatedAt??null}}));
  }catch(e){
   if(id!==generation)return;
   quoteState='error';clearFields(quoteFields);
+  window.dispatchEvent(new CustomEvent("wtc:market",{detail:{ticker,kind:"quote",error:true}}));
   $('stamp').textContent='Quote unavailable: '+(e?.message||'Connection failed')+' · press Analyze / Refresh to retry';
  }finally{
   if(id===generation)feedBadge()
@@ -138,6 +140,7 @@ async function loadVertex(id){
   const s=await getJson('/api/vertex-signal?ticker='+encodeURIComponent(ticker)+(selectedExpiry?'&expiry='+encodeURIComponent(selectedExpiry):''),19000,vertexController.signal);
   if(id!==generation)return;
   renderVertex(s);vertexState='ok';
+  window.dispatchEvent(new CustomEvent("wtc:market",{detail:{ticker:s.ticker,kind:"vertex",price:s.intraday?.price,timestamp:s.intraday?.lastBarAt}}));
   if(quoteState==='error'&&Number.isFinite(Number(s.intraday?.price))){
    $('mark').textContent='≈$'+fmt(s.intraday.price);
    $('stamp').textContent='Last Tastytrade candle (not a current bid/ask) · quote feed unavailable';
@@ -145,6 +148,7 @@ async function loadVertex(id){
  }catch(e){
   if(id!==generation)return;
   vertexState='error';clearFields(vertexFields);
+  window.dispatchEvent(new CustomEvent("wtc:market",{detail:{ticker,kind:"vertex",error:true}}));
   $('decision').textContent='WAIT — DATA CHECK';$('decision').className='decisionText wait';
   $('reason').textContent='Vertex unavailable: '+(e?.message||'Connection failed')+'. No fresh trading signal. Press Analyze / Refresh to retry.';
   $('setupTag').textContent='NO ACTIVE SIGNAL';
@@ -163,6 +167,7 @@ function setTicker(v){
  quoteController?.abort();vertexController?.abort();
  if(ticker!==next){selectedExpiry='';availableDates=[]}ticker=next;$('tickerInput').value=ticker;$('ticker').textContent=ticker;
  const u=new URL(location.href);u.searchParams.set('ticker',ticker);if(selectedExpiry)u.searchParams.set('expiry',selectedExpiry);else u.searchParams.delete('expiry');history.replaceState({},'',u);
+ window.dispatchEvent(new CustomEvent("wtc:market",{detail:{ticker,reset:true}}));
  quoteState='pending';vertexState='pending';resetDisplay();feedBadge();
  loadQuote(id);loadVertex(id);
 }
@@ -178,4 +183,4 @@ $('expiryCalendar').addEventListener('change',e=>{
  selectedExpiry=day;setTicker(ticker);
 });
 $('loadBtn').addEventListener('click',()=>setTicker($('tickerInput').value));$('tickerInput').addEventListener('keydown',e=>{if(e.key==='Enter')setTicker(e.target.value)});setTicker(ticker);
-</script><script src="/position-reader.js"></script></body></html>
+</script><script src="/position-reader.js"></script><script src="/options-defense.js"></script></body></html>
