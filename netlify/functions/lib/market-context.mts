@@ -1,3 +1,5 @@
+import { nyseSessionEquivalentsUntil } from "./nyse-sessions.mjs";
+
 type RiskEvent={date:string;name:string;impact:"high"|"medium";description:string;source:string};
 type PolyMarket={question:string;probability:number;direction:"bullish"|"bearish";volume:number};
 
@@ -15,7 +17,6 @@ function targetFriday(from:string){
  // Starting Wednesday, roll the model horizon to the following Friday.
  return (wd===3||wd===4)?nextFriday(thisUpcoming):thisUpcoming;
 }
-function sessionsUntil(from:string,to:string){let n=0,d=dateUTC(from),end=dateUTC(to);d.setUTCDate(d.getUTCDate()+1);while(d<=end){const w=d.getUTCDay();if(w>=1&&w<=5)n++;d.setUTCDate(d.getUTCDate()+1)}return n}
 function calendarDays(from:string,to:string){return Math.max(0,Math.round((dateUTC(to).getTime()-dateUTC(from).getTime())/DAY))}
 function thirdFriday(year:number,month:number){const d=new Date(Date.UTC(year,month-1,1,12));let first=(5-d.getUTCDay()+7)%7;d.setUTCDate(1+first+14);return isoDate(d)}
 function parseIcsDate(v:string){const m=v.match(/(\d{4})(\d{2})(\d{2})/);return m?`${m[1]}-${m[2]}-${m[3]}`:null}
@@ -96,6 +97,6 @@ export async function getMarketContext(ticker="SPY",requestedExpiry:string|null=
  const expiry=listed.expiry.date;
  const events=[...bls,...fomcEvents(today,horizon),...opexEvents(today,horizon)].sort((a,b)=>a.date.localeCompare(b.date));
  const beforeExpiry=events.filter(e=>e.date<=expiry);
- const value={today,horizon,displayHorizon,weeklyExpiry:{...listed.expiry,calendarDays:calendarDays(today,expiry),sessions:sessionsUntil(today,expiry)},availableExpiries:listed.availableExpiries,events,eventsBeforeExpiry:beforeExpiry,polymarket:poly};
+ const value={today,horizon,displayHorizon,weeklyExpiry:{...listed.expiry,calendarDays:calendarDays(today,expiry),sessions:nyseSessionEquivalentsUntil(today,expiry)},availableExpiries:listed.availableExpiries,events,eventsBeforeExpiry:beforeExpiry,polymarket:poly};
  cache.set(key,{at:Date.now(),value});return value;
 }
