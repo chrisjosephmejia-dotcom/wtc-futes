@@ -1,0 +1,23 @@
+name: Options sheet position-reader checks
+on:
+  pull_request:
+    branches: [wtc-options-seller]
+    paths:
+      - 'netlify/functions/options-positions.mts'
+      - 'netlify/functions/lib/options-ledger.mts'
+      - 'tests/options-ledger.test.mts'
+      - 'public/position-reader.js'
+      - 'public/index.html'
+      - '.github/workflows/options-ledger-checks.yml'
+jobs:
+  parser-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run ledger parser tests
+        run: node --experimental-strip-types --test tests/options-ledger.test.mts
+      - name: Check browser panel syntax
+        run: node --check public/position-reader.js
