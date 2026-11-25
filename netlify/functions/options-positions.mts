@@ -104,4 +104,4 @@ export default async (request:Request,_context:Context)=>{
     return json({error:safe,authenticated:true},503);
   }
 };
-export const config:Config={path:"/api/positions"};
+export const config:Config={path:"/api/positions",rateLimit:{action:"rate_limit",aggregateBy:"ip",windowSize:60,windowLimit:30}};
