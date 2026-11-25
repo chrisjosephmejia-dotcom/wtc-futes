@@ -5,8 +5,11 @@ on:
     paths:
       - 'netlify/functions/options-positions.mts'
       - 'netlify/functions/lib/options-ledger.mts'
+      - 'netlify/functions/lib/options-campaigns.mts'
       - 'tests/options-ledger.test.mts'
+      - 'tests/options-campaigns.test.mts'
       - 'public/position-reader.js'
+      - 'public/options-defense.js'
       - 'public/index.html'
       - '.github/workflows/options-ledger-checks.yml'
 jobs:
@@ -18,6 +21,8 @@ jobs:
         with:
           node-version: '24'
       - name: Run ledger parser tests
-        run: node --experimental-strip-types --test tests/options-ledger.test.mts
+        run: node --experimental-strip-types --test tests/options-ledger.test.mts tests/options-campaigns.test.mts
       - name: Check browser panel syntax
-        run: node --check public/position-reader.js
+        run: |
+          node --check public/position-reader.js
+          node --check public/options-defense.js
